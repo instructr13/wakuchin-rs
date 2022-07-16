@@ -7,3 +7,10 @@
 $ cargo build --profile release --package wakuchin-rs
 $ target/release/wakuchin
 ```
+
+## Testing
+
+```bash
+$ cargo test --package wakuchin-rs
+```
+
