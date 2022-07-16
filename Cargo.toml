@@ -1,0 +1,10 @@
+[workspace]
+resolver = "2"
+members = [
+  "cli"
+]
+
+[profile.release]
+incremental = true
+lto = true
+opt-level = 3
