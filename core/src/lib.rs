@@ -1,8 +1,8 @@
-use rand::prelude::SliceRandom;
-
 mod symbol;
 
 pub mod convert;
+
+use rand::prelude::SliceRandom;
 
 pub fn gen(times: usize) -> String {
   let mut wakuchin: Vec<char> = symbol::WAKUCHIN
