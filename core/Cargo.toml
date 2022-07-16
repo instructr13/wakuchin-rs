@@ -10,3 +10,5 @@ description = "A next generation wakuchin researcher software written in Rust"
 [lib]
 path = "src/lib.rs"
 
+[dependencies]
+rand = "0.8.5"
