@@ -6,7 +6,7 @@ default-run = "wakuchin"
 edition = "2021"
 license = "MIT"
 repository = "https://github.com/P2P-Develop/wakuchin-rs"
-description = "A next generation wakuchin researching software written in Rust"
+description = "A next generation wakuchin researcher software written in Rust"
 
 [[bin]]
 name = "wakuchin"
