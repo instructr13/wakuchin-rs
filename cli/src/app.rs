@@ -51,7 +51,8 @@ pub struct App {
 
 impl App {
   pub fn new() -> AnyhowResult<Self> {
-    let interactive = atty::is(atty::Stream::Stdin);
+    let interactive =
+      atty::is(atty::Stream::Stdin) && atty::is(atty::Stream::Stdout);
 
     Ok(App {
       args: Args::parse(),
