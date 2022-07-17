@@ -33,7 +33,7 @@ mod test {
   use crate::{convert, symbol};
 
   #[test]
-  fn char_to_wakuchin_works() {
+  fn test_char_to_wakuchin() {
     assert_eq!(
       convert::char_to_wakuchin(symbol::WAKUCHIN_W),
       symbol::WAKUCHIN_EXTERNAL_W
@@ -54,7 +54,7 @@ mod test {
   }
 
   #[test]
-  fn wakuchin_to_char_works() {
+  fn test_wakuchin_to_char() {
     assert_eq!(
       convert::wakuchin_to_char(symbol::WAKUCHIN_EXTERNAL_W),
       symbol::WAKUCHIN_W
@@ -75,12 +75,12 @@ mod test {
   }
 
   #[test]
-  fn chars_to_wakuchin_works() {
+  fn test_chars_to_wakuchin() {
     assert_eq!(convert::chars_to_wakuchin("WKNCWKNC"), "わくんちわくんち");
   }
 
   #[test]
-  fn wakuchin_to_chars_works() {
+  fn test_wakuchin_to_chars() {
     assert_eq!(convert::wakuchin_to_chars("わくんちわくんち"), "WKNCWKNC");
   }
 }

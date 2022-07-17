@@ -40,7 +40,7 @@ mod test {
   use crate::{gen, symbol};
 
   #[test]
-  fn gen_works() {
+  fn test_gen() {
     let wakuchin = gen(3);
     let mut wakuchin_w_count: u32 = 0;
     let mut wakuchin_k_count: u32 = 0;
