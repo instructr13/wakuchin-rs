@@ -1,17 +1,42 @@
-use wakuchin_core::{convert, worker};
+mod app;
 
-use regex::Regex;
+use std::process;
+use wakuchin_core::{result, worker};
 
-type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
+use crate::app::App;
+
+type Result<T> = anyhow::Result<T, Box<dyn std::error::Error>>;
+
+pub async fn run() -> Result<bool> {
+  let mut app = App::new()?;
+  let args = app.prompt();
+  let result = worker::run_par(
+    args.tries.unwrap(),
+    args.times.unwrap(),
+    args.regex.unwrap(),
+  )
+  .await;
+
+  println!("{}", result::out(app.args.out, &result));
+
+  Ok(true)
+}
 
 #[tokio::main]
-pub async fn main() -> Result<()> {
-  println!("Hello, world from wakuchin-rs/cli");
-  println!("WKNCWKNC -> {}", convert::chars_to_wakuchin("WKNCWKNC"));
-  println!(
-    "Result: {:#?}",
-    worker::run_par(200000, 2, Regex::new(r"^WKNCWKNC$").unwrap()).await
-  );
+pub async fn main() {
+  let result = run().await;
 
-  Ok(())
+  match result {
+    Err(error) => {
+      eprintln!("error: {}", error);
+
+      process::exit(1);
+    }
+    Ok(false) => {
+      process::exit(1);
+    }
+    Ok(true) => {
+      process::exit(0);
+    }
+  }
 }

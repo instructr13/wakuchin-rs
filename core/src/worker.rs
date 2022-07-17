@@ -1,23 +1,17 @@
 use regex::Regex;
 
-use crate::{check, gen_vec};
+use crate::{
+  check, gen_vec,
+  result::{Hit, WakuchinResult},
+};
 
 use rayon::prelude::*;
 
-#[derive(Debug)]
-pub struct Hit {
-  pub hit_on: usize,
-  pub chars: String,
-}
-
-#[derive(Debug)]
-pub struct Result {
-  pub tries: usize,
-  pub hits_n: usize,
-  pub hits: Vec<Hit>,
-}
-
-pub async fn run_par(tries: usize, times: usize, regex: Regex) -> Result {
+pub async fn run_par(
+  tries: usize,
+  times: usize,
+  regex: Regex,
+) -> WakuchinResult {
   let hits = gen_vec(tries, times)
     .par_iter()
     .enumerate()
@@ -38,14 +32,18 @@ pub async fn run_par(tries: usize, times: usize, regex: Regex) -> Result {
     .collect::<Option<Vec<_>>>()
     .unwrap();
 
-  Result {
+  WakuchinResult {
     tries,
     hits_n: hits.len(),
     hits,
   }
 }
 
-pub async fn run_seq(tries: usize, times: usize, regex: Regex) -> Result {
+pub async fn run_seq(
+  tries: usize,
+  times: usize,
+  regex: Regex,
+) -> WakuchinResult {
   let hits = gen_vec(tries, times)
     .iter()
     .enumerate()
@@ -66,7 +64,7 @@ pub async fn run_seq(tries: usize, times: usize, regex: Regex) -> Result {
     .collect::<Option<Vec<_>>>()
     .unwrap();
 
-  Result {
+  WakuchinResult {
     tries,
     hits_n: hits.len(),
     hits,

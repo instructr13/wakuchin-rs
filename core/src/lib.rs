@@ -1,6 +1,7 @@
 mod symbol;
 
 pub mod convert;
+pub mod result;
 pub mod worker;
 
 use regex::Regex;
