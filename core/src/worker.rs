@@ -7,10 +7,13 @@ use crate::{
 
 use rayon::prelude::*;
 
+type HitHandler = fn(&Hit);
+
 pub async fn run_par(
   tries: usize,
   times: usize,
   regex: Regex,
+  handler: HitHandler,
 ) -> WakuchinResult {
   let hits = gen_vec(tries, times)
     .par_iter()
@@ -18,12 +21,17 @@ pub async fn run_par(
     .map(|(i, wakuchin)| {
       let wakuchin = wakuchin.clone();
       let regex = regex.clone();
+      let handler = handler.clone();
 
       if check(&wakuchin, regex) {
-        Some(Hit {
+        let hit = Hit {
           hit_on: i,
           chars: wakuchin,
-        })
+        };
+
+        handler(&hit);
+
+        Some(hit)
       } else {
         None
       }
@@ -43,6 +51,7 @@ pub async fn run_seq(
   tries: usize,
   times: usize,
   regex: Regex,
+  handler: HitHandler,
 ) -> WakuchinResult {
   let hits = gen_vec(tries, times)
     .iter()
@@ -50,12 +59,17 @@ pub async fn run_seq(
     .map(|(i, wakuchin)| {
       let wakuchin = wakuchin.clone();
       let regex = regex.clone();
+      let handler = handler.clone();
 
       if check(&wakuchin, regex) {
-        Some(Hit {
+        let hit = Hit {
           hit_on: i,
           chars: wakuchin,
-        })
+        };
+
+        handler(&hit);
+
+        Some(hit)
       } else {
         None
       }
