@@ -1,8 +1,10 @@
-use wakuchin_core::result::ResultOutputFormat;
+use std::process;
 
 use clap::Parser;
-use inquire::{CustomType, Text};
+use inquire::{error::InquireError, CustomType, Text};
 use regex::Regex;
+
+use wakuchin_core::result::ResultOutputFormat;
 
 type AnyhowResult<T> = anyhow::Result<T, Box<dyn std::error::Error>>;
 
@@ -63,26 +65,50 @@ impl App {
     }
   }
 
+  fn check_prompt_err<T>(
+    &mut self,
+    result: &Result<T, inquire::error::InquireError>,
+  ) {
+    match result {
+      Ok(_) => {}
+      Err(InquireError::OperationCanceled) => {
+        process::exit(0);
+      }
+      Err(InquireError::OperationInterrupted) => {
+        println!("Interrupted! aborting...");
+
+        process::exit(1);
+      }
+      Err(error) => {
+        panic!("{}", error);
+      }
+    }
+  }
+
   fn prompt_tries(&mut self) -> usize {
     Self::check_interactive(self);
 
-    let tries: usize = CustomType::new("How many tries:")
-      .with_error_message("Please type a valid number")
-      .prompt()
-      .unwrap();
+    let tries: Result<usize, inquire::error::InquireError> =
+      CustomType::new("How many tries:")
+        .with_error_message("Please type a valid number")
+        .prompt();
 
-    tries
+    self.check_prompt_err(&tries);
+
+    tries.unwrap()
   }
 
   fn prompt_times(&mut self) -> usize {
     Self::check_interactive(self);
 
-    let times: usize = CustomType::new("Wakuchins times:")
-      .with_error_message("Please type a valid number")
-      .prompt()
-      .unwrap();
+    let times: Result<usize, inquire::error::InquireError> =
+      CustomType::new("Wakuchins times:")
+        .with_error_message("Please type a valid number")
+        .prompt();
 
-    times
+    self.check_prompt_err(&times);
+
+    times.unwrap()
   }
 
   fn prompt_regex(&mut self) -> Regex {
@@ -98,23 +124,24 @@ impl App {
           Ok(())
         }
       })
-      .prompt()
-      .unwrap();
+      .prompt();
 
-    Regex::new(&regex).unwrap()
+    self.check_prompt_err(&regex);
+
+    Regex::new(&regex.unwrap()).unwrap()
   }
 
   pub fn prompt(&mut self) -> Args {
     if self.args.tries.is_none() {
-      self.args.tries = Some(Self::prompt_tries(self));
+      self.args.tries = Some(self.prompt_tries());
     }
 
     if self.args.times.is_none() {
-      self.args.times = Some(Self::prompt_times(self));
+      self.args.times = Some(self.prompt_times());
     }
 
     if self.args.regex.is_none() {
-      self.args.regex = Some(Self::prompt_regex(self));
+      self.args.regex = Some(self.prompt_regex());
     }
 
     self.args.clone()
