@@ -10,7 +10,14 @@ description = "A next generation wakuchin researcher software written in Rust"
 [lib]
 path = "src/lib.rs"
 
+[dev-dependencies]
+criterion = "0.3"
+
 [dependencies]
-rand = "0.8.5"
+rand = "0.8"
 rayon = "1.5"
 regex = "1"
+
+[[bench]]
+name = "bench_core"
+harness = false
