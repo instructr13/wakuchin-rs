@@ -1,5 +1,5 @@
 [package]
-name = "wakuchin-rs"
+name = "wakuchin_cli"
 version = "0.1.0"
 authors = ["P2P-Develop"]
 default-run = "wakuchin"
@@ -18,5 +18,5 @@ wakuchin_core = { version = "0.1.0", path = "../core" }
 [dependencies]
 wakuchin_core = { version = "0.1.0", path = "../core" }
 
+regex = "1"
 tokio = { version = "=1.20", features = ["full"] }
-

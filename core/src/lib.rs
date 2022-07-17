@@ -1,6 +1,9 @@
 mod symbol;
 
 pub mod convert;
+pub mod worker;
+
+use regex::Regex;
 
 use rand::prelude::SliceRandom;
 
@@ -11,11 +14,24 @@ pub fn gen(times: usize) -> String {
     .take(symbol::WAKUCHIN.len() * times)
     .map(|&c| c)
     .collect();
+
   let mut rng = rand::thread_rng();
 
   wakuchin.shuffle(&mut rng);
 
   wakuchin.iter().collect()
+}
+
+pub fn gen_vec(len: usize, times: usize) -> Vec<String> {
+  (0..len).map(|_| gen(times)).collect()
+}
+
+pub fn validate(wakuchin: &str) -> bool {
+  wakuchin.chars().all(|c| symbol::WAKUCHIN.contains(&c))
+}
+
+pub fn check(chars: &str, regex: Regex) -> bool {
+  regex.is_match(chars)
 }
 
 #[cfg(test)]

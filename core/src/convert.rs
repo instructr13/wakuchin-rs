@@ -1,4 +1,4 @@
-use super::symbol;
+use crate::symbol;
 
 fn char_to_wakuchin(char: char) -> char {
   match char {
