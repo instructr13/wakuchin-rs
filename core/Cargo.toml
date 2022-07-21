@@ -1,11 +1,14 @@
 [package]
-name = "wakuchin_core"
+name = "wakuchin"
 version = "0.1.0"
 authors = ["P2P-Develop"]
+category = "text-processing"
+keywords = [ "text" ]
 edition = "2021"
-license = "MIT"
+license_file = "../LICENSE"
 repository = "https://github.com/P2P-Develop/wakuchin-rs"
 description = "A next generation wakuchin researcher software written in Rust"
+readme = "README.md"
 
 [lib]
 path = "src/lib.rs"

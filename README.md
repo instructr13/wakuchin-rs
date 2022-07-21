@@ -11,7 +11,7 @@
   - Research wakuchin with parallelism
   - Doing research WKCN \* 2 with 200000 tries time is about **60ms** \(tested with [`wakuchin_cli`](cli)\)
 - 🔧 **Extendable**
-  - You can use the Rust APIs of [`wakuchin_core`](core)
+  - You can use the Rust APIs of [`wakuchin`](core)
 - 📰 **Researcher-friendly**
   - The result output can be: **plain text** or **json**
 

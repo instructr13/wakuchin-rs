@@ -4,7 +4,7 @@ use clap::Parser;
 use inquire::{error::InquireError, CustomType, Text};
 use regex::Regex;
 
-use wakuchin_core::result::ResultOutputFormat;
+use wakuchin::result::ResultOutputFormat;
 
 type AnyhowResult<T> = anyhow::Result<T, Box<dyn std::error::Error>>;
 

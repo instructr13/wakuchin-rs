@@ -3,8 +3,8 @@ mod hit;
 
 use std::process;
 
-use wakuchin_core::result::{out, Hit};
-use wakuchin_core::worker;
+use wakuchin::result::{out, Hit};
+use wakuchin::worker;
 
 use crate::app::App;
 use crate::hit::hit;
