@@ -171,14 +171,16 @@
 <span id="166">166</span>
 <span id="167">167</span>
 <span id="168">168</span>
+<span id="169">169</span>
+<span id="170">170</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Functions to manipulate the result of a research</span>
 
 <span class="kw">use</span> <span class="ident">std::fmt</span>;
 
-<span class="kw">use</span> <span class="ident">serde::Serialize</span>;
+<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
 <span class="doccomment">/// The output format of the result</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ResultOutputFormat</span> {
   <span class="doccomment">/// Text output</span>
   <span class="doccomment">///</span>
@@ -191,6 +193,7 @@
   <span class="doccomment">/// Hits: 2</span>
   <span class="doccomment">/// Hits%: 20%</span>
   <span class="doccomment">/// ```</span>
+  <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;text&quot;</span>)]</span>
   <span class="ident">Text</span>,
   <span class="doccomment">/// JSON output</span>
   <span class="doccomment">///</span>
@@ -213,6 +216,7 @@
   <span class="doccomment">///   ]</span>
   <span class="doccomment">/// }</span>
   <span class="doccomment">/// ```</span>
+  <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;json&quot;</span>)]</span>
   <span class="ident">Json</span>,
 }
 
