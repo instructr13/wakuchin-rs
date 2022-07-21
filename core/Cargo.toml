@@ -8,7 +8,9 @@ edition = "2021"
 license-file = "../LICENSE"
 repository = "https://github.com/P2P-Develop/wakuchin-rs"
 description = "A next generation wakuchin researcher software written in Rust"
-readme = "README.md"
+readme = "../README.md"
+
+exclude = [ "README.md" ]
 
 [lib]
 path = "src/lib.rs"
