@@ -2,9 +2,7 @@ name: Deploy API Docs
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    branches: [ "develop" ]
 
 env:
   CARGO_TERM_COLOR: always
@@ -33,7 +31,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Run doc
-      run: cargo doc --no-deps
+      run: cargo doc --no-deps --package wakuchin_core
 
     - name: Deploy
       uses: peaceiris/actions-gh-pages@v3
