@@ -1,0 +1,28 @@
+on:
+  release:
+    types: [ published ]
+  workflow_dispatch:
+
+name: Post release actions
+
+jobs:
+  publish:
+    name: Publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Get latest version
+        id: get_version
+        run: |
+          LATEST_VERSION=$(git tag --sort=-creatordate | head -1)
+          echo ::set-output name=LATEST_VERSION::$LATEST_VERSION
+
+      - name: Install cargo-release
+        uses: baptiste0928/cargo-install@v1
+        with:
+          crate: cargo-release
+
+      - name: Publish
+        run: yes | cargo release --no-tag --token ${CRATES_TOKEN} --workspace --execute $(echo '${{ steps.get_version.outputs.LATEST_VERSION }}' | cut -c2-)
+          CRATES_TOKEN: ${{ secrets.CRATES_TOKEN }}
