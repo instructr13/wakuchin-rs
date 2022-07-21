@@ -36,7 +36,7 @@ fn wakuchin_to_char(char: char) -> char {
 /// # Examples
 ///
 /// ```rust
-/// use wakuchin_core::convert::chars_to_wakuchin;
+/// use wakuchin::convert::chars_to_wakuchin;
 ///
 /// assert_eq!(chars_to_wakuchin("WKCN"), "わくちん");
 /// assert_eq!(chars_to_wakuchin("WKNCWKNC"), "わくんちわくんち");
@@ -59,7 +59,7 @@ pub fn chars_to_wakuchin(chars: &str) -> String {
 /// # Examples
 ///
 /// ```rust
-/// use wakuchin_core::convert::wakuchin_to_chars;
+/// use wakuchin::convert::wakuchin_to_chars;
 ///
 /// assert_eq!(wakuchin_to_chars("わくちん"), "WKCN");
 /// assert_eq!(wakuchin_to_chars("わくんちわくんち"), "WKNCWKNC");

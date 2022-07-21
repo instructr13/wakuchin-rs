@@ -77,7 +77,7 @@ pub struct WakuchinResult {
 /// # Examples
 ///
 /// ```rust
-/// use wakuchin_core::result::{out, Hit, ResultOutputFormat, WakuchinResult};
+/// use wakuchin::result::{out, Hit, ResultOutputFormat, WakuchinResult};
 ///
 /// let result = WakuchinResult {
 ///   tries: 10,

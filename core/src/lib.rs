@@ -22,8 +22,8 @@ use rand::prelude::SliceRandom;
 /// # Examples
 ///
 /// ```rust
-/// use wakuchin_core::gen;
-/// use wakuchin_core::symbol;
+/// use wakuchin::gen;
+/// use wakuchin::symbol;
 ///
 /// let wakuchin = gen(3);
 ///
@@ -79,8 +79,8 @@ pub fn gen(times: usize) -> String {
 /// # Examples
 ///
 /// ```rust
-/// use wakuchin_core::gen_vec;
-/// use wakuchin_core::symbol;
+/// use wakuchin::gen_vec;
+/// use wakuchin::symbol;
 ///
 /// let wakuchin_vec = gen_vec(3, 3);
 ///
@@ -127,7 +127,7 @@ pub fn gen_vec(len: usize, times: usize) -> Vec<String> {
 /// # Examples
 ///
 /// ```rust
-/// use wakuchin_core::validate;
+/// use wakuchin::validate;
 ///
 /// assert_eq!(validate("WKCN"), true);
 /// assert_eq!(validate("わくちん"), false);
@@ -150,7 +150,7 @@ pub fn validate(wakuchin: &str) -> bool {
 /// # Examples
 ///
 /// ```rust
-/// use wakuchin_core::validate_external;
+/// use wakuchin::validate_external;
 ///
 /// assert_eq!(validate_external("わくちん"), true);
 /// assert_eq!(validate_external("WKCN"), false);
@@ -180,7 +180,7 @@ pub fn validate_external(wakuchin: &str) -> bool {
 /// ```rust
 /// use regex::Regex;
 ///
-/// use wakuchin_core::check;
+/// use wakuchin::check;
 ///
 /// assert_eq!(check("WKCN", Regex::new(r"^[WKCN]+$").unwrap()), true);
 /// assert_eq!(check("わくちん", Regex::new(r"^[WKCN]+$").unwrap()), false);
