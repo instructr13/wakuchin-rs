@@ -1,10 +1,13 @@
-use std::process;
+use std::{path::Path, process};
 
 use clap::Parser;
 use inquire::{error::InquireError, CustomType, Text};
 use regex::Regex;
+use serde::Deserialize;
 
 use wakuchin::result::ResultOutputFormat;
+
+use crate::config::load_config;
 
 type AnyhowResult<T> = anyhow::Result<T, Box<dyn std::error::Error>>;
 
@@ -16,9 +19,9 @@ fn value_parser_format(s: &str) -> Result<ResultOutputFormat, String> {
   }
 }
 
-#[derive(Clone, Parser)]
+#[derive(Clone, Debug, Parser, Deserialize)]
 #[clap(author, version, about, long_about = None)]
-pub struct Args {
+pub struct Config {
   #[clap(
     short = 'i',
     long,
@@ -37,15 +40,24 @@ pub struct Args {
   )]
   pub times: Option<usize>,
 
+  #[serde(default)]
+  #[serde(with = "serde_regex")]
   #[clap(short, long, value_parser, help = "Regex to detect hits")]
   pub regex: Option<Regex>,
 
-  #[clap(short = 'f', long = "format", default_value = "text", value_parser = value_parser_format, value_name = "text|json", help = "Output format")]
-  pub out: ResultOutputFormat,
+  #[serde(rename(deserialize = "output"))]
+  #[clap(short = 'f', long = "format", value_parser = value_parser_format, value_name = "text|json", help = "Output format")]
+  pub out: Option<ResultOutputFormat>,
+
+  #[clap(
+    value_name = "config",
+    help = "Config file path, can be json, yaml, and toml, detected by extension"
+  )]
+  pub config: Option<String>,
 }
 
 pub struct App {
-  pub args: Args,
+  pub args: Config,
   interactive: bool,
 }
 
@@ -55,7 +67,7 @@ impl App {
       atty::is(atty::Stream::Stdin) && atty::is(atty::Stream::Stdout);
 
     Ok(App {
-      args: Args::parse(),
+      args: Config::parse(),
       interactive,
     })
   }
@@ -123,7 +135,25 @@ impl App {
       .expect("regular expression check has bypassed")
   }
 
-  pub fn prompt(&mut self) -> Args {
+  pub async fn prompt(&mut self) -> Config {
+    let args_config_ref = self.args.config.as_ref();
+
+    if args_config_ref.unwrap_or(&"".to_string()) != "" {
+      let config = load_config(Path::new(
+        &args_config_ref.expect("if check has bypassed"),
+      ))
+      .await
+      .unwrap_or_else(|e| {
+        panic!("error when parsing config: {}", e);
+      });
+
+      self.args.tries = self.args.tries.or(config.tries);
+      self.args.times = self.args.times.or(config.times);
+      self.args.regex =
+        self.args.regex.as_ref().or(config.regex.as_ref()).cloned();
+      self.args.out = self.args.out.as_ref().or(config.out.as_ref()).cloned();
+    }
+
     if self.args.tries.is_none() {
       self.args.tries = Some(self.prompt_tries());
     }
@@ -135,6 +165,13 @@ impl App {
     if self.args.regex.is_none() {
       self.args.regex = Some(self.prompt_regex());
     }
+
+    self.args.out = self
+      .args
+      .out
+      .as_ref()
+      .or(Some(&ResultOutputFormat::Text))
+      .cloned();
 
     self.args.clone()
   }

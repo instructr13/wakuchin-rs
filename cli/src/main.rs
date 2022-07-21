@@ -1,4 +1,5 @@
 mod app;
+mod config;
 mod hit;
 
 use std::process;
@@ -13,7 +14,7 @@ type Result<T> = anyhow::Result<T, Box<dyn std::error::Error>>;
 
 pub async fn run() -> Result<bool> {
   let mut app = App::new()?;
-  let args = app.prompt();
+  let args = app.prompt().await;
   let tries = args.tries.expect("tries is undefined");
 
   let result = worker::run_par(
@@ -24,7 +25,10 @@ pub async fn run() -> Result<bool> {
   )
   .await;
 
-  println!("{}", out(app.args.out, &result));
+  println!(
+    "{}",
+    out(app.args.out.expect("output format is undefined"), &result)
+  );
 
   Ok(true)
 }
