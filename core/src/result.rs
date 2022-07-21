@@ -2,10 +2,10 @@
 
 use std::fmt;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 /// The output format of the result
-#[derive(Clone)]
+#[derive(Clone, Debug, Deserialize)]
 pub enum ResultOutputFormat {
   /// Text output
   ///
@@ -18,6 +18,7 @@ pub enum ResultOutputFormat {
   /// Hits: 2
   /// Hits%: 20%
   /// ```
+  #[serde(rename = "text")]
   Text,
   /// JSON output
   ///
@@ -40,6 +41,7 @@ pub enum ResultOutputFormat {
   ///   ]
   /// }
   /// ```
+  #[serde(rename = "json")]
   Json,
 }
 
