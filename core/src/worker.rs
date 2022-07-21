@@ -67,7 +67,7 @@ where
     })
     .filter(|hit| hit.is_some())
     .collect::<Option<Vec<_>>>()
-    .unwrap();
+    .expect("hits filtering failed");
 
   WakuchinResult {
     tries,
@@ -132,7 +132,7 @@ where
     })
     .filter(|hit| hit.is_some())
     .collect::<Option<Vec<_>>>()
-    .unwrap();
+    .expect("hits filtering failed");
 
   WakuchinResult {
     tries,

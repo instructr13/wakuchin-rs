@@ -60,29 +60,25 @@ impl App {
     })
   }
 
-  fn check_interactive(&mut self) {
-    if !self.interactive {
-      panic!("Cannot prompt in non-interactive mode (hint: fill in the missing arguments)");
-    }
-  }
-
-  fn check_prompt_err<T>(
-    &mut self,
-    result: &Result<T, inquire::error::InquireError>,
-  ) {
-    match result {
-      Ok(_) => {}
-      Err(InquireError::OperationCanceled) => {
+  fn unwrap_or_else_fn<T>(error: InquireError) -> T {
+    match error {
+      InquireError::OperationCanceled => {
         process::exit(0);
       }
-      Err(InquireError::OperationInterrupted) => {
+      InquireError::OperationInterrupted => {
         println!("Interrupted! aborting...");
 
         process::exit(1);
       }
-      Err(error) => {
+      _ => {
         panic!("{}", error);
       }
+    }
+  }
+
+  fn check_interactive(&mut self) {
+    if !self.interactive {
+      panic!("Cannot prompt in non-interactive mode (hint: fill in the missing arguments)");
     }
   }
 
@@ -94,9 +90,7 @@ impl App {
         .with_error_message("Please type a valid number")
         .prompt();
 
-    self.check_prompt_err(&tries);
-
-    tries.unwrap()
+    tries.unwrap_or_else(Self::unwrap_or_else_fn)
   }
 
   fn prompt_times(&mut self) -> usize {
@@ -107,9 +101,7 @@ impl App {
         .with_error_message("Please type a valid number")
         .prompt();
 
-    self.check_prompt_err(&times);
-
-    times.unwrap()
+    times.unwrap_or_else(Self::unwrap_or_else_fn)
   }
 
   fn prompt_regex(&mut self) -> Regex {
@@ -127,9 +119,8 @@ impl App {
       })
       .prompt();
 
-    self.check_prompt_err(&regex);
-
-    Regex::new(&regex.unwrap()).unwrap()
+    Regex::new(&regex.unwrap_or_else(Self::unwrap_or_else_fn))
+      .expect("regular expression check has bypassed")
   }
 
   pub fn prompt(&mut self) -> Args {

@@ -3,26 +3,28 @@ mod hit;
 
 use std::process;
 
-use wakuchin_core::{result, worker};
+use wakuchin_core::result::{out, Hit};
+use wakuchin_core::worker;
 
 use crate::app::App;
+use crate::hit::hit;
 
 type Result<T> = anyhow::Result<T, Box<dyn std::error::Error>>;
 
 pub async fn run() -> Result<bool> {
   let mut app = App::new()?;
   let args = app.prompt();
-  let tries = args.tries.unwrap();
+  let tries = args.tries.expect("tries is undefined");
 
   let result = worker::run_par(
     tries,
-    args.times.unwrap(),
-    args.regex.unwrap(),
-    hit::hit::<&dyn Fn(&result::Hit)>(tries),
+    args.times.expect("times is undefined"),
+    args.regex.expect("regex is undefined"),
+    hit::<&dyn Fn(&Hit)>(tries),
   )
   .await;
 
-  println!("{}", result::out(app.args.out, &result));
+  println!("{}", out(app.args.out, &result));
 
   Ok(true)
 }
