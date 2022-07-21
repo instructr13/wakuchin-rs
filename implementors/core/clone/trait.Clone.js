@@ -1,0 +1,4 @@
+(function() {var implementors = {};
+implementors["wakuchin"] = [{"text":"impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.62.0/core/clone/trait.Clone.html\" title=\"trait core::clone::Clone\">Clone</a> for <a class=\"struct\" href=\"wakuchin/app/struct.Args.html\" title=\"struct wakuchin::app::Args\">Args</a>","synthetic":false,"types":["wakuchin::app::Args"]}];
+implementors["wakuchin_core"] = [{"text":"impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.62.0/core/clone/trait.Clone.html\" title=\"trait core::clone::Clone\">Clone</a> for <a class=\"enum\" href=\"wakuchin_core/result/enum.ResultOutputFormat.html\" title=\"enum wakuchin_core::result::ResultOutputFormat\">ResultOutputFormat</a>","synthetic":false,"types":["wakuchin_core::result::ResultOutputFormat"]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

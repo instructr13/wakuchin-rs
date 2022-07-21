@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["ResultOutputFormat","The output format of the result"]],"fn":[["out","Return string of the result with specific output format."]],"struct":[["Hit","Used when the researcher detects a hit"],["WakuchinResult","The result of a research"]]});
