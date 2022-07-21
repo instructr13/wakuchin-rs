@@ -5,11 +5,11 @@ You can see the latest API documentation from [here](https://p2p-develop.github.
 ## Benchmarking
 
 ```bash
-$ cargo bench --package wakuchin_core
+$ cargo bench --package wakuchin
 ```
 
 ## Testing
 
 ```bash
-$ cargo test --package wakuchin_core
+$ cargo test --package wakuchin
 ```

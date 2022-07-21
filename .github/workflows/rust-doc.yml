@@ -33,7 +33,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Run doc
-      run: cargo doc --no-deps --package wakuchin_core
+      run: cargo doc --no-deps --package wakuchin
 
     - name: Deploy
       uses: peaceiris/actions-gh-pages@v3
