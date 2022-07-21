@@ -21,6 +21,7 @@ wakuchin_core = { version = "0.1.0", path = "../core" }
 anyhow = "1.0"
 atty = "0.2"
 clap = { version = "3.2", features = ["cargo", "derive"] }
+crossterm = "0.24"
 inquire = "0.2"
 regex = "1.6"
 tokio = { version = "=1.20", features = ["macros", "rt-multi-thread"] }

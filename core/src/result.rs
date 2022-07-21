@@ -27,7 +27,7 @@ pub fn out(format: ResultOutputFormat, result: &WakuchinResult) -> String {
       "--- Result ---
 Tries: {}
 Hits: {}
-Hits%: {}",
+Hits%: {}%",
       result.tries,
       result.hits_n,
       result.hits_n as f64 / result.tries as f64 * 100.0,
@@ -66,7 +66,7 @@ mod test {
       "--- Result ---
 Tries: 10
 Hits: 3
-Hits%: 30"
+Hits%: 30%"
     );
 
     assert_eq!(
