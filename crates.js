@@ -1,1 +1,1 @@
-window.ALL_CRATES = ["wakuchin_core"];
+window.ALL_CRATES = ["wakuchin"];
