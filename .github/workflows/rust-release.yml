@@ -25,4 +25,5 @@ jobs:
 
       - name: Publish
         run: yes | cargo release --no-tag --token ${CRATES_TOKEN} --workspace --execute $(echo '${{ steps.get_version.outputs.LATEST_VERSION }}' | cut -c2-)
+        env:
           CRATES_TOKEN: ${{ secrets.CRATES_TOKEN }}
