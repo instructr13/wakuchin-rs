@@ -1,5 +1,7 @@
 # Wakuchin Core (`wakuchin_core`)
 
+You can see the API documentation from [here](https://p2p-develop.github.io/wakuchin-rs/wakuchin_core)
+
 ## Benchmarking
 
 ```bash
