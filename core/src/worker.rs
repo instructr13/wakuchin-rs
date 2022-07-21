@@ -33,7 +33,7 @@ use rayon::prelude::*;
 ///   println!("{}", hit.chars);
 /// });
 /// ```
-pub async fn run_par<F>(
+pub fn run_par<F>(
   tries: usize,
   times: usize,
   regex: Regex,
@@ -101,7 +101,7 @@ where
 ///  println!("{}", hit.chars);
 /// });
 /// ```
-pub async fn run_seq<F>(
+pub fn run_seq<F>(
   tries: usize,
   times: usize,
   regex: Regex,
