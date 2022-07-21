@@ -2,8 +2,8 @@ use criterion::{criterion_group, Criterion};
 
 use regex::Regex;
 
-use wakuchin_core::worker::run_par;
-use wakuchin_core::worker::run_seq;
+use wakuchin::worker::run_par;
+use wakuchin::worker::run_seq;
 
 fn speed_par(c: &mut Criterion) {
   c.bench_function("parallel processing speed", |b| {

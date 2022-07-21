@@ -1,7 +1,7 @@
 use crossterm::style::{Attribute, Stylize};
 
-use wakuchin_core::convert::chars_to_wakuchin;
-use wakuchin_core::result::Hit;
+use wakuchin::convert::chars_to_wakuchin;
+use wakuchin::result::Hit;
 
 pub fn hit<F>(tries: usize) -> impl Fn(&Hit) {
   move |hit| {

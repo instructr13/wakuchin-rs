@@ -2,21 +2,24 @@
 name = "wakuchin_cli"
 version = "0.1.0"
 authors = ["P2P-Develop"]
+category = "command-line-utilities"
+keywords = [ "cli" ]
 default-run = "wakuchin"
 edition = "2021"
-license = "MIT"
+license_file = "../LICENSE"
 repository = "https://github.com/P2P-Develop/wakuchin-rs"
 description = "A next generation wakuchin researcher software written in Rust"
+readme = "README.md"
 
 [[bin]]
 name = "wakuchin"
 path = "src/main.rs"
 
 [build-dependencies]
-wakuchin_core = { version = "0.1.0", path = "../core" }
+wakuchin = { version = "0.1.0", path = "../core" }
 
 [dependencies]
-wakuchin_core = { version = "0.1.0", path = "../core" }
+wakuchin = { version = "0.1.0", path = "../core" }
 
 anyhow = "1.0"
 atty = "0.2"

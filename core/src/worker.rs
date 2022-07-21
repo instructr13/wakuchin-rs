@@ -27,7 +27,7 @@ use rayon::prelude::*;
 /// ```rust
 /// use regex::Regex;
 ///
-/// use wakuchin_core::worker::run_par;
+/// use wakuchin::worker::run_par;
 ///
 /// let result = run_par(10, 1, Regex::new(r"WKCN").unwrap(), |hit| {
 ///   println!("{}", hit.chars);
@@ -67,7 +67,7 @@ where
     })
     .filter(|hit| hit.is_some())
     .collect::<Option<Vec<_>>>()
-    .unwrap();
+    .expect("hits filtering failed");
 
   WakuchinResult {
     tries,
@@ -95,7 +95,7 @@ where
 /// ```rust
 /// use regex::Regex;
 ///
-/// use wakuchin_core::worker::run_seq;
+/// use wakuchin::worker::run_seq;
 ///
 /// let result = run_seq(10, 1, Regex::new(r"WKCN").unwrap(), |hit| {
 ///  println!("{}", hit.chars);
@@ -132,7 +132,7 @@ where
     })
     .filter(|hit| hit.is_some())
     .collect::<Option<Vec<_>>>()
-    .unwrap();
+    .expect("hits filtering failed");
 
   WakuchinResult {
     tries,

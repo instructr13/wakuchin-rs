@@ -77,7 +77,7 @@ pub struct WakuchinResult {
 /// # Examples
 ///
 /// ```rust
-/// use wakuchin_core::result::{out, Hit, ResultOutputFormat, WakuchinResult};
+/// use wakuchin::result::{out, Hit, ResultOutputFormat, WakuchinResult};
 ///
 /// let result = WakuchinResult {
 ///   tries: 10,
@@ -122,7 +122,8 @@ Hits%: {}%",
       result.hits_n,
       result.hits_n as f64 / result.tries as f64 * 100.0,
     )),
-    ResultOutputFormat::Json => serde_json::to_string(result).unwrap(),
+    ResultOutputFormat::Json => serde_json::to_string(result)
+      .unwrap_or_else(|e| panic!("error when serializing result: {}", e)),
   }
 }
 
