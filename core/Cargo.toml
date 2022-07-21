@@ -2,7 +2,7 @@
 name = "wakuchin"
 version = "0.1.0"
 authors = ["P2P-Develop"]
-category = "science"
+categories = [ "science", "text-processing" ]
 keywords = [ "text" ]
 edition = "2021"
 license-file = "../LICENSE"

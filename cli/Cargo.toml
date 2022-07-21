@@ -2,7 +2,7 @@
 name = "wakuchin_cli"
 version = "0.1.0"
 authors = ["P2P-Develop"]
-category = "command-line-utilities"
+categories = [ "command-line-utilities", "science" ]
 keywords = [ "cli" ]
 default-run = "wakuchin"
 edition = "2021"
