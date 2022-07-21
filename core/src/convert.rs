@@ -1,3 +1,5 @@
+//! Wakuchin conversion functions
+
 use crate::symbol;
 
 fn char_to_wakuchin(char: char) -> char {
@@ -20,10 +22,48 @@ fn wakuchin_to_char(char: char) -> char {
   }
 }
 
+/// Convert from internally used wakuchin chars to actual wakuchin chars.
+/// This is useful when you want to display the wakuchin chars to the user.
+///
+/// # Arguments
+///
+/// * `chars` - internal wakuchin chars to convert
+///
+/// # Returns
+///
+/// * `String` - actual wakuchin chars
+///
+/// # Examples
+///
+/// ```rust
+/// use wakuchin_core::convert::chars_to_wakuchin;
+///
+/// assert_eq!(chars_to_wakuchin("WKCN"), "わくちん");
+/// assert_eq!(chars_to_wakuchin("WKNCWKNC"), "わくんちわくんち");
+/// ```
 pub fn chars_to_wakuchin(chars: &str) -> String {
   String::from_iter(chars.chars().map(self::char_to_wakuchin))
 }
 
+/// Convert from actual wakuchin chars to internally used wakuchin chars.
+/// This is the inverse of `chars_to_wakuchin`.
+///
+/// # Arguments
+///
+/// * `chars` - actual wakuchin chars to convert
+///
+/// # Returns
+///
+/// * `String` - internal wakuchin chars
+///
+/// # Examples
+///
+/// ```rust
+/// use wakuchin_core::convert::wakuchin_to_chars;
+///
+/// assert_eq!(wakuchin_to_chars("わくちん"), "WKCN");
+/// assert_eq!(wakuchin_to_chars("わくんちわくんち"), "WKNCWKNC");
+/// ```
 pub fn wakuchin_to_chars(chars: &str) -> String {
   String::from_iter(chars.chars().map(self::wakuchin_to_char))
 }

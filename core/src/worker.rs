@@ -1,3 +1,5 @@
+//! Wakuchin researcher main functions
+
 use std::sync::Arc;
 
 use regex::Regex;
@@ -9,6 +11,28 @@ use crate::{
 
 use rayon::prelude::*;
 
+/// Research wakuchin with parallelism.
+///
+/// * `tries` - number of tries
+/// * `times` - wakuchin times n
+/// * `regex` - regular expression to detect hit
+/// * `handler` - handler function to handle hits
+///
+/// # Returns
+///
+/// * `WakuchinResult` - the result of the research
+///
+/// # Examples
+///
+/// ```rust
+/// use regex::Regex;
+///
+/// use wakuchin_core::worker::run_par;
+///
+/// let result = run_par(10, 1, Regex::new(r"WKCN").unwrap(), |hit| {
+///   println!("{}", hit.chars);
+/// });
+/// ```
 pub async fn run_par<F>(
   tries: usize,
   times: usize,
@@ -19,6 +43,7 @@ where
   F: Fn(&Hit) -> () + Send + Sync,
 {
   let handler_thread_safe = Arc::new(handler);
+
   let hits = gen_vec(tries, times)
     .par_iter()
     .enumerate()
@@ -51,6 +76,31 @@ where
   }
 }
 
+/// Research wakuchin with sequential.
+/// This function is useful when you don't use multi-core processors.
+///
+/// # Arguments
+///
+/// * `tries` - number of tries
+/// * `times` - wakuchin times n
+/// * `regex` - regular expression to detect hit
+/// * `handler` - handler function to handle hits
+///
+/// # Returns
+///
+/// * `WakuchinResult` - the result of the research
+///
+/// # Examples
+///
+/// ```rust
+/// use regex::Regex;
+///
+/// use wakuchin_core::worker::run_seq;
+///
+/// let result = run_seq(10, 1, Regex::new(r"WKCN").unwrap(), |hit| {
+///  println!("{}", hit.chars);
+/// });
+/// ```
 pub async fn run_seq<F>(
   tries: usize,
   times: usize,
