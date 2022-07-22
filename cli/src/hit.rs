@@ -1,17 +1,19 @@
-use crossterm::style::{Attribute, Stylize};
+use console::style;
 
 use wakuchin::convert::chars_to_wakuchin;
 use wakuchin::result::Hit;
 
 pub fn hit<F>(tries: usize) -> impl Fn(&Hit) {
   move |hit| {
-    println!(
-      "{} {bold_start}{hit_on:<hit_on_max_width$}{bold_end} {hit_chars}",
-      "hit".blue().underlined(),
-      bold_start = Attribute::Bold,
-      bold_end = Attribute::Reset,
-      hit_on = hit.hit_on,
-      hit_on_max_width = tries.to_string().len(),
+    eprintln!(
+      "{} {hit_on} {hit_chars}",
+      style("hit").blue().underlined(),
+      hit_on = style(format_args!(
+        "{:<max_width$}",
+        hit.hit_on,
+        max_width = tries.to_string().len()
+      ))
+      .bold(),
       hit_chars = chars_to_wakuchin(&hit.chars)
     );
   }

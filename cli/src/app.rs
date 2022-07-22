@@ -1,7 +1,8 @@
-use std::{path::Path, process};
+use std::{io::Error, path::Path};
 
 use clap::Parser;
-use inquire::{error::InquireError, CustomType, Text};
+use console::Term;
+use dialoguer::{theme::ColorfulTheme, Input};
 use regex::Regex;
 use serde::Deserialize;
 
@@ -64,7 +65,7 @@ pub struct App {
 impl App {
   pub fn new() -> AnyhowResult<Self> {
     let interactive =
-      atty::is(atty::Stream::Stdin) && atty::is(atty::Stream::Stdout);
+      atty::is(atty::Stream::Stdin) && atty::is(atty::Stream::Stderr);
 
     Ok(App {
       args: Config::parse(),
@@ -72,67 +73,54 @@ impl App {
     })
   }
 
-  fn unwrap_or_else_fn<T>(error: InquireError) -> T {
-    match error {
-      InquireError::OperationCanceled => {
-        process::exit(0);
-      }
-      InquireError::OperationInterrupted => {
-        println!("Interrupted! aborting...");
-
-        process::exit(1);
-      }
-      _ => {
-        panic!("{}", error);
-      }
-    }
+  fn unwrap_or_else_fn<T>(error: Error) -> T {
+    panic!("{}", error);
   }
 
   fn check_interactive(&mut self) {
     if !self.interactive {
-      panic!("Cannot prompt in non-interactive mode (hint: fill in the missing arguments)");
+      panic!("Cannot prompt in non-interactive mode (hint: pipe stdin/stderr to tty or fill in the missing arguments)");
     }
   }
 
-  fn prompt_tries(&mut self) -> usize {
+  fn prompt_tries(&mut self, term: &Term) -> usize {
     Self::check_interactive(self);
 
-    let tries: Result<usize, inquire::error::InquireError> =
-      CustomType::new("How many tries:")
-        .with_error_message("Please type a valid number")
-        .prompt();
+    let tries = Input::<usize>::with_theme(&ColorfulTheme::default())
+      .with_prompt("How many tries:")
+      .interact_on(term);
 
     tries.unwrap_or_else(Self::unwrap_or_else_fn)
   }
 
-  fn prompt_times(&mut self) -> usize {
+  fn prompt_times(&mut self, term: &Term) -> usize {
     Self::check_interactive(self);
 
-    let times: Result<usize, inquire::error::InquireError> =
-      CustomType::new("Wakuchins times:")
-        .with_error_message("Please type a valid number")
-        .prompt();
+    let times = Input::<usize>::with_theme(&ColorfulTheme::default())
+      .with_prompt("Wakuchins times:")
+      .interact_on(term);
 
     times.unwrap_or_else(Self::unwrap_or_else_fn)
   }
 
-  fn prompt_regex(&mut self) -> Regex {
+  fn prompt_regex(&mut self, term: &Term) -> Regex {
     Self::check_interactive(self);
 
-    let regex = Text::new("Regex to detect hits:")
-      .with_validator(&|s| {
+    let regex = Input::<String>::with_theme(&ColorfulTheme::default())
+      .with_prompt("Regex to detect hits:")
+      .validate_with(|s: &String| {
         if s.is_empty() {
-          Err("Regex is empty".into())
+          Err("Regex is empty")
         } else if Regex::new(s).is_err() {
-          Err("Regex is invalid".into())
+          Err("Regex is invalid")
         } else {
           Ok(())
         }
       })
-      .prompt();
+      .interact_text_on(term)
+      .unwrap_or_else(Self::unwrap_or_else_fn);
 
-    Regex::new(&regex.unwrap_or_else(Self::unwrap_or_else_fn))
-      .expect("regular expression check has bypassed")
+    Regex::new(&regex).expect("regular expression check has bypassed")
   }
 
   pub async fn prompt(&mut self) -> Config {
@@ -154,16 +142,18 @@ impl App {
       self.args.out = self.args.out.as_ref().or(config.out.as_ref()).cloned();
     }
 
+    let term = Term::buffered_stderr();
+
     if self.args.tries.is_none() {
-      self.args.tries = Some(self.prompt_tries());
+      self.args.tries = Some(self.prompt_tries(&term));
     }
 
     if self.args.times.is_none() {
-      self.args.times = Some(self.prompt_times());
+      self.args.times = Some(self.prompt_times(&term));
     }
 
     if self.args.regex.is_none() {
-      self.args.regex = Some(self.prompt_regex());
+      self.args.regex = Some(self.prompt_regex(&term));
     }
 
     self.args.out = self
