@@ -2,7 +2,7 @@ name: Publish to crates.io
 
 on:
   release:
-    types: [ published ]
+    types: [published]
   workflow_dispatch:
 
 jobs:
@@ -26,7 +26,11 @@ jobs:
           crate: cargo-release
 
       - name: Publish
-        run: yes | cargo release --no-tag --token ${CRATES_TOKEN} --workspace --execute $(echo "$LATEST_VERSION" | cut -c2-)
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          yes | cargo release --no-tag --token ${CRATES_TOKEN} --workspace --execute $(echo "$LATEST_VERSION" | cut -c2-)
         env:
           CRATES_TOKEN: ${{ secrets.CRATES_TOKEN }}
           LATEST_VERSION: ${{ steps.get_version.outputs.tag }}
