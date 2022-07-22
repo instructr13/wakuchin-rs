@@ -1,4 +1,4 @@
-name: Post release actions
+name: Publish to crates.io
 
 on:
   release:

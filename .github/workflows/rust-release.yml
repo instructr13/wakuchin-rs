@@ -1,4 +1,4 @@
-name: "Attach binaries to the release assets"
+name: Attach binaries to the release assets
 
 on:
   release:
