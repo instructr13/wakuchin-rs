@@ -16,9 +16,9 @@
 <h2 id="examples"><a href="#examples">Examples</a></h2>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">wakuchin::validate_external</span>;
 
-<span class="macro">assert_eq!</span>(<span class="ident">validate_external</span>(<span class="string">&quot;わくちん&quot;</span>), <span class="bool-val">true</span>);
-<span class="macro">assert_eq!</span>(<span class="ident">validate_external</span>(<span class="string">&quot;WKCN&quot;</span>), <span class="bool-val">false</span>);
-<span class="macro">assert_eq!</span>(<span class="ident">validate_external</span>(<span class="string">&quot;わくうちん&quot;</span>), <span class="bool-val">false</span>);
-<span class="macro">assert_eq!</span>(<span class="ident">validate_external</span>(<span class="string">&quot;WKCNX&quot;</span>), <span class="bool-val">false</span>);</code></pre></div>
+<span class="macro">assert!</span>(<span class="ident">validate_external</span>(<span class="string">&quot;わくちん&quot;</span>));
+<span class="macro">assert!</span>(<span class="op">!</span><span class="ident">validate_external</span>(<span class="string">&quot;WKCN&quot;</span>));
+<span class="macro">assert!</span>(<span class="op">!</span><span class="ident">validate_external</span>(<span class="string">&quot;わくうちん&quot;</span>));
+<span class="macro">assert!</span>(<span class="op">!</span><span class="ident">validate_external</span>(<span class="string">&quot;WKCNX&quot;</span>));</code></pre></div>
 </div></details></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="wakuchin" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0 (a8314ef7d 2022-06-27)" ></div>
 </body></html>

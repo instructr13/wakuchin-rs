@@ -412,9 +412,9 @@
 <span class="doccomment">/// ```rust</span>
 <span class="doccomment">/// use wakuchin::validate;</span>
 <span class="doccomment">///</span>
-<span class="doccomment">/// assert_eq!(validate(&quot;WKCN&quot;), true);</span>
-<span class="doccomment">/// assert_eq!(validate(&quot;わくちん&quot;), false);</span>
-<span class="doccomment">/// assert_eq!(validate(&quot;WKCNX&quot;), false);</span>
+<span class="doccomment">/// assert!(validate(&quot;WKCN&quot;));</span>
+<span class="doccomment">/// assert!(!validate(&quot;わくちん&quot;));</span>
+<span class="doccomment">/// assert!(!validate(&quot;WKCNX&quot;));</span>
 <span class="doccomment">/// ```</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">validate</span>(<span class="ident">wakuchin</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="ident">bool</span> {
   <span class="ident">wakuchin</span>.<span class="ident">chars</span>().<span class="ident">all</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">symbol::WAKUCHIN</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">c</span>))
@@ -435,10 +435,10 @@
 <span class="doccomment">/// ```rust</span>
 <span class="doccomment">/// use wakuchin::validate_external;</span>
 <span class="doccomment">///</span>
-<span class="doccomment">/// assert_eq!(validate_external(&quot;わくちん&quot;), true);</span>
-<span class="doccomment">/// assert_eq!(validate_external(&quot;WKCN&quot;), false);</span>
-<span class="doccomment">/// assert_eq!(validate_external(&quot;わくうちん&quot;), false);</span>
-<span class="doccomment">/// assert_eq!(validate_external(&quot;WKCNX&quot;), false);</span>
+<span class="doccomment">/// assert!(validate_external(&quot;わくちん&quot;));</span>
+<span class="doccomment">/// assert!(!validate_external(&quot;WKCN&quot;));</span>
+<span class="doccomment">/// assert!(!validate_external(&quot;わくうちん&quot;));</span>
+<span class="doccomment">/// assert!(!validate_external(&quot;WKCNX&quot;));</span>
 <span class="doccomment">/// ```</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">validate_external</span>(<span class="ident">wakuchin</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="ident">bool</span> {
   <span class="ident">wakuchin</span>
@@ -465,9 +465,9 @@
 <span class="doccomment">///</span>
 <span class="doccomment">/// use wakuchin::check;</span>
 <span class="doccomment">///</span>
-<span class="doccomment">/// assert_eq!(check(&quot;WKCN&quot;, Regex::new(r&quot;^[WKCN]+$&quot;).unwrap()), true);</span>
-<span class="doccomment">/// assert_eq!(check(&quot;わくちん&quot;, Regex::new(r&quot;^[WKCN]+$&quot;).unwrap()), false);</span>
-<span class="doccomment">/// assert_eq!(check(&quot;WKCNX&quot;, Regex::new(r&quot;^[WKCN]+$&quot;).unwrap()), false);</span>
+<span class="doccomment">/// assert!(check(&quot;WKCN&quot;, Regex::new(r&quot;^[WKCN]+$&quot;).unwrap()));</span>
+<span class="doccomment">/// assert!(!check(&quot;わくちん&quot;, Regex::new(r&quot;^[WKCN]+$&quot;).unwrap()));</span>
+<span class="doccomment">/// assert!(!check(&quot;WKCNX&quot;, Regex::new(r&quot;^[WKCN]+$&quot;).unwrap()));</span>
 <span class="doccomment">/// ```</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">check</span>(<span class="ident">chars</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">regex</span>: <span class="ident">Regex</span>) -&gt; <span class="ident">bool</span> {
   <span class="ident">regex</span>.<span class="ident">is_match</span>(<span class="ident">chars</span>)
@@ -539,24 +539,24 @@
 
   <span class="attribute">#[<span class="ident">test</span>]</span>
   <span class="kw">fn</span> <span class="ident">test_validate</span>() {
-    <span class="macro">assert_eq!</span>(<span class="ident">validate</span>(<span class="string">&quot;WKCN&quot;</span>), <span class="bool-val">true</span>);
-    <span class="macro">assert_eq!</span>(<span class="ident">validate</span>(<span class="string">&quot;わくちん&quot;</span>), <span class="bool-val">false</span>);
-    <span class="macro">assert_eq!</span>(<span class="ident">validate</span>(<span class="string">&quot;WKCNX&quot;</span>), <span class="bool-val">false</span>);
+    <span class="macro">assert!</span>(<span class="ident">validate</span>(<span class="string">&quot;WKCN&quot;</span>));
+    <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">validate</span>(<span class="string">&quot;わくちん&quot;</span>));
+    <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">validate</span>(<span class="string">&quot;WKCNX&quot;</span>));
   }
 
   <span class="attribute">#[<span class="ident">test</span>]</span>
   <span class="kw">fn</span> <span class="ident">test_validate_external</span>() {
-    <span class="macro">assert_eq!</span>(<span class="ident">validate_external</span>(<span class="string">&quot;わくちん&quot;</span>), <span class="bool-val">true</span>);
-    <span class="macro">assert_eq!</span>(<span class="ident">validate_external</span>(<span class="string">&quot;WKCN&quot;</span>), <span class="bool-val">false</span>);
-    <span class="macro">assert_eq!</span>(<span class="ident">validate_external</span>(<span class="string">&quot;わくうちん&quot;</span>), <span class="bool-val">false</span>);
-    <span class="macro">assert_eq!</span>(<span class="ident">validate_external</span>(<span class="string">&quot;WKCNX&quot;</span>), <span class="bool-val">false</span>);
+    <span class="macro">assert!</span>(<span class="ident">validate_external</span>(<span class="string">&quot;わくちん&quot;</span>));
+    <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">validate_external</span>(<span class="string">&quot;WKCN&quot;</span>));
+    <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">validate_external</span>(<span class="string">&quot;わくうちん&quot;</span>));
+    <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">validate_external</span>(<span class="string">&quot;WKCNX&quot;</span>));
   }
 
   <span class="attribute">#[<span class="ident">test</span>]</span>
   <span class="kw">fn</span> <span class="ident">test_check</span>() {
-    <span class="macro">assert_eq!</span>(<span class="ident">check</span>(<span class="string">&quot;WKCN&quot;</span>, <span class="ident">Regex::new</span>(<span class="string">r&quot;^[WKCN]+$&quot;</span>).<span class="ident">unwrap</span>()), <span class="bool-val">true</span>);
-    <span class="macro">assert_eq!</span>(<span class="ident">check</span>(<span class="string">&quot;わくちん&quot;</span>, <span class="ident">Regex::new</span>(<span class="string">r&quot;^[WKCN]+$&quot;</span>).<span class="ident">unwrap</span>()), <span class="bool-val">false</span>);
-    <span class="macro">assert_eq!</span>(<span class="ident">check</span>(<span class="string">&quot;WKCNX&quot;</span>, <span class="ident">Regex::new</span>(<span class="string">r&quot;^[WKCN]+$&quot;</span>).<span class="ident">unwrap</span>()), <span class="bool-val">false</span>);
+    <span class="macro">assert!</span>(<span class="ident">check</span>(<span class="string">&quot;WKCN&quot;</span>, <span class="ident">Regex::new</span>(<span class="string">r&quot;^[WKCN]+$&quot;</span>).<span class="ident">unwrap</span>()));
+    <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">check</span>(<span class="string">&quot;わくちん&quot;</span>, <span class="ident">Regex::new</span>(<span class="string">r&quot;^[WKCN]+$&quot;</span>).<span class="ident">unwrap</span>()));
+    <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">check</span>(<span class="string">&quot;WKCNX&quot;</span>, <span class="ident">Regex::new</span>(<span class="string">r&quot;^[WKCN]+$&quot;</span>).<span class="ident">unwrap</span>()));
   }
 }
 </code></pre></div>

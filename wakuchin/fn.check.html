@@ -20,8 +20,8 @@ This function is a wrapper of <code>Regex::is_match</code>.</p>
 
 <span class="kw">use</span> <span class="ident">wakuchin::check</span>;
 
-<span class="macro">assert_eq!</span>(<span class="ident">check</span>(<span class="string">&quot;WKCN&quot;</span>, <span class="ident">Regex::new</span>(<span class="string">r&quot;^[WKCN]+$&quot;</span>).<span class="ident">unwrap</span>()), <span class="bool-val">true</span>);
-<span class="macro">assert_eq!</span>(<span class="ident">check</span>(<span class="string">&quot;わくちん&quot;</span>, <span class="ident">Regex::new</span>(<span class="string">r&quot;^[WKCN]+$&quot;</span>).<span class="ident">unwrap</span>()), <span class="bool-val">false</span>);
-<span class="macro">assert_eq!</span>(<span class="ident">check</span>(<span class="string">&quot;WKCNX&quot;</span>, <span class="ident">Regex::new</span>(<span class="string">r&quot;^[WKCN]+$&quot;</span>).<span class="ident">unwrap</span>()), <span class="bool-val">false</span>);</code></pre></div>
+<span class="macro">assert!</span>(<span class="ident">check</span>(<span class="string">&quot;WKCN&quot;</span>, <span class="ident">Regex::new</span>(<span class="string">r&quot;^[WKCN]+$&quot;</span>).<span class="ident">unwrap</span>()));
+<span class="macro">assert!</span>(<span class="op">!</span><span class="ident">check</span>(<span class="string">&quot;わくちん&quot;</span>, <span class="ident">Regex::new</span>(<span class="string">r&quot;^[WKCN]+$&quot;</span>).<span class="ident">unwrap</span>()));
+<span class="macro">assert!</span>(<span class="op">!</span><span class="ident">check</span>(<span class="string">&quot;WKCNX&quot;</span>, <span class="ident">Regex::new</span>(<span class="string">r&quot;^[WKCN]+$&quot;</span>).<span class="ident">unwrap</span>()));</code></pre></div>
 </div></details></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="wakuchin" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.62.0 (a8314ef7d 2022-06-27)" ></div>
 </body></html>
