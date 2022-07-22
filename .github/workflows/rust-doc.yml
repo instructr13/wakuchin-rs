@@ -2,9 +2,9 @@ name: Deploy API Docs
 
 on:
   push:
-    branches: [ "develop" ]
+    branches: "*"
   pull_request:
-    branches: [ "main", "develop" ]
+    branches: [ "main" ]
 
 env:
   CARGO_TERM_COLOR: always

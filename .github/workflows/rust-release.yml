@@ -16,9 +16,9 @@ jobs:
 
       - name: Get latest version
         id: get_version
-        run: |
-          LATEST_VERSION=$(git tag --sort=-creatordate | head -1)
-          echo ::set-output name=LATEST_VERSION::$LATEST_VERSION
+        uses: actions-ecosystem/action-get-latest-tag@v1
+        with:
+          semver_only: true
 
       - name: Install cargo-release
         uses: baptiste0928/cargo-install@v1
@@ -26,6 +26,7 @@ jobs:
           crate: cargo-release
 
       - name: Publish
-        run: yes | cargo release --no-tag --token ${CRATES_TOKEN} --workspace --execute $(echo '${{ steps.get_version.outputs.LATEST_VERSION }}' | cut -c2-)
+        run: yes | cargo release --no-tag --token ${CRATES_TOKEN} --workspace --execute $(echo "$LATEST_VERSION" | cut -c2-)
         env:
           CRATES_TOKEN: ${{ secrets.CRATES_TOKEN }}
+          LATEST_VERSION: ${{ steps.get_version.outputs.tag }}
