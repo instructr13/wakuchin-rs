@@ -129,9 +129,9 @@ pub fn gen_vec(len: usize, times: usize) -> Vec<String> {
 /// ```rust
 /// use wakuchin::validate;
 ///
-/// assert_eq!(validate("WKCN"), true);
-/// assert_eq!(validate("わくちん"), false);
-/// assert_eq!(validate("WKCNX"), false);
+/// assert!(validate("WKCN"));
+/// assert!(!validate("わくちん"));
+/// assert!(!validate("WKCNX"));
 /// ```
 pub fn validate(wakuchin: &str) -> bool {
   wakuchin.chars().all(|c| symbol::WAKUCHIN.contains(&c))
@@ -152,10 +152,10 @@ pub fn validate(wakuchin: &str) -> bool {
 /// ```rust
 /// use wakuchin::validate_external;
 ///
-/// assert_eq!(validate_external("わくちん"), true);
-/// assert_eq!(validate_external("WKCN"), false);
-/// assert_eq!(validate_external("わくうちん"), false);
-/// assert_eq!(validate_external("WKCNX"), false);
+/// assert!(validate_external("わくちん"));
+/// assert!(!validate_external("WKCN"));
+/// assert!(!validate_external("わくうちん"));
+/// assert!(!validate_external("WKCNX"));
 /// ```
 pub fn validate_external(wakuchin: &str) -> bool {
   wakuchin
@@ -182,9 +182,9 @@ pub fn validate_external(wakuchin: &str) -> bool {
 ///
 /// use wakuchin::check;
 ///
-/// assert_eq!(check("WKCN", Regex::new(r"^[WKCN]+$").unwrap()), true);
-/// assert_eq!(check("わくちん", Regex::new(r"^[WKCN]+$").unwrap()), false);
-/// assert_eq!(check("WKCNX", Regex::new(r"^[WKCN]+$").unwrap()), false);
+/// assert!(check("WKCN", Regex::new(r"^[WKCN]+$").unwrap()));
+/// assert!(!check("わくちん", Regex::new(r"^[WKCN]+$").unwrap()));
+/// assert!(!check("WKCNX", Regex::new(r"^[WKCN]+$").unwrap()));
 /// ```
 pub fn check(chars: &str, regex: Regex) -> bool {
   regex.is_match(chars)
@@ -256,23 +256,23 @@ mod test {
 
   #[test]
   fn test_validate() {
-    assert_eq!(validate("WKCN"), true);
-    assert_eq!(validate("わくちん"), false);
-    assert_eq!(validate("WKCNX"), false);
+    assert!(validate("WKCN"));
+    assert!(!validate("わくちん"));
+    assert!(!validate("WKCNX"));
   }
 
   #[test]
   fn test_validate_external() {
-    assert_eq!(validate_external("わくちん"), true);
-    assert_eq!(validate_external("WKCN"), false);
-    assert_eq!(validate_external("わくうちん"), false);
-    assert_eq!(validate_external("WKCNX"), false);
+    assert!(validate_external("わくちん"));
+    assert!(!validate_external("WKCN"));
+    assert!(!validate_external("わくうちん"));
+    assert!(!validate_external("WKCNX"));
   }
 
   #[test]
   fn test_check() {
-    assert_eq!(check("WKCN", Regex::new(r"^[WKCN]+$").unwrap()), true);
-    assert_eq!(check("わくちん", Regex::new(r"^[WKCN]+$").unwrap()), false);
-    assert_eq!(check("WKCNX", Regex::new(r"^[WKCN]+$").unwrap()), false);
+    assert!(check("WKCN", Regex::new(r"^[WKCN]+$").unwrap()));
+    assert!(!check("わくちん", Regex::new(r"^[WKCN]+$").unwrap()));
+    assert!(!check("WKCNX", Regex::new(r"^[WKCN]+$").unwrap()));
   }
 }
