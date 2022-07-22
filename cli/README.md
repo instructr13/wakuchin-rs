@@ -19,6 +19,18 @@ OPTIONS:
     -V, --version               Print version information
 ```
 
+## Installation
+
+### Download from [GitHub Releases](https://github.com/P2P-Develop/wakuchin-rs/releases)
+
+You can download the latest version of `wakuchin_cli` from [here](https://github.com/P2P-Develop/wakuchin-rs/releases/latest).
+
+### Using `cargo`
+
+```bash
+$ cargo install wakuchin_cli
+```
+
 ## Building from source
 
 ```bash
