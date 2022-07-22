@@ -54,7 +54,7 @@ pub fn gen(times: usize) -> String {
     .iter()
     .cycle()
     .take(symbol::WAKUCHIN.len() * times)
-    .map(|&c| c)
+    .copied()
     .collect();
 
   let mut rng = rand::thread_rng();

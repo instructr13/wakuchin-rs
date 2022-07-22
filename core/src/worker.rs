@@ -40,7 +40,7 @@ pub async fn run_par<F>(
   handler: F,
 ) -> WakuchinResult
 where
-  F: Fn(&Hit) -> () + Send + Sync,
+  F: Fn(&Hit) + Send + Sync,
 {
   let handler_thread_safe = Arc::new(handler);
 

@@ -15,7 +15,7 @@ fn value_parser_format(s: &str) -> Result<ResultOutputFormat, String> {
   match s {
     "text" => Ok(ResultOutputFormat::Text),
     "json" => Ok(ResultOutputFormat::Json),
-    _ => Err(format!("Unknown format: {}", s).into()),
+    _ => Err(format!("Unknown format: {}", s)),
   }
 }
 
@@ -123,7 +123,7 @@ impl App {
       .with_validator(&|s| {
         if s.is_empty() {
           Err("Regex is empty".into())
-        } else if Regex::new(&s).is_err() {
+        } else if Regex::new(s).is_err() {
           Err("Regex is invalid".into())
         } else {
           Ok(())
