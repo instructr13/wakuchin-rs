@@ -2,7 +2,8 @@ name: Attach binaries to the release assets
 
 on:
   release:
-    types: [created]
+    types:
+      - created
 
 jobs:
   release:
@@ -19,7 +20,17 @@ jobs:
           - target: x86_64-apple-darwin
             archive: zip
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v3
+
+      - name: Cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
       - name: Compile and release
         uses: rust-build/rust-build.action@v1
         env:
@@ -27,3 +38,5 @@ jobs:
         with:
           RUSTTARGET: ${{ matrix.target }}
           ARCHIVE_TYPES: ${{ matrix.archive }}
+          SRC_DIR: "./cli"
+          MINIFY: true
