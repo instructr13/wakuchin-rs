@@ -1,6 +1,6 @@
 [package]
 name = "wakuchin_cli"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["P2P-Develop"]
 categories = [ "command-line-utilities", "science" ]
 keywords = [ "cli" ]
@@ -16,10 +16,10 @@ name = "wakuchin"
 path = "src/main.rs"
 
 [build-dependencies]
-wakuchin = { version = "0.1.0", path = "../core" }
+wakuchin = { version = "0.2.0", path = "../core" }
 
 [dependencies]
-wakuchin = { version = "0.1.0", path = "../core" }
+wakuchin = { version = "0.2.0", path = "../core" }
 
 anyhow = "1.0"
 atty = "0.2"

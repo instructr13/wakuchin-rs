@@ -1,6 +1,6 @@
 [package]
 name = "wakuchin"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["P2P-Develop"]
 categories = [ "science", "text-processing" ]
 keywords = [ "text" ]
