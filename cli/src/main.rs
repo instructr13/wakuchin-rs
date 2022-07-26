@@ -10,6 +10,13 @@ use wakuchin::worker;
 use crate::app::App;
 use crate::hit::hit;
 
+#[cfg(not(target_env = "msvc"))]
+use tikv_jemallocator::Jemalloc;
+
+#[cfg(not(target_env = "msvc"))]
+#[global_allocator]
+static GLOBAL: Jemalloc = Jemalloc;
+
 type Result<T> = anyhow::Result<T, Box<dyn std::error::Error>>;
 
 pub async fn run() -> Result<bool> {
