@@ -6,6 +6,7 @@ use regex::Regex;
 
 use crate::{
   check, gen_vec,
+  error::Error,
   result::{Hit, WakuchinResult},
 };
 
@@ -38,10 +39,22 @@ pub fn run_par<F>(
   times: usize,
   regex: Regex,
   handler: F,
-) -> WakuchinResult
+) -> anyhow::Result<WakuchinResult, Error>
 where
   F: Fn(&Hit) + Send + Sync,
 {
+  if tries == 0 {
+    return Ok(WakuchinResult {
+      tries: 0,
+      hits_n: 0,
+      hits: Vec::new(),
+    });
+  }
+
+  if times == 0 {
+    return Err(Error::TimesIsZero);
+  }
+
   let handler_thread_safe = Arc::new(handler);
 
   let hits = gen_vec(tries, times)
@@ -69,11 +82,11 @@ where
     .collect::<Option<Vec<_>>>()
     .expect("hits filtering failed");
 
-  WakuchinResult {
+  Ok(WakuchinResult {
     tries,
     hits_n: hits.len(),
     hits,
-  }
+  })
 }
 
 /// Research wakuchin with sequential.
@@ -106,7 +119,7 @@ pub fn run_seq<F>(
   times: usize,
   regex: Regex,
   handler: F,
-) -> WakuchinResult
+) -> anyhow::Result<WakuchinResult>
 where
   F: Fn(&Hit),
 {
@@ -134,9 +147,9 @@ where
     .collect::<Option<Vec<_>>>()
     .expect("hits filtering failed");
 
-  WakuchinResult {
+  Ok(WakuchinResult {
     tries,
     hits_n: hits.len(),
     hits,
-  }
+  })
 }

@@ -29,7 +29,7 @@ pub async fn run() -> Result<bool> {
     args.times.expect("times is undefined"),
     args.regex.expect("regex is undefined"),
     hit::<&dyn Fn(&Hit)>(tries),
-  );
+  )?;
 
   println!(
     "{}",

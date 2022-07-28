@@ -1,6 +1,7 @@
 //! Core functions of wakuchin tools
 
 pub mod convert;
+pub mod error;
 pub mod result;
 pub mod symbol;
 pub mod worker;
