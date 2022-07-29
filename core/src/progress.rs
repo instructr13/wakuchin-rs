@@ -1,11 +1,52 @@
-pub trait Progress {
-  fn new(total: u64) -> Self;
-  fn message(&mut self, message: &str);
-  fn tick(&mut self);
-  fn step(&mut self, i: u64) -> u64;
-  fn set(&mut self, i: u64) -> u64;
-  fn inc(&mut self) -> u64 {
-    step(1)
+#[derive(Clone, Debug)]
+pub enum ProgressKind {
+  Idle(usize, usize),
+  Processing(ProcessingDetail),
+  Done(usize, usize),
+}
+
+#[allow(dead_code)]
+#[derive(Clone, Debug)]
+pub struct ProcessingDetail {
+  pub id: usize,
+  pub wakuchin: String,
+  pub current: usize,
+  pub total: usize,
+  pub total_workers: usize,
+}
+
+impl ProcessingDetail {
+  pub fn new(
+    id: usize,
+    wakuchin: impl Into<String>,
+    current: usize,
+    total: usize,
+    total_workers: usize,
+  ) -> Self {
+    Self {
+      id,
+      wakuchin: wakuchin.into(),
+      current,
+      total,
+      total_workers,
+    }
   }
-  fn finish(&mut self);
+}
+
+#[derive(Clone, Debug)]
+pub struct Progress(pub ProgressKind);
+
+#[derive(Clone, Debug)]
+pub struct HitCounter {
+  pub chars: String,
+  pub hits: usize,
+}
+
+impl HitCounter {
+  pub fn new(chars: impl Into<String>, hits: usize) -> Self {
+    Self {
+      chars: chars.into(),
+      hits,
+    }
+  }
 }
