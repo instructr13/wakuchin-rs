@@ -27,7 +27,6 @@ wakuchin = { version = "0.2.0", path = "../core" }
 anyhow = "1.0"
 atty = "0.2"
 clap = { version = "3.2", features = ["cargo", "derive"] }
-console-subscriber = "0.1"
 crossterm = "0.24"
 human_format = "1.0"
 inquire = "0.2"

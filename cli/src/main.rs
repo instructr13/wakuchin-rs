@@ -66,8 +66,6 @@ pub async fn run() -> Result<bool> {
 
 #[tokio::main]
 pub async fn main() {
-  console_subscriber::init();
-
   let result = run().await;
 
   match result {

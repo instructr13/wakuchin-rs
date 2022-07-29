@@ -96,58 +96,57 @@ where
 
   let render = ThreadRender::new(hit_rx, progress_rx_vec, progress_handler);
 
-  let render_handle = tokio::task::Builder::new()
-    .name("Renderer")
-    .spawn(async move { render.start().await });
+  let render_handle = tokio::spawn(async move { render.start().await });
 
-  let handles =
-    (0..tries)
-      .divide_evenly_into(workers)
-      .zip(progress_tx_vec.into_iter())
-      .enumerate()
-      .map(|(id, (wakuchins, progress_tx))| {
-        let hit_tx = hit_tx.clone();
-        let regex = regex.clone();
-        let total = wakuchins.len();
+  let handles = (0..tries)
+    .divide_evenly_into(workers)
+    .zip(progress_tx_vec.into_iter())
+    .enumerate()
+    .map(|(id, (wakuchins, progress_tx))| {
+      let hit_tx = hit_tx.clone();
+      let regex = regex.clone();
+      let total = wakuchins.len();
 
-        tokio::task::Builder::new()
-          .name(&format!("Worker #{}", id + 1))
-          .spawn(async move {
-            let mut hits = Vec::new();
+      tokio::spawn(async move {
+        let mut hits = Vec::new();
 
-            for (i, wakuchin) in wakuchins.map(|_| gen(times)).enumerate() {
-              progress_tx
-                .send(Progress(ProgressKind::Processing(
-                  ProcessingDetail::new(id + 1, &wakuchin, i, total, workers),
-                )))
-                .expect("progress channel is unavailable");
+        for (i, wakuchin) in wakuchins.map(|_| gen(times)).enumerate() {
+          progress_tx
+            .send(Progress(ProgressKind::Processing(ProcessingDetail::new(
+              id + 1,
+              &wakuchin,
+              i,
+              total,
+              workers,
+            ))))
+            .expect("progress channel is unavailable");
 
-              if check(&wakuchin, &regex) {
-                let hit = Hit::new(i, &wakuchin);
+          if check(&wakuchin, &regex) {
+            let hit = Hit::new(i, &wakuchin);
 
-                hit_tx
-                  .send_async(hit.clone())
-                  .await
-                  .expect("hit channel is unavailable");
+            hit_tx
+              .send_async(hit.clone())
+              .await
+              .expect("hit channel is unavailable");
 
-                hits.push(hit);
-              }
-            }
+            hits.push(hit);
+          }
+        }
 
-            drop(hit_tx);
+        drop(hit_tx);
 
-            progress_tx
-              .send(Progress(ProgressKind::Done(DoneDetail {
-                id: id + 1,
-                total,
-                total_workers: workers,
-              })))
-              .expect("progress channel is unavailable");
+        progress_tx
+          .send(Progress(ProgressKind::Done(DoneDetail {
+            id: id + 1,
+            total,
+            total_workers: workers,
+          })))
+          .expect("progress channel is unavailable");
 
-            hits
-          })
+        hits
       })
-      .collect_vec();
+    })
+    .collect_vec();
 
   drop(hit_tx);
 

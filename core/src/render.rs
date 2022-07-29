@@ -196,16 +196,11 @@ where
   pub(crate) async fn start(mut self) -> Result<(), JoinError> {
     let inner = self.inner.clone();
 
-    let hit_handle =
-      tokio::task::Builder::new()
-        .name("Hit Receiver")
-        .spawn(async move {
-          inner.wait_for_hit().await;
-        });
+    let hit_handle = tokio::spawn(async move {
+      inner.wait_for_hit().await;
+    });
 
-    let progress_handle = tokio::task::Builder::new()
-      .name("Progress Notifier")
-      .spawn(async move {
+    let progress_handle = tokio::spawn(async move {
         self.start_render_progress(Duration::from_millis(300)).await;
       });
 
