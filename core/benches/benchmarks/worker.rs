@@ -14,7 +14,7 @@ fn speed_par(c: &mut Criterion) {
         30000,
         2,
         Regex::new(r"^WKNCWKNC$").unwrap(),
-        |_, _| {},
+        |_, _, _| {},
         None,
       )
       .await
@@ -24,7 +24,9 @@ fn speed_par(c: &mut Criterion) {
 
 fn speed_seq(c: &mut Criterion) {
   c.bench_function("sequential processing speed", |b| {
-    b.iter(|| run_seq(30000, 2, Regex::new(r"^WKNCWKNC$").unwrap(), |_, _| {}));
+    b.iter(|| {
+      run_seq(30000, 2, Regex::new(r"^WKNCWKNC$").unwrap(), |_, _, _| {})
+    });
   });
 }
 

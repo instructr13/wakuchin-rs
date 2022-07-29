@@ -40,8 +40,8 @@ use crate::{
 ///
 /// use wakuchin::worker::run_par;
 ///
-/// let result = run_par(10, 1, Regex::new(r"WKCN").unwrap(), |hit| {
-///   println!("{}", hit.chars);
+/// let result = run_par(10, 1, Regex::new(r"WKCN").unwrap(), |_, counters, _| {
+///   println!("total hits: {}", counters.iter().map(|c| c.hits).sum::<usize>());
 /// }, Some(4));
 /// ```
 pub async fn run_par<F>(
@@ -179,8 +179,8 @@ where
 ///
 /// use wakuchin::worker::run_seq;
 ///
-/// let result = run_seq(10, 1, Regex::new(r"WKCN").unwrap(), |hit| {
-///  println!("{}", hit.chars);
+/// let result = run_seq(10, 1, Regex::new(r"WKCN").unwrap(), |_, counters, _| {
+///   println!("total hits: {}", counters.iter().map(|c| c.hits).sum::<usize>());
 /// });
 /// ```
 pub fn run_seq<F>(
