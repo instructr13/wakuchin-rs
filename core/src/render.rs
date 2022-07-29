@@ -11,8 +11,11 @@ use tokio::sync::watch;
 use tokio::task::JoinError;
 use tokio::time::{sleep, Duration};
 
-use crate::progress::{HitCounter, ProcessingDetail, Progress, ProgressKind};
+use crate::progress::{
+  DoneDetail, HitCounter, ProcessingDetail, Progress, ProgressKind,
+};
 use crate::result::Hit;
+use crate::utils::DiffStore;
 
 struct ThreadRenderInner {
   hit_rx: Receiver<Hit>,
@@ -22,7 +25,11 @@ struct ThreadRenderInner {
 
 pub(crate) struct ThreadRender<F>
 where
-  F: Fn(&[Progress], &[HitCounter], bool) + Copy + Send + Sync + 'static,
+  F: Fn(&[Progress], &[HitCounter], Duration, usize, bool)
+    + Copy
+    + Send
+    + Sync
+    + 'static,
 {
   hit_counter: DashMap<String, HitCounter>,
   inner: Arc<ThreadRenderInner>,
@@ -56,7 +63,11 @@ impl ThreadRenderInner {
 
 impl<F> ThreadRender<F>
 where
-  F: Fn(&[Progress], &[HitCounter], bool) + Copy + Send + Sync + 'static,
+  F: Fn(&[Progress], &[HitCounter], Duration, usize, bool)
+    + Copy
+    + Send
+    + Sync
+    + 'static,
 {
   pub(crate) fn new(
     hit_rx: Receiver<Hit>,
@@ -80,22 +91,33 @@ where
     }
   }
 
-  pub(crate) async fn start_render_progress(&self, interval: Duration) {
+  pub(crate) async fn start_render_progress(&mut self, interval: Duration) {
     let progress_handler = self.progress_handler.clone();
     let mut start_time = Instant::now();
+    let mut current_diff = DiffStore::new(0usize);
+    let mut current_ = 0;
+    let mut total_ = None;
     let mut workers = None;
 
     loop {
       if self.stop_rx.try_recv().is_ok() {
         progress_handler(
           &(0..self.progress_channels.len())
-            .map(|id| Progress(ProgressKind::Done(id, workers.unwrap_or(1))))
+            .map(|id| {
+              Progress(ProgressKind::Done(DoneDetail {
+                id,
+                total: total_.unwrap_or(1),
+                total_workers: workers.unwrap_or(1),
+              }))
+            })
             .collect_vec(),
           &self
             .hit_counter
             .iter()
             .map(|ref_| ref_.value().clone())
             .collect_vec(),
+          interval,
+          0,
           true,
         );
 
@@ -119,44 +141,59 @@ where
         continue;
       }
 
-      progress_handler(
-        &self
-          .progress_channels
-          .iter()
-          .map(|rx| {
-            let progress = rx.borrow().clone();
+      let progressses = &self
+        .progress_channels
+        .iter()
+        .map(|rx| {
+          let progress = rx.borrow().clone();
 
-            if workers.is_none() {
-              match progress {
-                Progress(ProgressKind::Idle(_, total)) => {
-                  workers = Some(total);
-                }
-                Progress(ProgressKind::Processing(ProcessingDetail {
-                  total_workers,
-                  ..
-                })) => {
-                  workers = Some(total_workers);
-                }
-                _ => {}
-              }
+          match progress {
+            Progress(ProgressKind::Idle(_, total)) => {
+              workers = Some(total);
             }
+            Progress(ProgressKind::Processing(ProcessingDetail {
+              current,
+              total,
+              total_workers,
+              ..
+            })) => {
+              current_ += current;
+              total_ = Some(total);
+              workers = Some(total_workers);
+            }
+            Progress(ProgressKind::Done(DoneDetail {
+              total,
+              total_workers,
+              ..
+            })) => {
+              current_ += total;
+              total_ = Some(total);
+              workers = Some(total_workers);
+            }
+          }
 
-            progress
-          })
-          .collect_vec(),
+          progress
+        })
+        .collect_vec();
+
+      progress_handler(
+        progressses,
         &self
           .hit_counter
           .iter()
           .map(|ref_| ref_.value().clone())
           .collect_vec(),
+        interval,
+        current_diff.update(current_),
         false,
       );
 
+      current_ = 0;
       start_time = Instant::now();
     }
   }
 
-  pub(crate) async fn start(self) -> Result<(), JoinError> {
+  pub(crate) async fn start(mut self) -> Result<(), JoinError> {
     let inner = self.inner.clone();
 
     let hit_handle =
@@ -182,8 +219,9 @@ where
 
 pub(crate) struct Render<F>
 where
-  F: Fn(&[Progress], &[HitCounter], bool),
+  F: Fn(&[Progress], &[HitCounter], Duration, usize, bool),
 {
+  current_diff: DiffStore<usize>,
   hit_counter: DashMap<String, HitCounter>,
   progress_handler: F,
   start_time: Instant,
@@ -191,10 +229,11 @@ where
 
 impl<F> Render<F>
 where
-  F: Fn(&[Progress], &[HitCounter], bool),
+  F: Fn(&[Progress], &[HitCounter], Duration, usize, bool),
 {
   pub(crate) fn new(progress_handler: F) -> Self {
     Self {
+      current_diff: DiffStore::new(0),
       hit_counter: DashMap::new(),
       progress_handler,
       start_time: Instant::now(),
@@ -226,6 +265,8 @@ where
           .iter()
           .map(|ref_| ref_.value().clone())
           .collect_vec(),
+        interval,
+        0,
         all_done,
       );
 
@@ -236,17 +277,27 @@ where
       return;
     }
 
-    if matches!(progress, Progress(ProgressKind::Done(_, _))) {
+    if matches!(progress, Progress(ProgressKind::Done(_))) {
       return;
     }
 
     (self.progress_handler)(
-      &[progress],
+      &[progress.clone()],
       &self
         .hit_counter
         .iter()
         .map(|ref_| ref_.value().clone())
         .collect_vec(),
+      interval,
+      if let Progress(ProgressKind::Processing(ProcessingDetail {
+        current,
+        ..
+      })) = progress
+      {
+        self.current_diff.update(current)
+      } else {
+        0
+      },
       all_done,
     );
 

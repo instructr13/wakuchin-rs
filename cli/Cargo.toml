@@ -29,6 +29,7 @@ atty = "0.2"
 clap = { version = "3.2", features = ["cargo", "derive"] }
 console-subscriber = "0.1"
 crossterm = "0.24"
+human_format = "1.0"
 inquire = "0.2"
 regex = "1.6"
 serde = { version = "1.0", features = ["derive"] }

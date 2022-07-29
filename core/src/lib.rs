@@ -8,6 +8,7 @@ pub mod symbol;
 pub mod worker;
 
 mod render;
+mod utils;
 
 use regex::Regex;
 

@@ -16,7 +16,9 @@ use crate::{
   check,
   error::Error as NormalError,
   gen,
-  progress::{HitCounter, ProcessingDetail, Progress, ProgressKind},
+  progress::{
+    DoneDetail, HitCounter, ProcessingDetail, Progress, ProgressKind,
+  },
   render::{Render, ThreadRender},
   result::{Hit, WakuchinResult},
 };
@@ -52,7 +54,11 @@ pub async fn run_par<F>(
   workers: Option<usize>,
 ) -> anyhow::Result<WakuchinResult, NormalError>
 where
-  F: Fn(&[Progress], &[HitCounter], bool) + Copy + Send + Sync + 'static,
+  F: Fn(&[Progress], &[HitCounter], Duration, usize, bool)
+    + Copy
+    + Send
+    + Sync
+    + 'static,
 {
   if tries == 0 {
     return Ok(WakuchinResult {
@@ -131,7 +137,11 @@ where
             drop(hit_tx);
 
             progress_tx
-              .send(Progress(ProgressKind::Done(id + 1, workers)))
+              .send(Progress(ProgressKind::Done(DoneDetail {
+                id: id + 1,
+                total,
+                total_workers: workers,
+              })))
               .expect("progress channel is unavailable");
 
             hits
@@ -190,7 +200,7 @@ pub fn run_seq<F>(
   progress_handler: F,
 ) -> anyhow::Result<WakuchinResult, NormalError>
 where
-  F: Fn(&[Progress], &[HitCounter], bool),
+  F: Fn(&[Progress], &[HitCounter], Duration, usize, bool),
 {
   if tries == 0 {
     return Ok(WakuchinResult {
@@ -237,7 +247,11 @@ where
 
   render.render_progress(
     Duration::ZERO,
-    Progress(ProgressKind::Done(0, 1)),
+    Progress(ProgressKind::Done(DoneDetail {
+      id: 0,
+      total: tries,
+      total_workers: 1,
+    })),
     true,
   );
 

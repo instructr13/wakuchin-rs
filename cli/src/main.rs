@@ -4,6 +4,7 @@ mod handlers;
 
 use std::io::stderr;
 use std::process;
+use std::time::Duration;
 
 use crossterm::{cursor, execute};
 
@@ -36,7 +37,9 @@ pub async fn run() -> Result<bool> {
     tries,
     times,
     args.regex.expect("regex is undefined"),
-    progress::<&dyn Fn(&[Progress], &[HitCounter], bool)>(tries, times),
+    progress::<&dyn Fn(&[Progress], &[HitCounter], Duration, usize, bool)>(
+      tries, times,
+    ),
     None,
   )
   .await?;
@@ -46,7 +49,9 @@ pub async fn run() -> Result<bool> {
     tries,
     args.times.expect("times is undefined"),
     args.regex.expect("regex is undefined"),
-    progress::<&dyn Fn(&[Progress], &[HitCounter], bool)>(tries),
+    progress::<&dyn Fn(&[Progress], &[HitCounter], Duration, usize, bool)>(
+      tries, times,
+    ),
   )?;
 
   execute!(stderr(), cursor::Show)?;

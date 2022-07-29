@@ -2,7 +2,7 @@
 pub enum ProgressKind {
   Idle(usize, usize),
   Processing(ProcessingDetail),
-  Done(usize, usize),
+  Done(DoneDetail),
 }
 
 #[allow(dead_code)]
@@ -31,6 +31,13 @@ impl ProcessingDetail {
       total_workers,
     }
   }
+}
+
+#[derive(Clone, Debug)]
+pub struct DoneDetail {
+  pub id: usize,
+  pub total: usize,
+  pub total_workers: usize,
 }
 
 #[derive(Clone, Debug)]
