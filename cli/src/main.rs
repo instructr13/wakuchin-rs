@@ -27,15 +27,16 @@ pub async fn run() -> Result<bool> {
   let mut app = App::new()?;
   let args = app.prompt().await;
   let tries = args.tries.expect("tries is undefined");
+  let times = args.times.expect("times is undefined");
 
   execute!(stderr(), cursor::Hide)?;
 
   #[cfg(not(feature = "sequential"))]
   let result = worker::run_par(
     tries,
-    args.times.expect("times is undefined"),
+    times,
     args.regex.expect("regex is undefined"),
-    progress::<&dyn Fn(&[Progress], &[HitCounter], bool)>(tries),
+    progress::<&dyn Fn(&[Progress], &[HitCounter], bool)>(tries, times),
     None,
   )
   .await?;

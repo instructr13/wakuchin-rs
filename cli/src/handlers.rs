@@ -12,6 +12,7 @@ use wakuchin::progress::{
 
 pub fn progress<F>(
   tries: usize,
+  times: usize,
 ) -> impl Fn(&[Progress], &[HitCounter], bool) + Copy {
   move |progresses, hit_counters, all_done| {
     let progress_len = progresses.len() + hit_counters.len();
@@ -22,8 +23,9 @@ pub fn progress<F>(
       let count_max_width = tries.to_string().len();
 
       println!(
-        "    {} {chars}: {bold_start}{count:<count_max_width$}{bold_end}",
+        "    {} {chars}: {bold_start}{count:<count_max_width$}{bold_end} ({:.3}%)",
         "hit".blue().underlined(),
+        count as f64 / tries as f64 * 100.0,
         bold_start = Attribute::Bold,
         bold_end = Attribute::Reset,
       );
@@ -84,20 +86,20 @@ pub fn progress<F>(
           }
         }
         Progress(ProgressKind::Done(0, 1)) => {
-          execute!(stderr(), terminal::Clear(ClearType::CurrentLine))
-            .expect("terminal initialization failed");
-
-          println!("{}", "Done".green());
+          println!(
+            "{} {}",
+            "Done      ".green(),
+            " ".repeat(times * 8 + tries.to_string().len() * 2 + 5),
+          );
         }
         Progress(ProgressKind::Done(id, total)) => {
-          execute!(stderr(), terminal::Clear(ClearType::CurrentLine))
-            .expect("terminal initialization failed");
+          let id_width = total.to_string().len();
 
           println!(
-            "{bold_start}#{id:<id_width$}{bold_end} {}",
-            "Done".green(),
+            "{bold_start}#{id:<id_width$}{bold_end} {} {}",
+            "Done      ".green(),
+            " ".repeat(times * 8 + tries.to_string().len() * 2 + 5),
             bold_start = Attribute::Bold,
-            id_width = total.to_string().len(),
             bold_end = Attribute::Reset,
           );
         }
