@@ -50,6 +50,7 @@ pub enum ResultOutputFormat {
 pub struct Hit {
   /// The index of the hit
   pub hit_on: usize,
+
   /// Wakuchin characters that were hit
   pub chars: String,
 }
@@ -68,8 +69,10 @@ impl Hit {
 pub struct WakuchinResult {
   /// The number of tries
   pub tries: usize,
+
   /// The number of hits
   pub hits_n: usize,
+
   /// A vector of `Hit`
   pub hits: Vec<Hit>,
 }

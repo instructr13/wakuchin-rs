@@ -28,7 +28,12 @@ use crate::{
 /// * `tries` - number of tries
 /// * `times` - wakuchin times n
 /// * `regex` - regular expression to detect hit
-/// * `handler` - handler function to handle hits
+/// * `progress_handler` - handler function to handle progress
+///   * `progress` - progress information of all workers
+///   * `hit_counter` - hit counter, see `HitCounter`
+///   * `interval` - interval of progress refresh you were specified, usable for calculation of speed
+///   * `current_diff` - `current - previous` of progress, usable for calculation of speed
+///   * `all_done` - if all workers are done, usable for finalization
 /// * `workers` - number of workers you want to use, default to number of logical cores
 ///
 /// # Returns
@@ -175,7 +180,12 @@ where
 /// * `tries` - number of tries
 /// * `times` - wakuchin times n
 /// * `regex` - regular expression to detect hit
-/// * `handler` - handler function to handle hits
+/// * `progress_handler` - handler function to handle progress
+///   * `progress` - progress information of all workers
+///   * `hit_counter` - hit counter, see `HitCounter`
+///   * `interval` - interval of progress refresh you were specified, usable for calculation of speed
+///   * `current_diff` - `current - previous` of progress, usable for calculation of speed
+///   * `all_done` - if all workers are done, usable for finalization
 ///
 /// # Returns
 ///
