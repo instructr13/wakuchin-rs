@@ -3,6 +3,7 @@ mod config;
 mod handlers;
 
 use std::io::stderr;
+use std::panic;
 use std::process;
 use std::time::Duration;
 
@@ -38,6 +39,25 @@ pub async fn run() -> Result<bool> {
     cursor::MoveLeft(u16::MAX)
   )?;
 
+  let default_hook = panic::take_hook();
+
+  panic::set_hook(Box::new(|panic_info| {
+    execute!(
+      stderr(),
+      cursor::Show,
+      Print("\n"),
+      cursor::MoveUp(1),
+      cursor::MoveLeft(u16::MAX),
+      Print("wakuchin has panicked.\n"),
+      Print("Please report this to the author.\n"),
+      Print(format!("{:?}", panic_info)),
+      cursor::MoveLeft(u16::MAX),
+    )
+    .unwrap();
+
+    process::exit(1);
+  }));
+
   #[cfg(not(feature = "sequential"))]
   let result = worker::run_par(
     tries,
@@ -61,6 +81,8 @@ pub async fn run() -> Result<bool> {
     ),
     args.interval,
   )?;
+
+  panic::set_hook(default_hook);
 
   execute!(stderr(), cursor::MoveLeft(u16::MAX), cursor::Show)?;
 
