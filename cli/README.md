@@ -3,7 +3,7 @@
 ## Usage
 
 ```
-wakuchin_cli 0.1.0
+wakuchin_cli
 P2P-Develop
 A next generation wakuchin researcher software written in Rust
 
@@ -14,12 +14,14 @@ ARGS:
     <config>    Config file path, can be json, yaml, and toml, detected by extension
 
 OPTIONS:
-    -f, --format <text|json>    Output format
-    -h, --help                  Print help information
-    -i, --tries <N>             Number of tries
-    -r, --regex <REGEX>         Regex to detect hits
-    -t, --times <N>             Wakuchin times n
-    -V, --version               Print version information
+    -d, --interval <DURATION>    Progress refresh interval, in milliseconds [default: 300]
+    -f, --format <text|json>     Output format
+    -h, --help                   Print help information
+    -i, --tries <N>              Number of tries
+    -r, --regex <REGEX>          Regex to detect hits
+    -t, --times <N>              Wakuchin times n
+    -V, --version                Print version information
+    -w, --workers <N>            Number of workers, defaults to number of logical CPUs
 ```
 
 ## Installation

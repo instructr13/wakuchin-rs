@@ -84,7 +84,7 @@ pub struct Config {
     short = 'w',
     long = "workers",
     value_name = "N",
-    help = "Number of workers, defaults to number of logical CPUs - 2"
+    help = "Number of workers, defaults to number of logical CPUs"
   )]
   pub workers: Option<usize>,
 }
