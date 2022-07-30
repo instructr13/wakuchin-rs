@@ -32,14 +32,14 @@ pub fn progress<F>(
 
       current_hit_total += count;
 
-      println!(
+      eprintln!(
         "        {} {chars}: {bold_start}{count:<tries_width$}{bold_end} ({:.3}%)",
         "hits".blue().underlined(),
         count as f64 / tries as f64 * 100.0,
       );
     }
 
-    println!(
+    eprintln!(
       "  {} {bold_start}{current_hit_total:<tries_width$}{bold_end} / {tries} ({:.3}%)",
       "total hits".blue().underlined(),
       current_hit_total as f64 / tries as f64 * 100.0,
@@ -48,12 +48,12 @@ pub fn progress<F>(
     for progress in progresses {
       match progress {
         Progress(ProgressKind::Idle(0, 1)) => {
-          println!("{}", "Idle".yellow());
+          eprintln!("{}", "Idle".yellow());
         }
         Progress(ProgressKind::Idle(id, total)) => {
           let id_width = total.to_string().len();
 
-          println!(
+          eprintln!(
             "{bold_start}#{id:<id_width$}{bold_end} {}",
             "Idle".yellow(),
           );
@@ -69,7 +69,7 @@ pub fn progress<F>(
             } => {
               current_total += current;
 
-              println!(
+              eprintln!(
                 "{} {} • {current:<tries_width$} / {total}",
                 "Processing".blue(),
                 chars_to_wakuchin(&processing_detail.wakuchin).dim(),
@@ -86,7 +86,7 @@ pub fn progress<F>(
 
               let id_width = total_workers.to_string().len();
 
-              println!(
+              eprintln!(
                 "{bold_start}#{id:<id_width$}{bold_end} {} {} • {current:<tries_width$} / {total}",
                 "Processing".blue(),
                 chars_to_wakuchin(&processing_detail.wakuchin).dim(),
@@ -102,7 +102,7 @@ pub fn progress<F>(
         })) => {
           current_total += total;
 
-          println!(
+          eprintln!(
             "{} {}",
             "Done      ".green(),
             " ".repeat(times * 8 + tries.to_string().len() * 2 + 5),
@@ -117,7 +117,7 @@ pub fn progress<F>(
 
           let id_width = total_workers.to_string().len();
 
-          println!(
+          eprintln!(
             "{bold_start}#{id:<id_width$}{bold_end} {} {}",
             "Done      ".green(),
             " ".repeat(times * 8 + tries.to_string().len() * 2 + 5),
