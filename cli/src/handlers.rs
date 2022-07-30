@@ -153,6 +153,7 @@ pub fn progress<F>(
       } else {
         progress_bar_width
       };
+
       let progress_percentage = current_total as f64 / tries as f64 * 100.0;
       let progress_rate = current_diff as f32 / elapsed_time;
       let progress_remaining_time =
