@@ -1,4 +1,4 @@
-use core::fmt::Debug;
+use std::fmt::Debug;
 use std::ops::Sub;
 
 pub(crate) struct DiffStore<T>
