@@ -8,7 +8,6 @@ use flume::{
 };
 use itertools::Itertools;
 use tokio::sync::watch;
-use tokio::task::JoinError;
 use tokio::time::{sleep, Duration};
 
 use crate::progress::{
@@ -91,6 +90,14 @@ where
     }
   }
 
+  pub(crate) fn get_hit_counters(&self) -> Vec<HitCounter> {
+    self
+      .hit_counter
+      .iter()
+      .map(|ref_| ref_.value().clone())
+      .collect_vec()
+  }
+
   pub(crate) async fn start_render_progress(&mut self, interval: Duration) {
     let progress_handler = self.progress_handler.clone();
     let mut start_time = Instant::now();
@@ -111,11 +118,7 @@ where
               }))
             })
             .collect_vec(),
-          &self
-            .hit_counter
-            .iter()
-            .map(|ref_| ref_.value().clone())
-            .collect_vec(),
+          &self.get_hit_counters(),
           interval,
           0,
           true,
