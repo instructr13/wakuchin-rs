@@ -28,7 +28,7 @@ pub fn progress<F>(
     let mut current_hit_total = 0;
 
     for hit_counter in hit_counters {
-      let chars = chars_to_wakuchin(&hit_counter.chars).grey();
+      let chars = chars_to_wakuchin(&hit_counter.chars).dim();
       let count = hit_counter.hits;
 
       current_hit_total += count;
