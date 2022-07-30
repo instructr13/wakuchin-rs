@@ -158,7 +158,7 @@ where
 
   drop(hit_tx);
 
-  render_handle.await.unwrap().unwrap();
+  render_handle.await.unwrap();
 
   let mut hits = Vec::new();
 

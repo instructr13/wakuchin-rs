@@ -193,10 +193,7 @@ where
     }
   }
 
-  pub(crate) async fn start(
-    mut self,
-    interval: Duration,
-  ) -> Result<(), JoinError> {
+  pub(crate) async fn start(mut self, interval: Duration) {
     let inner = self.inner.clone();
 
     let hit_handle = tokio::spawn(async move {
@@ -210,8 +207,6 @@ where
     for handle in vec![progress_handle, hit_handle] {
       handle.await.unwrap();
     }
-
-    Ok(())
   }
 }
 
