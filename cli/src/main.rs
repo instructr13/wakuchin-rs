@@ -6,6 +6,7 @@ use std::io::stderr;
 use std::process;
 use std::time::Duration;
 
+use crossterm::style::Print;
 use crossterm::{cursor, execute};
 
 use wakuchin::progress::Progress;
@@ -30,7 +31,12 @@ pub async fn run() -> Result<bool> {
   let tries = args.tries.expect("tries is undefined");
   let times = args.times.expect("times is undefined");
 
-  execute!(stderr(), cursor::Hide)?;
+  execute!(
+    stderr(),
+    cursor::Hide,
+    Print("Spawning workers..."),
+    cursor::MoveLeft(u16::MAX)
+  )?;
 
   #[cfg(not(feature = "sequential"))]
   let result = worker::run_par(
@@ -56,7 +62,7 @@ pub async fn run() -> Result<bool> {
     args.interval,
   )?;
 
-  execute!(stderr(), cursor::Show)?;
+  execute!(stderr(), cursor::MoveLeft(u16::MAX), cursor::Show)?;
 
   println!(
     "{}",
