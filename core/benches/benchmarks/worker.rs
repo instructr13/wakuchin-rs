@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use criterion::{criterion_group, Criterion};
 
 use regex::Regex;
@@ -15,6 +17,7 @@ fn speed_par(c: &mut Criterion) {
         2,
         Regex::new(r"^WKNCWKNC$").unwrap(),
         |_, _, _, _, _| {},
+        Duration::from_millis(20),
         None,
       )
       .await
@@ -30,6 +33,7 @@ fn speed_seq(c: &mut Criterion) {
         2,
         Regex::new(r"^WKNCWKNC$").unwrap(),
         |_, _, _, _, _| {},
+        Duration::from_millis(20),
       )
     });
   });

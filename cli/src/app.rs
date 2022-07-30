@@ -1,10 +1,11 @@
-use std::{path::Path, process};
+use std::{path::Path, process, time::Duration};
 
 use clap::Parser;
 use inquire::{error::InquireError, CustomType, Text};
 use regex::Regex;
 use serde::Deserialize;
 
+use serde_with::{serde_as, DurationMilliSeconds};
 use wakuchin::result::ResultOutputFormat;
 
 use crate::config::load_config;
@@ -19,6 +20,16 @@ fn value_parser_format(s: &str) -> Result<ResultOutputFormat, String> {
   }
 }
 
+fn default_duration() -> Duration {
+  Duration::from_millis(300)
+}
+
+fn parse_duration(arg: &str) -> Result<Duration, std::num::ParseIntError> {
+  let seconds = arg.parse()?;
+  Ok(Duration::from_millis(seconds))
+}
+
+#[serde_as]
 #[derive(Clone, Debug, Parser, Deserialize)]
 #[clap(author, version, about, long_about = None)]
 pub struct Config {
@@ -54,6 +65,27 @@ pub struct Config {
     help = "Config file path, can be json, yaml, and toml, detected by extension"
   )]
   pub config: Option<String>,
+
+  #[serde(default = "default_duration")]
+  #[serde_as(as = "DurationMilliSeconds<u64>")]
+  #[clap(
+    short = 'd',
+    long = "interval",
+    value_name = "DURATION",
+    help = "Progress refresh interval, in milliseconds",
+    default_value = "300",
+    parse(try_from_str = parse_duration)
+  )]
+  pub interval: Duration,
+
+  #[cfg(not(feature = "sequential"))]
+  #[clap(
+    short = 'w',
+    long = "workers",
+    value_name = "N",
+    help = "Number of workers, defaults to number of logical CPUs - 2"
+  )]
+  pub workers: Option<usize>,
 }
 
 pub struct App {

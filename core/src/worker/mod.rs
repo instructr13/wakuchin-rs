@@ -43,19 +43,22 @@ use crate::{
 /// # Examples
 ///
 /// ```rust
+/// use std::time::Duration;
+///
 /// use regex::Regex;
 ///
 /// use wakuchin::worker::run_par;
 ///
 /// let result = run_par(10, 1, Regex::new(r"WKCN").unwrap(), |_, counters, _, _, _| {
 ///   println!("total hits: {}", counters.iter().map(|c| c.hits).sum::<usize>());
-/// }, Some(4));
+/// }, Duration::from_secs(1), Some(4));
 /// ```
 pub async fn run_par<F>(
   tries: usize,
   times: usize,
   regex: Regex,
   progress_handler: F,
+  interval: Duration,
   workers: Option<usize>,
 ) -> anyhow::Result<WakuchinResult, NormalError>
 where
@@ -81,7 +84,7 @@ where
     let workers = workers.unwrap_or_else(num_cpus::get);
 
     if workers > 5 {
-      workers - 3
+      workers - 2 // to work progress render thread and hit notifier thread
     } else {
       workers
     }
@@ -101,7 +104,7 @@ where
 
   let render = ThreadRender::new(hit_rx, progress_rx_vec, progress_handler);
 
-  let render_handle = tokio::spawn(async move { render.start().await });
+  let render_handle = tokio::spawn(async move { render.start(interval).await });
 
   let handles = (0..tries)
     .divide_evenly_into(workers)
@@ -194,19 +197,22 @@ where
 /// # Examples
 ///
 /// ```rust
+/// use std::time::Duration;
+///
 /// use regex::Regex;
 ///
 /// use wakuchin::worker::run_seq;
 ///
 /// let result = run_seq(10, 1, Regex::new(r"WKCN").unwrap(), |_, counters, _, _, _| {
 ///   println!("total hits: {}", counters.iter().map(|c| c.hits).sum::<usize>());
-/// });
+/// }, Duration::from_secs(1));
 /// ```
 pub fn run_seq<F>(
   tries: usize,
   times: usize,
   regex: Regex,
   progress_handler: F,
+  interval: Duration,
 ) -> anyhow::Result<WakuchinResult, NormalError>
 where
   F: Fn(&[Progress], &[HitCounter], Duration, usize, bool),
@@ -224,7 +230,6 @@ where
   }
 
   let mut render = Render::new(progress_handler);
-  let interval = Duration::from_millis(500);
 
   render.render_progress(interval, Progress(ProgressKind::Idle(0, 1)), false);
 

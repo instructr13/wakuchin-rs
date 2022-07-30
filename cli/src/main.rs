@@ -40,6 +40,7 @@ pub async fn run() -> Result<bool> {
     progress::<&dyn Fn(&[Progress], &[HitCounter], Duration, usize, bool)>(
       tries, times,
     ),
+    args.interval,
     None,
   )
   .await?;
@@ -52,6 +53,7 @@ pub async fn run() -> Result<bool> {
     progress::<&dyn Fn(&[Progress], &[HitCounter], Duration, usize, bool)>(
       tries, times,
     ),
+    args.interval,
   )?;
 
   execute!(stderr(), cursor::Show)?;
