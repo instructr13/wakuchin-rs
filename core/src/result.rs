@@ -46,12 +46,22 @@ pub enum ResultOutputFormat {
 }
 
 /// Used when the researcher detects a hit
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 pub struct Hit {
   /// The index of the hit
   pub hit_on: usize,
+
   /// Wakuchin characters that were hit
   pub chars: String,
+}
+
+impl Hit {
+  pub fn new(hit_on: usize, chars: impl Into<String>) -> Self {
+    Self {
+      hit_on,
+      chars: chars.into(),
+    }
+  }
 }
 
 /// The result of a research
@@ -59,8 +69,10 @@ pub struct Hit {
 pub struct WakuchinResult {
   /// The number of tries
   pub tries: usize,
+
   /// The number of hits
   pub hits_n: usize,
+
   /// A vector of `Hit`
   pub hits: Vec<Hit>,
 }

@@ -1,9 +1,14 @@
 //! Core functions of wakuchin tools
 
 pub mod convert;
+pub mod error;
+pub mod progress;
 pub mod result;
 pub mod symbol;
 pub mod worker;
+
+mod render;
+mod utils;
 
 use regex::Regex;
 
@@ -182,11 +187,11 @@ pub fn validate_external(wakuchin: &str) -> bool {
 ///
 /// use wakuchin::check;
 ///
-/// assert!(check("WKCN", Regex::new(r"^[WKCN]+$").unwrap()));
-/// assert!(!check("わくちん", Regex::new(r"^[WKCN]+$").unwrap()));
-/// assert!(!check("WKCNX", Regex::new(r"^[WKCN]+$").unwrap()));
+/// assert!(check("WKCN", &Regex::new(r"^[WKCN]+$").unwrap()));
+/// assert!(!check("わくちん", &Regex::new(r"^[WKCN]+$").unwrap()));
+/// assert!(!check("WKCNX", &Regex::new(r"^[WKCN]+$").unwrap()));
 /// ```
-pub fn check(chars: &str, regex: Regex) -> bool {
+pub fn check(chars: &str, regex: &Regex) -> bool {
   regex.is_match(chars)
 }
 
@@ -271,8 +276,8 @@ mod test {
 
   #[test]
   fn test_check() {
-    assert!(check("WKCN", Regex::new(r"^[WKCN]+$").unwrap()));
-    assert!(!check("わくちん", Regex::new(r"^[WKCN]+$").unwrap()));
-    assert!(!check("WKCNX", Regex::new(r"^[WKCN]+$").unwrap()));
+    assert!(check("WKCN", &Regex::new(r"^[WKCN]+$").unwrap()));
+    assert!(!check("わくちん", &Regex::new(r"^[WKCN]+$").unwrap()));
+    assert!(!check("WKCNX", &Regex::new(r"^[WKCN]+$").unwrap()));
   }
 }
