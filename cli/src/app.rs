@@ -5,8 +5,8 @@ use console::Term;
 use dialoguer::{theme::ColorfulTheme, Input};
 use regex::Regex;
 use serde::Deserialize;
-
 use serde_with::{serde_as, DurationMilliSeconds};
+
 use wakuchin::result::ResultOutputFormat;
 
 use crate::config::load_config;
