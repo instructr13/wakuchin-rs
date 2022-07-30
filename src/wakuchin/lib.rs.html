@@ -281,12 +281,22 @@
 <span id="276">276</span>
 <span id="277">277</span>
 <span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Core functions of wakuchin tools</span>
 
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">convert</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">error</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">progress</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">result</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">symbol</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">worker</span>;
+
+<span class="kw">mod</span> <span class="ident">render</span>;
+<span class="kw">mod</span> <span class="ident">utils</span>;
 
 <span class="kw">use</span> <span class="ident">regex::Regex</span>;
 
@@ -465,11 +475,11 @@
 <span class="doccomment">///</span>
 <span class="doccomment">/// use wakuchin::check;</span>
 <span class="doccomment">///</span>
-<span class="doccomment">/// assert!(check(&quot;WKCN&quot;, Regex::new(r&quot;^[WKCN]+$&quot;).unwrap()));</span>
-<span class="doccomment">/// assert!(!check(&quot;わくちん&quot;, Regex::new(r&quot;^[WKCN]+$&quot;).unwrap()));</span>
-<span class="doccomment">/// assert!(!check(&quot;WKCNX&quot;, Regex::new(r&quot;^[WKCN]+$&quot;).unwrap()));</span>
+<span class="doccomment">/// assert!(check(&quot;WKCN&quot;, &amp;Regex::new(r&quot;^[WKCN]+$&quot;).unwrap()));</span>
+<span class="doccomment">/// assert!(!check(&quot;わくちん&quot;, &amp;Regex::new(r&quot;^[WKCN]+$&quot;).unwrap()));</span>
+<span class="doccomment">/// assert!(!check(&quot;WKCNX&quot;, &amp;Regex::new(r&quot;^[WKCN]+$&quot;).unwrap()));</span>
 <span class="doccomment">/// ```</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">check</span>(<span class="ident">chars</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">regex</span>: <span class="ident">Regex</span>) -&gt; <span class="ident">bool</span> {
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">check</span>(<span class="ident">chars</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">regex</span>: <span class="kw-2">&amp;</span><span class="ident">Regex</span>) -&gt; <span class="ident">bool</span> {
   <span class="ident">regex</span>.<span class="ident">is_match</span>(<span class="ident">chars</span>)
 }
 
@@ -554,9 +564,9 @@
 
   <span class="attribute">#[<span class="ident">test</span>]</span>
   <span class="kw">fn</span> <span class="ident">test_check</span>() {
-    <span class="macro">assert!</span>(<span class="ident">check</span>(<span class="string">&quot;WKCN&quot;</span>, <span class="ident">Regex::new</span>(<span class="string">r&quot;^[WKCN]+$&quot;</span>).<span class="ident">unwrap</span>()));
-    <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">check</span>(<span class="string">&quot;わくちん&quot;</span>, <span class="ident">Regex::new</span>(<span class="string">r&quot;^[WKCN]+$&quot;</span>).<span class="ident">unwrap</span>()));
-    <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">check</span>(<span class="string">&quot;WKCNX&quot;</span>, <span class="ident">Regex::new</span>(<span class="string">r&quot;^[WKCN]+$&quot;</span>).<span class="ident">unwrap</span>()));
+    <span class="macro">assert!</span>(<span class="ident">check</span>(<span class="string">&quot;WKCN&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">Regex::new</span>(<span class="string">r&quot;^[WKCN]+$&quot;</span>).<span class="ident">unwrap</span>()));
+    <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">check</span>(<span class="string">&quot;わくちん&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">Regex::new</span>(<span class="string">r&quot;^[WKCN]+$&quot;</span>).<span class="ident">unwrap</span>()));
+    <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">check</span>(<span class="string">&quot;WKCNX&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">Regex::new</span>(<span class="string">r&quot;^[WKCN]+$&quot;</span>).<span class="ident">unwrap</span>()));
   }
 }
 </code></pre></div>
