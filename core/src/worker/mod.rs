@@ -80,20 +80,20 @@ where
   }
 
   let workers = {
-    let workers = workers.unwrap_or_else(num_cpus::get);
+    let mut workers = workers.unwrap_or_else(num_cpus::get);
 
-    if workers > 5 {
+    workers = if workers > 5 {
       workers - 2 // to work progress render thread and hit notifier thread
+    } else {
+      workers
+    };
+
+    if tries < workers {
+      tries
     } else {
       workers
     }
   };
-
-  if tries < workers {
-    return Err(NormalError::WorkerError(Error::InsufficientWorkers(
-      workers,
-    )));
-  }
 
   let (hit_tx, hit_rx) = channel();
 
