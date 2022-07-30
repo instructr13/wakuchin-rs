@@ -126,13 +126,6 @@ pub fn progress<F>(
       }
     }
 
-    // Progress model (idle)
-    // waiting for start
-    // Progress model (processing)
-    // 114514 tries/sec
-    // Progress model (done)
-    // done
-
     if all_done {
       execute!(
         stderr(),

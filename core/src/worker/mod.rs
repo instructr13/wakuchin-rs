@@ -42,7 +42,7 @@ use crate::{
 ///
 /// use wakuchin::worker::run_par;
 ///
-/// let result = run_par(10, 1, Regex::new(r"WKCN").unwrap(), |_, counters, _| {
+/// let result = run_par(10, 1, Regex::new(r"WKCN").unwrap(), |_, counters, _, _, _| {
 ///   println!("total hits: {}", counters.iter().map(|c| c.hits).sum::<usize>());
 /// }, Some(4));
 /// ```
@@ -188,7 +188,7 @@ where
 ///
 /// use wakuchin::worker::run_seq;
 ///
-/// let result = run_seq(10, 1, Regex::new(r"WKCN").unwrap(), |_, counters, _| {
+/// let result = run_seq(10, 1, Regex::new(r"WKCN").unwrap(), |_, counters, _, _, _| {
 ///   println!("total hits: {}", counters.iter().map(|c| c.hits).sum::<usize>());
 /// });
 /// ```
