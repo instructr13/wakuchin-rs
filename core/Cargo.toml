@@ -29,6 +29,7 @@ rand = "0.8"
 regex = "1.6"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+smooth = "0.1"
 thiserror = "1.0"
 tokio = { version = "=1.20", features = ["sync", "time"] }
 

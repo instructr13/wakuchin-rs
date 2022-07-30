@@ -78,31 +78,3 @@ pub struct DoneDetail {
 /// Progress data that you will use in progress_handler.
 #[derive(Clone, Debug)]
 pub struct Progress(pub ProgressKind);
-
-/// The count of hits that you will use in progress_handler.
-#[derive(Clone, Debug)]
-pub struct HitCounter {
-  /// Wakuchin chars that were hit.
-  pub chars: String,
-  /// The count of hits.
-  pub hits: usize,
-}
-
-impl HitCounter {
-  /// Create new hit counter.
-  ///
-  /// # Arguments
-  ///
-  /// * `chars` - Wakuchin chars that were hit.
-  /// * `hits` - The count of hits.
-  ///
-  /// # Returns
-  ///
-  /// * `HitCounter` - New hit counter.
-  pub fn new(chars: impl Into<String>, hits: usize) -> Self {
-    Self {
-      chars: chars.into(),
-      hits,
-    }
-  }
-}

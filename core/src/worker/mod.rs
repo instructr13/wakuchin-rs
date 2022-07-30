@@ -4,23 +4,21 @@ mod error;
 
 pub use crate::worker::error::Error;
 
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
 use divide_range::RangeDivisions;
 use flume::unbounded as channel;
 use itertools::Itertools;
 use regex::Regex;
-use tokio::sync::watch::channel as progress_channel;
+use tokio::sync::{watch::channel as progress_channel, Mutex};
 
 use crate::{
   check,
   error::Error as NormalError,
   gen,
-  progress::{
-    DoneDetail, HitCounter, ProcessingDetail, Progress, ProgressKind,
-  },
+  progress::{DoneDetail, ProcessingDetail, Progress, ProgressKind},
   render::{Render, ThreadRender},
-  result::{Hit, WakuchinResult},
+  result::{Hit, HitCounter, WakuchinResult},
 };
 
 /// Research wakuchin with parallelism.
@@ -71,8 +69,9 @@ where
   if tries == 0 {
     return Ok(WakuchinResult {
       tries: 0,
-      hits_n: 0,
+      hits_total: 0,
       hits: Vec::new(),
+      hits_detail: Vec::new(),
     });
   }
 
@@ -102,9 +101,32 @@ where
     .map(|id| progress_channel(Progress(ProgressKind::Idle(id + 1, workers))))
     .unzip();
 
-  let render = ThreadRender::new(hit_rx, progress_rx_vec, progress_handler);
+  let render = Arc::new(Mutex::new(ThreadRender::new(
+    hit_rx,
+    progress_rx_vec,
+    progress_handler,
+  )));
 
-  let render_handle = tokio::spawn(async move { render.start(interval).await });
+  // create temporary lock to get inner
+  let render_guard = render.lock().await;
+
+  let inner = render_guard.inner.clone();
+
+  drop(render_guard);
+
+  let hit_handle = tokio::spawn(async move {
+    inner.wait_for_hit().await;
+  });
+
+  let progress_handle = tokio::spawn({
+    let render = render.clone();
+
+    async move {
+      let mut render = render.lock().await;
+
+      render.start_render_progress(interval).await;
+    }
+  });
 
   let handles = (0..tries)
     .divide_evenly_into(workers)
@@ -158,20 +180,25 @@ where
 
   drop(hit_tx);
 
-  render_handle.await.unwrap();
-
   let mut hits = Vec::new();
 
   for handle in handles {
     hits.push(handle.await.unwrap());
   }
 
-  let hits = hits.into_iter().flatten().collect_vec();
+  for handle in vec![progress_handle, hit_handle] {
+    handle.await.unwrap();
+  }
+
+  let hit_counters = render.lock().await.get_hit_counters();
+  let hits_total = hit_counters.iter().map(|c| c.hits).sum::<usize>();
+  let hits_detail = hits.into_iter().flatten().collect_vec();
 
   Ok(WakuchinResult {
     tries,
-    hits_n: hits.len(),
-    hits,
+    hits_total,
+    hits: hit_counters,
+    hits_detail,
   })
 }
 
@@ -220,8 +247,9 @@ where
   if tries == 0 {
     return Ok(WakuchinResult {
       tries: 0,
-      hits_n: 0,
+      hits_total: 0,
       hits: Vec::new(),
+      hits_detail: Vec::new(),
     });
   }
 
@@ -233,7 +261,7 @@ where
 
   render.render_progress(interval, Progress(ProgressKind::Idle(0, 1)), false);
 
-  let hits = (0..tries)
+  let hits_detail = (0..tries)
     .map(|_| gen(times))
     .enumerate()
     .map(|(i, wakuchin)| {
@@ -269,9 +297,13 @@ where
     true,
   );
 
+  let hits = render.get_hit_counters();
+  let hits_total = hits.iter().map(|c| c.hits).sum::<usize>();
+
   Ok(WakuchinResult {
     tries,
-    hits_n: hits.len(),
+    hits_total,
     hits,
+    hits_detail,
   })
 }

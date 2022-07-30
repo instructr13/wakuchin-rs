@@ -10,13 +10,11 @@ use itertools::Itertools;
 use tokio::sync::watch;
 use tokio::time::{sleep, Duration};
 
-use crate::progress::{
-  DoneDetail, HitCounter, ProcessingDetail, Progress, ProgressKind,
-};
-use crate::result::Hit;
+use crate::progress::{DoneDetail, ProcessingDetail, Progress, ProgressKind};
+use crate::result::{Hit, HitCounter};
 use crate::utils::DiffStore;
 
-struct ThreadRenderInner {
+pub(crate) struct ThreadRenderInner {
   hit_rx: Receiver<Hit>,
   internal_hit_tx: Sender<Hit>,
   stop_tx: Sender<bool>,
@@ -31,7 +29,7 @@ where
     + 'static,
 {
   hit_counter: DashMap<String, HitCounter>,
-  inner: Arc<ThreadRenderInner>,
+  pub(crate) inner: Arc<ThreadRenderInner>,
   internal_hit_rx: Receiver<Hit>,
   progress_channels: Vec<watch::Receiver<Progress>>,
   progress_handler: Arc<F>,
@@ -195,22 +193,6 @@ where
       start_time = Instant::now();
     }
   }
-
-  pub(crate) async fn start(mut self, interval: Duration) {
-    let inner = self.inner.clone();
-
-    let hit_handle = tokio::spawn(async move {
-      inner.wait_for_hit().await;
-    });
-
-    let progress_handle = tokio::spawn(async move {
-      self.start_render_progress(interval).await;
-    });
-
-    for handle in vec![progress_handle, hit_handle] {
-      handle.await.unwrap();
-    }
-  }
 }
 
 pub(crate) struct Render<F>
@@ -234,6 +216,14 @@ where
       progress_handler,
       start_time: Instant::now(),
     }
+  }
+
+  pub(crate) fn get_hit_counters(&self) -> Vec<HitCounter> {
+    self
+      .hit_counter
+      .iter()
+      .map(|ref_| ref_.value().clone())
+      .collect_vec()
   }
 
   pub(crate) fn handle_hit(&self, hit: &Hit) {

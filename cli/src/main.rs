@@ -8,8 +8,8 @@ use std::time::Duration;
 
 use crossterm::{cursor, execute};
 
-use wakuchin::progress::{HitCounter, Progress};
-use wakuchin::result::out;
+use wakuchin::progress::Progress;
+use wakuchin::result::{out, HitCounter};
 use wakuchin::worker;
 
 use crate::app::App;

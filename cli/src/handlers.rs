@@ -8,8 +8,9 @@ use crossterm::{execute, terminal};
 
 use wakuchin::convert::chars_to_wakuchin;
 use wakuchin::progress::{
-  DoneDetail, HitCounter, ProcessingDetail, Progress, ProgressKind,
+  DoneDetail, ProcessingDetail, Progress, ProgressKind,
 };
+use wakuchin::result::HitCounter;
 
 pub fn progress<F>(
   tries: usize,
