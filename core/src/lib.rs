@@ -64,7 +64,7 @@ use nanorand::ChaCha20;
 /// assert_eq!(wakuchin_n_count, 3);
 /// ```
 pub fn gen(times: usize) -> String {
-  let mut wakuchin: Vec<char> = symbol::WAKUCHIN.repeat(times);
+  let mut wakuchin = symbol::WAKUCHIN.repeat(times);
 
   #[cfg(not(feature = "chacha"))]
   let mut rng = WyRand::new();
