@@ -360,7 +360,7 @@
 <span class="doccomment">/// assert_eq!(wakuchin_n_count, 3);</span>
 <span class="doccomment">/// ```</span>
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">gen</span>(<span class="ident">times</span>: <span class="ident">usize</span>) -&gt; <span class="ident">String</span> {
-  <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wakuchin</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">char</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">symbol::WAKUCHIN</span>.<span class="ident">repeat</span>(<span class="ident">times</span>);
+  <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wakuchin</span> <span class="op">=</span> <span class="ident">symbol::WAKUCHIN</span>.<span class="ident">repeat</span>(<span class="ident">times</span>);
 
   <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;chacha&quot;</span>))]</span>
   <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rng</span> <span class="op">=</span> <span class="ident">WyRand::new</span>();
