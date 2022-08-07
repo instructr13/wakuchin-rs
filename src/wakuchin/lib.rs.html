@@ -281,24 +281,7 @@
 <span id="276">276</span>
 <span id="277">277</span>
 <span id="278">278</span>
-<span id="279">279</span>
-<span id="280">280</span>
-<span id="281">281</span>
-<span id="282">282</span>
-<span id="283">283</span>
-<span id="284">284</span>
-<span id="285">285</span>
-<span id="286">286</span>
-<span id="287">287</span>
-<span id="288">288</span>
-<span id="289">289</span>
-<span id="290">290</span>
-<span id="291">291</span>
-</pre><pre class="rust"><code><span class="doccomment">//! A next generation wakuchin researcher software written in Rust</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! # Features</span>
-<span class="doccomment">//!</span>
-<span class="doccomment">//! * `chacha` - Use the ChaCha20 CSPRNG algorithm to shuffle.</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Core functions of wakuchin tools</span>
 
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">convert</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">error</span>;
@@ -310,14 +293,9 @@
 <span class="kw">mod</span> <span class="ident">render</span>;
 <span class="kw">mod</span> <span class="ident">utils</span>;
 
-<span class="kw">use</span> <span class="ident">nanorand::Rng</span>;
 <span class="kw">use</span> <span class="ident">regex::Regex</span>;
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;chacha&quot;</span>))]</span>
-<span class="kw">use</span> <span class="ident">nanorand::WyRand</span>;
-
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;chacha&quot;</span>)]</span>
-<span class="kw">use</span> <span class="ident">nanorand::ChaCha20</span>;
+<span class="kw">use</span> <span class="ident">rand::prelude::SliceRandom</span>;
 
 <span class="doccomment">/// Generate a randomized wakuchin string.</span>
 <span class="doccomment">///</span>
@@ -362,13 +340,9 @@
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">gen</span>(<span class="ident">times</span>: <span class="ident">usize</span>) -&gt; <span class="ident">String</span> {
   <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wakuchin</span> <span class="op">=</span> <span class="ident">symbol::WAKUCHIN</span>.<span class="ident">repeat</span>(<span class="ident">times</span>);
 
-  <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;chacha&quot;</span>))]</span>
-  <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rng</span> <span class="op">=</span> <span class="ident">WyRand::new</span>();
+  <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rng</span> <span class="op">=</span> <span class="ident">rand::thread_rng</span>();
 
-  <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;chacha&quot;</span>)]</span>
-  <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rng</span> <span class="op">=</span> <span class="ident">ChaCha20::new</span>();
-
-  <span class="ident">rng</span>.<span class="ident">shuffle</span>(<span class="kw-2">&amp;mut</span> <span class="ident">wakuchin</span>);
+  <span class="ident">wakuchin</span>.<span class="ident">shuffle</span>(<span class="kw-2">&amp;mut</span> <span class="ident">rng</span>);
 
   <span class="ident">wakuchin</span>.<span class="ident">iter</span>().<span class="ident">collect</span>()
 }
