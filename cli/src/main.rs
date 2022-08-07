@@ -17,10 +17,10 @@ use wakuchin::worker;
 use crate::app::App;
 use crate::handlers::progress;
 
-#[cfg(not(target_env = "msvc"))]
+#[cfg(all(not(target_os = "android"), not(target_env = "msvc")))]
 use tikv_jemallocator::Jemalloc;
 
-#[cfg(not(target_env = "msvc"))]
+#[cfg(all(not(target_os = "android"), not(target_env = "msvc")))]
 #[global_allocator]
 static GLOBAL: Jemalloc = Jemalloc;
 
