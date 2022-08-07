@@ -1,8 +1,4 @@
-//! A next generation wakuchin researcher software written in Rust
-//!
-//! # Features
-//!
-//! * `chacha` - Use the ChaCha20 CSPRNG algorithm to shuffle.
+//! Core functions of wakuchin tools
 
 pub mod convert;
 pub mod error;
@@ -14,14 +10,9 @@ pub mod worker;
 mod render;
 mod utils;
 
-use nanorand::Rng;
 use regex::Regex;
 
-#[cfg(not(feature = "chacha"))]
-use nanorand::WyRand;
-
-#[cfg(feature = "chacha")]
-use nanorand::ChaCha20;
+use rand::prelude::SliceRandom;
 
 /// Generate a randomized wakuchin string.
 ///
@@ -66,13 +57,9 @@ use nanorand::ChaCha20;
 pub fn gen(times: usize) -> String {
   let mut wakuchin = symbol::WAKUCHIN.repeat(times);
 
-  #[cfg(not(feature = "chacha"))]
-  let mut rng = WyRand::new();
+  let mut rng = rand::thread_rng();
 
-  #[cfg(feature = "chacha")]
-  let mut rng = ChaCha20::new();
-
-  rng.shuffle(&mut wakuchin);
+  wakuchin.shuffle(&mut rng);
 
   wakuchin.iter().collect()
 }
