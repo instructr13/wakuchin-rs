@@ -277,10 +277,6 @@
 <span id="272">272</span>
 <span id="273">273</span>
 <span id="274">274</span>
-<span id="275">275</span>
-<span id="276">276</span>
-<span id="277">277</span>
-<span id="278">278</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Core functions of wakuchin tools</span>
 
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">convert</span>;
@@ -294,8 +290,6 @@
 <span class="kw">mod</span> <span class="ident">utils</span>;
 
 <span class="kw">use</span> <span class="ident">regex::Regex</span>;
-
-<span class="kw">use</span> <span class="ident">rand::prelude::SliceRandom</span>;
 
 <span class="doccomment">/// Generate a randomized wakuchin string.</span>
 <span class="doccomment">///</span>
@@ -340,9 +334,7 @@
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">gen</span>(<span class="ident">times</span>: <span class="ident">usize</span>) -&gt; <span class="ident">String</span> {
   <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wakuchin</span> <span class="op">=</span> <span class="ident">symbol::WAKUCHIN</span>.<span class="ident">repeat</span>(<span class="ident">times</span>);
 
-  <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rng</span> <span class="op">=</span> <span class="ident">rand::thread_rng</span>();
-
-  <span class="ident">wakuchin</span>.<span class="ident">shuffle</span>(<span class="kw-2">&amp;mut</span> <span class="ident">rng</span>);
+  <span class="ident">fastrand::shuffle</span>(<span class="kw-2">&amp;mut</span> <span class="ident">wakuchin</span>);
 
   <span class="ident">wakuchin</span>.<span class="ident">iter</span>().<span class="ident">collect</span>()
 }
