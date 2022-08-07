@@ -93,7 +93,7 @@ where
       .hit_counter
       .iter()
       .map(|ref_| ref_.value().clone())
-      .collect_vec()
+      .collect()
   }
 
   pub(crate) async fn start_render_progress(&mut self, interval: Duration) {
@@ -223,7 +223,7 @@ where
       .hit_counter
       .iter()
       .map(|ref_| ref_.value().clone())
-      .collect_vec()
+      .collect()
   }
 
   pub(crate) fn handle_hit(&self, hit: &Hit) {
