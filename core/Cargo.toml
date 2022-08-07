@@ -18,7 +18,6 @@ criterion = { version = "0.3", features = ["async_tokio"] }
 
 [dependencies]
 anyhow = "1.0"
-crossbeam-channel = "0.5"
 dashmap = "5.3"
 divide_range = "0.1"
 fastrand = "1.8"
