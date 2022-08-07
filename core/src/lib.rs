@@ -12,8 +12,6 @@ mod utils;
 
 use regex::Regex;
 
-use rand::prelude::SliceRandom;
-
 /// Generate a randomized wakuchin string.
 ///
 /// # Arguments
@@ -57,9 +55,7 @@ use rand::prelude::SliceRandom;
 pub fn gen(times: usize) -> String {
   let mut wakuchin = symbol::WAKUCHIN.repeat(times);
 
-  let mut rng = rand::thread_rng();
-
-  wakuchin.shuffle(&mut rng);
+  fastrand::shuffle(&mut wakuchin);
 
   wakuchin.iter().collect()
 }

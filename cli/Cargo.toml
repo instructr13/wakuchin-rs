@@ -2,8 +2,8 @@
 name = "wakuchin_cli"
 version = "0.2.0"
 authors = ["P2P-Develop"]
-categories = [ "command-line-utilities", "science" ]
-keywords = [ "cli" ]
+categories = ["command-line-utilities", "science"]
+keywords = ["cli"]
 default-run = "wakuchin"
 edition = "2021"
 license-file = "../LICENSE"
