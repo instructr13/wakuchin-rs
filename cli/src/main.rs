@@ -67,7 +67,7 @@ pub async fn run() -> Result<bool> {
       tries, times,
     ),
     args.interval,
-    None,
+    args.workers,
   )
   .await?;
 
