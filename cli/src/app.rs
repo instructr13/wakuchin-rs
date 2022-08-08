@@ -155,17 +155,11 @@ impl App {
     Regex::new(&regex).expect("regular expression check has bypassed")
   }
 
-  pub async fn prompt(&mut self) -> Config {
+  pub async fn prompt(&mut self) -> AnyhowResult<Config> {
     let args_config_ref = self.args.config.as_ref();
 
     if args_config_ref.unwrap_or(&"".to_string()) != "" {
-      let config = load_config(Path::new(
-        &args_config_ref.expect("if check has bypassed"),
-      ))
-      .await
-      .unwrap_or_else(|e| {
-        panic!("error when parsing config: {}", e);
-      });
+      let config = load_config(Path::new(&args_config_ref.unwrap())).await?;
 
       self.args.tries = self.args.tries.or(config.tries);
       self.args.times = self.args.times.or(config.times);
@@ -195,6 +189,6 @@ impl App {
       .or(Some(&ResultOutputFormat::Text))
       .cloned();
 
-    self.args.clone()
+    Ok(self.args.clone())
   }
 }

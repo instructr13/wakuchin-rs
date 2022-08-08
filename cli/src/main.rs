@@ -8,6 +8,7 @@ use std::process;
 use std::time::Duration;
 
 use crossterm::style::Print;
+use crossterm::style::Stylize;
 use crossterm::{cursor, execute};
 
 use wakuchin::progress::Progress;
@@ -28,7 +29,7 @@ type Result<T> = anyhow::Result<T, Box<dyn std::error::Error>>;
 
 pub async fn run() -> Result<bool> {
   let mut app = App::new()?;
-  let args = app.prompt().await;
+  let args = app.prompt().await?;
   let tries = args.tries.expect("tries is undefined");
   let times = args.times.expect("times is undefined");
 
@@ -100,7 +101,7 @@ pub async fn main() {
 
   match result {
     Err(error) => {
-      eprintln!("error: {}", error);
+      eprintln!("{}: {error}", "error".red());
 
       process::exit(1);
     }

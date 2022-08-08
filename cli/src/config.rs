@@ -8,7 +8,9 @@ use tokio::io::AsyncReadExt;
 use crate::app::Config;
 
 pub async fn load_config(path: &Path) -> Result<Config, Box<dyn Error>> {
-  let mut file = File::open(path).await?;
+  let mut file = File::open(path)
+    .await
+    .map_err(|e| format!("'{}': {}", path.to_string_lossy(), e))?;
   let mut contents = String::new();
 
   file.read_to_string(&mut contents).await?;
@@ -17,7 +19,7 @@ pub async fn load_config(path: &Path) -> Result<Config, Box<dyn Error>> {
     "json" => serde_json::from_str(&contents)?,
     "yaml" => serde_yaml::from_str(&contents)?,
     "toml" => toml::from_str(&contents)?,
-    _ => Err(anyhow!("Unknown config format"))?,
+    _ => Err(anyhow!("unknown config format"))?,
   };
 
   Ok(config)
