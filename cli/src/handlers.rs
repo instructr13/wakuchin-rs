@@ -27,6 +27,8 @@ pub fn progress<F>(
     let mut current_total = 0;
     let mut current_hit_total = 0;
 
+    let mut itoa_buf = itoa::Buffer::new();
+
     for hit_counter in hit_counters {
       let chars = chars_to_wakuchin(&hit_counter.chars).dim();
       let count = hit_counter.hits;
@@ -34,15 +36,17 @@ pub fn progress<F>(
       current_hit_total += count;
 
       eprintln!(
-        "        {} {chars}: {bold_start}{count:<tries_width$}{bold_end} ({:.3}%)",
+        "        {} {chars}: {bold_start}{:<tries_width$}{bold_end} ({:.3}%)",
         "hits".blue().underlined(),
+        itoa_buf.format(count),
         count as f64 / tries as f64 * 100.0,
       );
     }
 
     eprintln!(
-      "  {} {bold_start}{current_hit_total:<tries_width$}{bold_end} / {tries} ({:.3}%)",
+      "  {} {bold_start}{:<tries_width$}{bold_end} / {tries} ({:.3}%)",
       "total hits".blue().underlined(),
+      itoa_buf.format(current_hit_total),
       current_hit_total as f64 / tries as f64 * 100.0,
     );
 
@@ -71,9 +75,10 @@ pub fn progress<F>(
               current_total += current;
 
               eprintln!(
-                "{} {} • {current:<tries_width$} / {total}",
+                "{} {} • {:<tries_width$} / {total}",
                 "Processing".blue(),
                 chars_to_wakuchin(&processing_detail.wakuchin).dim(),
+                itoa_buf.format(*current)
               );
             }
             ProcessingDetail {
@@ -88,9 +93,10 @@ pub fn progress<F>(
               let id_width = total_workers.to_string().len();
 
               eprintln!(
-                "{bold_start}#{id:<id_width$}{bold_end} {} {} • {current:<tries_width$} / {total}",
+                "{bold_start}#{id:<id_width$}{bold_end} {} {} • {:<tries_width$} / {total}",
                 "Processing".blue(),
                 chars_to_wakuchin(&processing_detail.wakuchin).dim(),
+                itoa_buf.format(*current)
               );
             }
           }
@@ -130,6 +136,7 @@ pub fn progress<F>(
     if all_done {
       execute!(
         stderr(),
+        terminal::Clear(ClearType::CurrentLine),
         Print("Status ".bold()),
         Print("All Done".bold().green())
       )
@@ -178,8 +185,9 @@ pub fn progress<F>(
         stderr(),
         Print("Status ".bold()),
         Print(format!(
-          "{progress} • {}: {bold_start}{current_total:<tries_width$}{bold_end} / {tries} ({progress_percentage:.0}%, {progress_rate}/sec, eta: {progress_remaining_time:>3.0}sec)   ",
+          "{progress} • {}: {bold_start}{:<tries_width$}{bold_end} / {tries} ({progress_percentage:.0}%, {progress_rate}/sec, eta: {progress_remaining_time:>3.0}sec)   ",
           "total".green().underlined(),
+          itoa_buf.format(current_total),
           progress_rate = human_format::Formatter::new().format(progress_rate.into()),
         )),
         MoveLeft(u16::MAX),

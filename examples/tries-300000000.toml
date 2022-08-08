@@ -1,0 +1,4 @@
+tries = 300000000
+times = 2
+regex = "(WKNCWKNC|WCKNWCKN)"
+

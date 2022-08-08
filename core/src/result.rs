@@ -162,6 +162,8 @@ pub struct WakuchinResult {
 /// );
 /// ```
 pub fn out(format: ResultOutputFormat, result: &WakuchinResult) -> String {
+  let mut itoa_buf = itoa::Buffer::new();
+
   match format {
     ResultOutputFormat::Text => {
       format!(
@@ -175,14 +177,18 @@ Total hits: {} ({}%)",
           .map(|h| format!(
             "{} hits: {} ({}%)",
             h.chars,
-            h.hits,
+            itoa_buf.format(h.hits),
             (h.hits as f64 / result.tries as f64 * 100.0).smooth_str()
           ))
           .join("\n"),
-        result.hits_total,
+        itoa_buf.format(result.hits_total),
         (result.hits_total as f64 / result.tries as f64 * 100.0).smooth_str()
       )
     }
+    #[cfg(feature = "simd-accel")]
+    ResultOutputFormat::Json => simd_json::to_string(result)
+      .unwrap_or_else(|e| panic!("error when serializing result: {}", e)),
+    #[cfg(not(feature = "simd-accel"))]
     ResultOutputFormat::Json => serde_json::to_string(result)
       .unwrap_or_else(|e| panic!("error when serializing result: {}", e)),
   }
