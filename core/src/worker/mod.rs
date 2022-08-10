@@ -57,7 +57,7 @@ pub async fn run_par<F>(
   regex: Regex,
   progress_handler: F,
   interval: Duration,
-  workers: Option<usize>,
+  workers: usize,
 ) -> anyhow::Result<WakuchinResult, NormalError>
 where
   F: Fn(&[Progress], &[HitCounter], Duration, usize, bool)
@@ -80,10 +80,8 @@ where
   }
 
   let workers = {
-    let mut workers = workers.unwrap_or_else(num_cpus::get);
-
-    workers = if workers > 5 {
-      workers - 2 // to work progress render thread and hit notifier thread
+    let workers = if workers == 0 {
+      num_cpus::get() - 2 // to work progress render thread and hit notifier thread
     } else {
       workers
     };

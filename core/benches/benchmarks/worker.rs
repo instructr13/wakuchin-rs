@@ -18,7 +18,7 @@ fn speed_par(c: &mut Criterion) {
         Regex::new(r"^WKNCWKNC$").unwrap(),
         |_, _, _, _, _| {},
         Duration::from_millis(20),
-        None,
+        0,
       )
       .await
     });

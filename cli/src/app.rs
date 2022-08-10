@@ -80,13 +80,15 @@ pub struct Config {
   pub interval: Duration,
 
   #[cfg(not(feature = "sequential"))]
+  #[serde(default)]
   #[clap(
     short = 'w',
     long = "workers",
     value_name = "N",
-    help = "Number of workers, defaults to number of logical CPUs"
+    help = "Number of workers, 0 means number of logical CPUs",
+    default_value = "0"
   )]
-  pub workers: Option<usize>,
+  pub workers: usize,
 }
 
 pub struct App {
