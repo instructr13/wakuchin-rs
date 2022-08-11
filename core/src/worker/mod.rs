@@ -10,7 +10,7 @@ use divide_range::RangeDivisions;
 use flume::unbounded as channel;
 use itertools::Itertools;
 use regex::Regex;
-use tokio::sync::{watch::channel as progress_channel, Mutex};
+use tokio::sync::{watch::channel as progress_channel, RwLock};
 
 use crate::{
   check,
@@ -99,14 +99,14 @@ where
     .map(|id| progress_channel(Progress(ProgressKind::Idle(id + 1, workers))))
     .unzip();
 
-  let render = Arc::new(Mutex::new(ThreadRender::new(
+  let render = Arc::new(RwLock::new(ThreadRender::new(
     hit_rx,
     progress_rx_vec,
     progress_handler,
   )));
 
   // create temporary lock to get inner
-  let render_guard = render.lock().await;
+  let render_guard = render.read().await;
 
   let inner = render_guard.inner.clone();
 
@@ -120,7 +120,7 @@ where
     let render = render.clone();
 
     async move {
-      let mut render = render.lock().await;
+      let mut render = render.write().await;
 
       render.start_render_progress(interval).await;
     }
@@ -188,7 +188,7 @@ where
     handle.await.unwrap();
   }
 
-  let hit_counters = render.lock().await.get_hit_counters();
+  let hit_counters = render.read().await.get_hit_counters();
   let hits_total = hit_counters.iter().map(|c| c.hits).sum::<usize>();
   let hits_detail = hits.into_iter().flatten().collect_vec();
 
