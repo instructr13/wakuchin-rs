@@ -1,0 +1,5 @@
+tries = 2000000
+times = 2
+regex = "WKNCWKNC"
+output = "json"
+
