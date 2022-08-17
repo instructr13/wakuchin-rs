@@ -111,14 +111,14 @@ impl App {
     panic!("{}", error);
   }
 
-  fn check_interactive(&mut self) {
+  fn check_interactive(&self) {
     if !self.interactive {
       panic!("Cannot prompt in non-interactive mode (hint: pipe stdin/stderr to tty or fill in the missing arguments)");
     }
   }
 
-  fn prompt_tries(&mut self, term: &Term) -> usize {
-    Self::check_interactive(self);
+  fn prompt_tries(&self, term: &Term) -> usize {
+    self.check_interactive();
 
     let tries = Input::<usize>::with_theme(&ColorfulTheme::default())
       .with_prompt("How many tries:")
@@ -127,8 +127,8 @@ impl App {
     tries.unwrap_or_else(Self::unwrap_or_else_fn)
   }
 
-  fn prompt_times(&mut self, term: &Term) -> usize {
-    Self::check_interactive(self);
+  fn prompt_times(&self, term: &Term) -> usize {
+    self.check_interactive();
 
     let times = Input::<usize>::with_theme(&ColorfulTheme::default())
       .with_prompt("Wakuchins times:")
@@ -137,8 +137,8 @@ impl App {
     times.unwrap_or_else(Self::unwrap_or_else_fn)
   }
 
-  fn prompt_regex(&mut self, term: &Term) -> Regex {
-    Self::check_interactive(self);
+  fn prompt_regex(&self, term: &Term) -> Regex {
+    self.check_interactive();
 
     let regex = Input::<String>::with_theme(&ColorfulTheme::default())
       .with_prompt("Regex to detect hits:")
