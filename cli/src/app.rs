@@ -33,7 +33,7 @@ fn parse_duration(arg: &str) -> Result<Duration, std::num::ParseIntError> {
 #[serde_as]
 #[derive(Clone, Debug, Parser, Deserialize)]
 #[clap(author, version, about, long_about = None)]
-pub struct Config {
+pub(crate) struct Config {
   #[clap(
     short = 'i',
     long,
@@ -41,7 +41,7 @@ pub struct Config {
     value_name = "N",
     help = "Number of tries"
   )]
-  pub tries: Option<usize>,
+  pub(crate) tries: Option<usize>,
 
   #[clap(
     short,
@@ -50,22 +50,22 @@ pub struct Config {
     value_name = "N",
     help = "Wakuchin times n"
   )]
-  pub times: Option<usize>,
+  pub(crate) times: Option<usize>,
 
   #[serde(default)]
   #[serde(with = "serde_regex")]
   #[clap(short, long, value_parser, help = "Regex to detect hits")]
-  pub regex: Option<Regex>,
+  pub(crate) regex: Option<Regex>,
 
   #[serde(rename(deserialize = "output"))]
   #[clap(short = 'f', long = "format", value_parser = value_parser_format, value_name = "text|json", help = "Output format")]
-  pub out: Option<ResultOutputFormat>,
+  pub(crate) out: Option<ResultOutputFormat>,
 
   #[clap(
     value_name = "config",
     help = "Config file path, can be json, yaml, and toml, detected by extension"
   )]
-  pub config: Option<String>,
+  pub(crate) config: Option<String>,
 
   #[serde(default = "default_duration")]
   #[serde_as(as = "DurationMilliSeconds<u64>")]
@@ -77,7 +77,7 @@ pub struct Config {
     default_value = "300",
     parse(try_from_str = parse_duration)
   )]
-  pub interval: Duration,
+  pub(crate) interval: Duration,
 
   #[cfg(not(feature = "sequential"))]
   #[serde(default)]
@@ -88,16 +88,16 @@ pub struct Config {
     help = "Number of workers, 0 means number of logical CPUs",
     default_value = "0"
   )]
-  pub workers: usize,
+  pub(crate) workers: usize,
 }
 
-pub struct App {
-  pub args: Config,
+pub(crate) struct App {
+  pub(crate) args: Config,
   interactive: bool,
 }
 
 impl App {
-  pub fn new() -> AnyhowResult<Self> {
+  pub(crate) fn new() -> AnyhowResult<Self> {
     let interactive =
       atty::is(atty::Stream::Stdin) && atty::is(atty::Stream::Stderr);
 
@@ -157,7 +157,7 @@ impl App {
     Regex::new(&regex).expect("regular expression check has bypassed")
   }
 
-  pub async fn prompt(&mut self) -> AnyhowResult<Config> {
+  pub(crate) async fn prompt(&mut self) -> AnyhowResult<Config> {
     let args_config_ref = self.args.config.as_ref();
 
     if args_config_ref.unwrap_or(&"".to_string()) != "" {

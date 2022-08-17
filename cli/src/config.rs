@@ -7,7 +7,7 @@ use tokio::io::AsyncReadExt;
 
 use crate::app::Config;
 
-pub async fn load_config(path: &Path) -> Result<Config, Box<dyn Error>> {
+pub(crate) async fn load_config(path: &Path) -> Result<Config, Box<dyn Error>> {
   let mut file = File::open(path)
     .await
     .map_err(|e| format!("'{}': {}", path.to_string_lossy(), e))?;

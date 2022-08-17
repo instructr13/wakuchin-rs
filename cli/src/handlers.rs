@@ -12,7 +12,7 @@ use wakuchin::progress::{
 };
 use wakuchin::result::HitCounter;
 
-pub fn progress<F>(
+pub(crate) fn progress<F>(
   tries: usize,
   times: usize,
 ) -> impl Fn(&[Progress], &[HitCounter], Duration, usize, bool) + Copy {

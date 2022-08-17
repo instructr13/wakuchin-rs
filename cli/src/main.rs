@@ -27,7 +27,7 @@ static GLOBAL: Jemalloc = Jemalloc;
 
 type Result<T> = anyhow::Result<T, Box<dyn std::error::Error>>;
 
-pub async fn run() -> Result<bool> {
+async fn run() -> Result<bool> {
   let mut app = App::new()?;
   let args = app.prompt().await?;
   let tries = args.tries.expect("tries is undefined");
@@ -96,7 +96,7 @@ pub async fn run() -> Result<bool> {
 }
 
 #[tokio::main]
-pub async fn main() {
+async fn main() {
   let result = run().await;
 
   match result {
