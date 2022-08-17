@@ -29,7 +29,7 @@ anyhow = "1.0"
 atty = "0.2"
 clap = { version = "3.2", features = ["cargo", "derive"] }
 console = "0.15"
-crossterm = "0.24"
+crossterm = "0.25"
 dialoguer = { version = "0.10", default-features = false }
 human_format = "1.0"
 itoa = "1.0"
