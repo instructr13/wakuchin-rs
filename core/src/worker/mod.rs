@@ -49,7 +49,7 @@ use crate::{
 ///
 /// let result = run_par(10, 1, Regex::new(r"WKCN").unwrap(), |_, counters, _, _, _| {
 ///   println!("total hits: {}", counters.iter().map(|c| c.hits).sum::<usize>());
-/// }, Duration::from_secs(1), Some(4));
+/// }, Duration::from_secs(1), 4);
 /// ```
 pub async fn run_par<F>(
   tries: usize,
