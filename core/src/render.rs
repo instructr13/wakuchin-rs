@@ -10,9 +10,14 @@ use itertools::Itertools;
 use tokio::sync::watch;
 use tokio::time::{sleep, Duration};
 
-use crate::progress::{DoneDetail, ProcessingDetail, Progress, ProgressKind};
+use crate::progress::{
+  DoneDetail, IdleDetail, ProcessingDetail, Progress, ProgressKind,
+};
 use crate::result::{Hit, HitCounter};
 use crate::utils::DiffStore;
+
+type ArcProgressHandler =
+  Arc<dyn Fn(&[Progress], &[HitCounter], Duration, usize, bool) + Sync + Send>;
 
 pub(crate) struct ThreadRenderInner {
   hit_rx: Receiver<Hit>,
@@ -20,19 +25,12 @@ pub(crate) struct ThreadRenderInner {
   stop_tx: Sender<bool>,
 }
 
-pub(crate) struct ThreadRender<F>
-where
-  F: Fn(&[Progress], &[HitCounter], Duration, usize, bool)
-    + Copy
-    + Send
-    + Sync
-    + 'static,
-{
+pub(crate) struct ThreadRender {
   hit_counter: DashMap<String, HitCounter>,
   pub(crate) inner: Arc<ThreadRenderInner>,
   internal_hit_rx: Receiver<Hit>,
   progress_channels: Vec<watch::Receiver<Progress>>,
-  progress_handler: Arc<F>,
+  progress_handler: ArcProgressHandler,
   stop_rx: Receiver<bool>,
 }
 
@@ -43,10 +41,18 @@ impl ThreadRenderInner {
 
       match hit {
         Ok(hit) => {
-          self.internal_hit_tx.send_async(hit).await.unwrap();
+          self
+            .internal_hit_tx
+            .send_async(hit)
+            .await
+            .expect("internal hit channel sending failed");
         }
         Err(TryRecvError::Disconnected) => {
-          self.stop_tx.send_async(true).await.unwrap();
+          self
+            .stop_tx
+            .send_async(true)
+            .await
+            .expect("stop channel sending failed");
 
           break;
         }
@@ -58,19 +64,16 @@ impl ThreadRenderInner {
   }
 }
 
-impl<F> ThreadRender<F>
-where
-  F: Fn(&[Progress], &[HitCounter], Duration, usize, bool)
-    + Copy
-    + Send
-    + Sync
-    + 'static,
-{
-  pub(crate) fn new(
+impl ThreadRender {
+  pub(crate) fn new<F>(
     hit_rx: Receiver<Hit>,
     progress_channels: Vec<watch::Receiver<Progress>>,
     progress_handler: F,
-  ) -> Self {
+  ) -> Self
+  where
+    F: Fn(&[Progress], &[HitCounter], Duration, usize, bool),
+    F: Sync + Send + 'static,
+  {
     let (internal_hit_tx, internal_hit_rx) = channel_unbounded();
     let (stop_tx, stop_rx) = channel(1);
 
@@ -88,7 +91,7 @@ where
     }
   }
 
-  pub(crate) fn get_hit_counters(&self) -> Vec<HitCounter> {
+  pub(crate) fn hits(&self) -> Vec<HitCounter> {
     self
       .hit_counter
       .iter()
@@ -97,16 +100,15 @@ where
   }
 
   pub(crate) async fn start_render_progress(&mut self, interval: Duration) {
-    let progress_handler = self.progress_handler.clone();
     let mut start_time = Instant::now();
-    let mut current_diff = DiffStore::new(0usize);
+    let mut current_diff = DiffStore::new(0_usize);
     let mut current_ = 0;
     let mut total_ = None;
     let mut workers = None;
 
     loop {
       if self.stop_rx.try_recv().is_ok() {
-        progress_handler(
+        (self.progress_handler)(
           &(0..self.progress_channels.len())
             .map(|id| {
               Progress(ProgressKind::Done(DoneDetail {
@@ -116,7 +118,7 @@ where
               }))
             })
             .collect_vec(),
-          &self.get_hit_counters(),
+          &self.hits(),
           interval,
           0,
           true,
@@ -149,7 +151,10 @@ where
           let progress = rx.borrow().clone();
 
           match progress {
-            Progress(ProgressKind::Idle(_, total)) => {
+            Progress(ProgressKind::Idle(IdleDetail {
+              total_workers: total,
+              ..
+            })) => {
               workers = Some(total);
             }
             Progress(ProgressKind::Processing(ProcessingDetail {
@@ -177,7 +182,7 @@ where
         })
         .collect_vec();
 
-      progress_handler(
+      (self.progress_handler)(
         progressses,
         &self
           .hit_counter
@@ -218,7 +223,7 @@ where
     }
   }
 
-  pub(crate) fn get_hit_counters(&self) -> Vec<HitCounter> {
+  pub(crate) fn hits(&self) -> Vec<HitCounter> {
     self
       .hit_counter
       .iter()

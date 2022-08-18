@@ -1,10 +1,8 @@
 //! Wakuchin researcher main functions
 
-mod error;
-
-pub use crate::worker::error::Error;
-
-use std::{sync::Arc, time::Duration};
+use std::error::Error;
+use std::sync::Arc;
+use std::time::Duration;
 
 use divide_range::RangeDivisions;
 use flume::unbounded as channel;
@@ -12,31 +10,62 @@ use itertools::Itertools;
 use regex::Regex;
 use tokio::sync::{watch::channel as progress_channel, RwLock};
 
-use crate::{
-  check,
-  error::Error as NormalError,
-  gen,
-  progress::{DoneDetail, ProcessingDetail, Progress, ProgressKind},
-  render::{Render, ThreadRender},
-  result::{Hit, HitCounter, WakuchinResult},
+use crate::error::Error as NormalError;
+use crate::progress::{
+  DoneDetail, IdleDetail, ProcessingDetail, Progress, ProgressKind,
 };
+use crate::render::{Render, ThreadRender};
+use crate::result::{Hit, HitCounter, WakuchinResult};
+use crate::{check, gen};
+
+type Result<T> = std::result::Result<T, Box<dyn Error>>;
 
 /// Research wakuchin with parallelism.
 ///
-/// * `tries` - number of tries
-/// * `times` - wakuchin times n
-/// * `regex` - regular expression to detect hit
+/// # Arguments
+///
+/// * `tries` - number of tries  
+///   If you passed zero, this function do nothing and return immediately with an empty `WakuchinResult`.
+/// * `times` - wakuchin times n, cannot be zero
+/// * `regex` - compiled regular expression to detect hit
 /// * `progress_handler` - handler function to handle progress
-///   * `progress` - progress information of all workers
-///   * `hit_counter` - hit counter, see `HitCounter`
+///   * `progress` - referenced slice of [`Progress`]
+///   * `counters` - referenced slice of [`HitCounter`]
 ///   * `interval` - interval of progress refresh you were specified, usable for calculation of speed
 ///   * `current_diff` - `current - previous` of progress, usable for calculation of speed
-///   * `all_done` - if all workers are done, usable for finalization
+///   * `all_done` - true if all workers are done, usable for finalization
+/// * `progress_interval` - progress refresh interval
 /// * `workers` - number of workers you want to use, default to number of logical cores
 ///
 /// # Returns
 ///
-/// * `WakuchinResult` - the result of the research
+/// * `Result<WakuchinResult, Box<dyn Error>>` - the result of the research (see [`WakuchinResult`])
+///
+/// # Errors
+///
+/// * [`Error::TimesIsZero`](crate::error::Error::TimesIsZero) - Returns if you passed a zero to `times`  
+///   ```rust
+///   use std::time::Duration;
+///
+///   use regex::Regex;
+///
+///   use wakuchin::worker::run_par;
+///
+///   # async fn try_main_async() -> Result<(), Box<dyn std::error::Error>> {
+///   let result = run_par(10, 0, Regex::new(r"WKCN")?, |_, _, _, _, _| {}, Duration::from_secs(1), 0).await;
+///
+///   assert!(result.is_err());
+///   assert_eq!(result.err().unwrap().to_string(), "times cannot be zero");
+///   #
+///   #   Ok(())
+///   # }
+///   #
+///   # #[tokio::main]
+///   # async fn main() {
+///   #   try_main_async().await.unwrap();
+///   # }
+///   ```
+/// * `JoinError` - Returns when any worker raised an error
 ///
 /// # Examples
 ///
@@ -45,26 +74,35 @@ use crate::{
 ///
 /// use regex::Regex;
 ///
+/// use wakuchin::result::{out, ResultOutputFormat};
 /// use wakuchin::worker::run_par;
 ///
-/// let result = run_par(10, 1, Regex::new(r"WKCN").unwrap(), |_, counters, _, _, _| {
+/// # async fn try_main_async() -> Result<(), Box<dyn std::error::Error>> {
+/// let result = run_par(10, 1, Regex::new(r"WKCN")?, |_, counters, _, _, _| {
 ///   println!("total hits: {}", counters.iter().map(|c| c.hits).sum::<usize>());
-/// }, Duration::from_secs(1), 4);
+/// }, Duration::from_secs(1), 4).await?;
+///
+/// println!("{}", result.out(ResultOutputFormat::Text)?);
+/// #
+/// #   Ok(())
+/// # }
+/// #
+/// # #[tokio::main]
+/// # async fn main() {
+/// #   try_main_async().await.unwrap();
+/// # }
 /// ```
 pub async fn run_par<F>(
   tries: usize,
   times: usize,
   regex: Regex,
   progress_handler: F,
-  interval: Duration,
+  progress_interval: Duration,
   workers: usize,
-) -> anyhow::Result<WakuchinResult, NormalError>
+) -> Result<WakuchinResult>
 where
-  F: Fn(&[Progress], &[HitCounter], Duration, usize, bool)
-    + Copy
-    + Send
-    + Sync
-    + 'static,
+  F: Fn(&[Progress], &[HitCounter], Duration, usize, bool),
+  F: Sync + Send + 'static,
 {
   if tries == 0 {
     return Ok(WakuchinResult {
@@ -76,7 +114,7 @@ where
   }
 
   if times == 0 {
-    return Err(NormalError::TimesIsZero);
+    return Err(Box::new(NormalError::TimesIsZero));
   }
 
   let workers = {
@@ -96,7 +134,12 @@ where
   let (hit_tx, hit_rx) = channel();
 
   let (progress_tx_vec, progress_rx_vec): (Vec<_>, Vec<_>) = (0..workers)
-    .map(|id| progress_channel(Progress(ProgressKind::Idle(id + 1, workers))))
+    .map(|id| {
+      progress_channel(Progress(ProgressKind::Idle(IdleDetail {
+        id: id + 1,
+        total_workers: workers,
+      })))
+    })
     .unzip();
 
   let render = Arc::new(RwLock::new(ThreadRender::new(
@@ -122,7 +165,7 @@ where
     async move {
       let mut render = render.write().await;
 
-      render.start_render_progress(interval).await;
+      render.start_render_progress(progress_interval).await;
     }
   });
 
@@ -178,24 +221,24 @@ where
 
   drop(hit_tx);
 
-  let mut hits = Vec::new();
+  let mut hits_per_worker = Vec::new();
 
   for handle in handles {
-    hits.push(handle.await.unwrap());
+    hits_per_worker.push(handle.await?);
   }
 
   for handle in vec![progress_handle, hit_handle] {
-    handle.await.unwrap();
+    handle.await?;
   }
 
-  let hit_counters = render.read().await.get_hit_counters();
-  let hits_total = hit_counters.iter().map(|c| c.hits).sum::<usize>();
-  let hits_detail = hits.into_iter().flatten().collect_vec();
+  let hits = render.read().await.hits();
+  let hits_total = hits.iter().map(|c| c.hits).sum::<usize>();
+  let hits_detail = hits_per_worker.into_iter().flatten().collect_vec();
 
   Ok(WakuchinResult {
     tries,
     hits_total,
-    hits: hit_counters,
+    hits,
     hits_detail,
   })
 }
@@ -205,19 +248,39 @@ where
 ///
 /// # Arguments
 ///
-/// * `tries` - number of tries
-/// * `times` - wakuchin times n
-/// * `regex` - regular expression to detect hit
+/// * `tries` - number of tries  
+///   If you passed zero, this function do nothing and return immediately with an empty `WakuchinResult`.
+/// * `times` - wakuchin times n, cannot be zero
+/// * `regex` - compiled regular expression to detect hit
 /// * `progress_handler` - handler function to handle progress
-///   * `progress` - progress information of all workers
-///   * `hit_counter` - hit counter, see `HitCounter`
+///   * `progress` - referenced slice of [`Progress`]
+///   * `counters` - referenced slice of [`HitCounter`]
 ///   * `interval` - interval of progress refresh you were specified, usable for calculation of speed
 ///   * `current_diff` - `current - previous` of progress, usable for calculation of speed
-///   * `all_done` - if all workers are done, usable for finalization
+///   * `all_done` - true if all workers are done, usable for finalization
+/// * `progress_interval` - progress refresh interval
 ///
 /// # Returns
 ///
-/// * `WakuchinResult` - the result of the research
+/// * `Result<WakuchinResult, Box<dyn Error>>` - the result of the research (see [`WakuchinResult`])
+///
+/// # Errors
+///
+/// * `wakuchin::error::Error::TimesIsZero` - Returns if you passed a zero to `times`  
+///   ```rust
+///   use std::time::Duration;
+///
+///   use regex::Regex;
+///
+///   use wakuchin::worker::run_seq;
+///
+///   let result = run_seq(10, 0, Regex::new(r"WKCN")?, |_, _, _, _, _| {}, Duration::from_secs(1));
+///
+///   assert!(result.is_err());
+///   assert_eq!(result.err().unwrap().to_string(), "times cannot be zero");
+///   #
+///   # Ok::<(), Box<dyn std::error::Error>>(())
+///   ```
 ///
 /// # Examples
 ///
@@ -226,19 +289,24 @@ where
 ///
 /// use regex::Regex;
 ///
+/// use wakuchin::result::{out, ResultOutputFormat};
 /// use wakuchin::worker::run_seq;
 ///
-/// let result = run_seq(10, 1, Regex::new(r"WKCN").unwrap(), |_, counters, _, _, _| {
+/// let result = run_seq(10, 1, Regex::new(r"WKCN")?, |_, counters, _, _, _| {
 ///   println!("total hits: {}", counters.iter().map(|c| c.hits).sum::<usize>());
-/// }, Duration::from_secs(1));
+/// }, Duration::from_secs(1))?;
+///
+/// println!("{}", result.out(ResultOutputFormat::Text)?);
+/// #
+/// # Ok::<(), Box<dyn std::error::Error>>(())
 /// ```
 pub fn run_seq<F>(
   tries: usize,
   times: usize,
   regex: Regex,
   progress_handler: F,
-  interval: Duration,
-) -> anyhow::Result<WakuchinResult, NormalError>
+  progress_interval: Duration,
+) -> Result<WakuchinResult>
 where
   F: Fn(&[Progress], &[HitCounter], Duration, usize, bool),
 {
@@ -252,19 +320,26 @@ where
   }
 
   if times == 0 {
-    return Err(NormalError::TimesIsZero);
+    return Err(Box::new(NormalError::TimesIsZero));
   }
 
   let mut render = Render::new(progress_handler);
 
-  render.render_progress(interval, Progress(ProgressKind::Idle(0, 1)), false);
+  render.render_progress(
+    progress_interval,
+    Progress(ProgressKind::Idle(IdleDetail {
+      id: 0,
+      total_workers: 1,
+    })),
+    false,
+  );
 
   let hits_detail = (0..tries)
     .map(|_| gen(times))
     .enumerate()
     .map(|(i, wakuchin)| {
       render.render_progress(
-        interval,
+        progress_interval,
         Progress(ProgressKind::Processing(ProcessingDetail::new(
           0, &wakuchin, i, tries, 1,
         ))),
@@ -295,7 +370,7 @@ where
     true,
   );
 
-  let hits = render.get_hit_counters();
+  let hits = render.hits();
   let hits_total = hits.iter().map(|c| c.hits).sum::<usize>();
 
   Ok(WakuchinResult {

@@ -1,5 +1,7 @@
 //! Functions to manipulate the result of a research
 
+use std::error::Error;
+
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use smooth::Smooth;
@@ -108,6 +110,17 @@ pub struct WakuchinResult {
   pub hits_detail: Vec<Hit>,
 }
 
+impl WakuchinResult {
+  /// Return string of the result with specific output format.
+  /// This function is a wrapper of `out`.
+  pub fn out(
+    &self,
+    format: ResultOutputFormat,
+  ) -> Result<String, Box<dyn Error>> {
+    out(format, self)
+  }
+}
+
 /// Return string of the result with specific output format.
 ///
 /// # Arguments
@@ -117,7 +130,7 @@ pub struct WakuchinResult {
 ///
 /// # Returns
 ///
-/// * `String` - t0e formatted result
+/// * `String` - the formatted result
 ///
 /// # Examples
 ///
@@ -148,7 +161,7 @@ pub struct WakuchinResult {
 /// };
 ///
 /// assert_eq!(
-///   out(ResultOutputFormat::Text, &result),
+///   out(ResultOutputFormat::Text, &result)?,
 ///   "--- Result ---
 /// Tries: 10
 /// WKCN hits: 2 (20%)
@@ -157,51 +170,54 @@ pub struct WakuchinResult {
 /// );
 ///
 /// assert_eq!(
-///   out(ResultOutputFormat::Json, &result),
+///   out(ResultOutputFormat::Json, &result)?,
 ///   r#"{"tries":10,"hits_total":3,"hits":[{"chars":"WKCN","hits":2},{"chars":"WKNC","hits":1}],"hits_detail":[{"hit_on":0,"chars":"WKCN"},{"hit_on":1,"chars":"WKNC"},{"hit_on":2,"chars":"WKCN"}]}"#
 /// );
+/// #
+/// # Ok::<(), Box<dyn std::error::Error>>(())
 /// ```
-pub fn out(format: ResultOutputFormat, result: &WakuchinResult) -> String {
+pub fn out(
+  format: ResultOutputFormat,
+  result: &WakuchinResult,
+) -> Result<String, Box<dyn Error>> {
   let mut itoa_buf = itoa::Buffer::new();
 
   match format {
-    ResultOutputFormat::Text => {
-      format!(
-        "--- Result ---
+    ResultOutputFormat::Text => Ok(format!(
+      "--- Result ---
 Tries: {}
 {}
 Total hits: {} ({}%)",
-        result.tries,
-        (&result.hits)
-          .iter()
-          .map(|h| format!(
-            "{} hits: {} ({}%)",
-            h.chars,
-            itoa_buf.format(h.hits),
-            (h.hits as f64 / result.tries as f64 * 100.0).smooth_str()
-          ))
-          .join("\n"),
-        itoa_buf.format(result.hits_total),
-        (result.hits_total as f64 / result.tries as f64 * 100.0).smooth_str()
-      )
-    }
+      result.tries,
+      (&result.hits)
+        .iter()
+        .map(|h| format!(
+          "{} hits: {} ({}%)",
+          h.chars,
+          itoa_buf.format(h.hits),
+          (h.hits as f64 / result.tries as f64 * 100.0).smooth_str()
+        ))
+        .join("\n"),
+      itoa_buf.format(result.hits_total),
+      (result.hits_total as f64 / result.tries as f64 * 100.0).smooth_str()
+    )),
     #[cfg(feature = "simd-accel")]
-    ResultOutputFormat::Json => simd_json::to_string(result)
-      .unwrap_or_else(|e| panic!("error when serializing result: {}", e)),
+    ResultOutputFormat::Json => Ok(simd_json::to_string(result)?),
     #[cfg(not(feature = "simd-accel"))]
-    ResultOutputFormat::Json => serde_json::to_string(result)
-      .unwrap_or_else(|e| panic!("error when serializing result: {}", e)),
+    ResultOutputFormat::Json => Ok(serde_json::to_string(result)?),
   }
 }
 
 #[cfg(test)]
 mod test {
+  use std::error::Error;
+
   use crate::result::{
     out, Hit, HitCounter, ResultOutputFormat, WakuchinResult,
   };
 
   #[test]
-  fn test_out() {
+  fn test_out() -> Result<(), Box<dyn Error>> {
     let result = WakuchinResult {
       tries: 10,
       hits_total: 3,
@@ -227,7 +243,7 @@ mod test {
     };
 
     assert_eq!(
-      out(ResultOutputFormat::Text, &result),
+      out(ResultOutputFormat::Text, &result)?,
       "--- Result ---
 Tries: 10
 a hits: 1 (10%)
@@ -237,8 +253,10 @@ Total hits: 3 (30%)"
     );
 
     assert_eq!(
-      out(ResultOutputFormat::Json, &result),
+      out(ResultOutputFormat::Json, &result)?,
       r#"{"tries":10,"hits_total":3,"hits":[{"chars":"a","hits":1},{"chars":"b","hits":1},{"chars":"c","hits":1}],"hits_detail":[{"hit_on":0,"chars":"a"},{"hit_on":1,"chars":"b"},{"hit_on":2,"chars":"c"}]}"#
     );
+
+    Ok(())
   }
 }

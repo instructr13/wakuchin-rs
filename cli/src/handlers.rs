@@ -8,17 +8,18 @@ use crossterm::{execute, terminal};
 
 use wakuchin::convert::chars_to_wakuchin;
 use wakuchin::progress::{
-  DoneDetail, ProcessingDetail, Progress, ProgressKind,
+  DoneDetail, IdleDetail, ProcessingDetail, Progress, ProgressKind,
 };
 use wakuchin::result::HitCounter;
 
-pub(crate) fn progress<F>(
+const PROGRESS_BAR_WIDTH: u16 = 33;
+
+pub(crate) fn progress(
   tries: usize,
   times: usize,
-) -> impl Fn(&[Progress], &[HitCounter], Duration, usize, bool) + Copy {
-  move |progresses, hit_counters, elapsed_time, current_diff, all_done| {
-    let progress_bar_width = 33;
-    let progress_len = progresses.len() + hit_counters.len() + 1;
+) -> impl Fn(&[Progress], &[HitCounter], Duration, usize, bool) {
+  move |progresses, counters, elapsed_time, current_diff, all_done| {
+    let progress_len = progresses.len() + counters.len() + 1;
     let elapsed_time = elapsed_time.as_secs_f32();
     let tries_width = tries.to_string().len();
     let bold_start = Attribute::Bold;
@@ -29,9 +30,9 @@ pub(crate) fn progress<F>(
 
     let mut itoa_buf = itoa::Buffer::new();
 
-    for hit_counter in hit_counters {
-      let chars = chars_to_wakuchin(&hit_counter.chars).dim();
-      let count = hit_counter.hits;
+    for counter in counters {
+      let chars = chars_to_wakuchin(&counter.chars).dim();
+      let count = counter.hits;
 
       current_hit_total += count;
 
@@ -52,11 +53,14 @@ pub(crate) fn progress<F>(
 
     for progress in progresses {
       match progress {
-        Progress(ProgressKind::Idle(0, 1)) => {
+        Progress(ProgressKind::Idle(IdleDetail {
+          id: 0,
+          total_workers: 1,
+        })) => {
           eprintln!("{}", "Idle".yellow());
         }
-        Progress(ProgressKind::Idle(id, total)) => {
-          let id_width = total.to_string().len();
+        Progress(ProgressKind::Idle(IdleDetail { id, total_workers })) => {
+          let id_width = total_workers.to_string().len();
 
           eprintln!(
             "{bold_start}#{id:<id_width$}{bold_end} {}",
@@ -156,10 +160,10 @@ pub(crate) fn progress<F>(
 
       let mut progress = String::new();
 
-      let progress_size = if progress_bar_width > width {
+      let progress_size = if PROGRESS_BAR_WIDTH > width {
         width
       } else {
-        progress_bar_width
+        PROGRESS_BAR_WIDTH
       };
 
       let progress_percentage = current_total as f64 / tries as f64 * 100.0;
@@ -172,6 +176,7 @@ pub(crate) fn progress<F>(
       } else {
         let block =
           (progress_size as f64 * progress_percentage / 100.0) as usize;
+
         progress.push_str(&("━".repeat(block) + "╸").blue().to_string());
         progress.push_str(
           &"━"

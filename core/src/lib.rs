@@ -1,5 +1,6 @@
 //! Core functions of wakuchin tools
 
+pub mod builder;
 pub mod convert;
 pub mod error;
 pub mod progress;
@@ -188,6 +189,8 @@ pub fn check(chars: &str, regex: &Regex) -> bool {
 
 #[cfg(test)]
 mod test {
+  use std::error::Error;
+
   use regex::Regex;
 
   use crate::{check, gen, gen_vec, symbol, validate, validate_external};
@@ -266,9 +269,11 @@ mod test {
   }
 
   #[test]
-  fn test_check() {
-    assert!(check("WKCN", &Regex::new(r"^[WKCN]+$").unwrap()));
-    assert!(!check("わくちん", &Regex::new(r"^[WKCN]+$").unwrap()));
-    assert!(!check("WKCNX", &Regex::new(r"^[WKCN]+$").unwrap()));
+  fn test_check() -> Result<(), Box<dyn Error>> {
+    assert!(check("WKCN", &Regex::new(r"^[WKCN]+$")?));
+    assert!(!check("わくちん", &Regex::new(r"^[WKCN]+$")?));
+    assert!(!check("WKCNX", &Regex::new(r"^[WKCN]+$")?));
+
+    Ok(())
   }
 }

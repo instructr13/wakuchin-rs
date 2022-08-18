@@ -1,7 +1,13 @@
-use std::{io::Error, path::Path, time::Duration};
+use std::error::Error;
+use std::io::{stderr, Error as IoError};
+use std::panic::{self, PanicInfo};
+use std::path::Path;
+use std::process;
+use std::time::Duration;
 
 use clap::Parser;
 use console::Term;
+use crossterm::{cursor, execute, style::Print};
 use dialoguer::{theme::ColorfulTheme, Input};
 use regex::Regex;
 use serde::Deserialize;
@@ -11,7 +17,7 @@ use wakuchin::result::ResultOutputFormat;
 
 use crate::config::load_config;
 
-type AnyhowResult<T> = anyhow::Result<T, Box<dyn std::error::Error>>;
+type AnyhowResult<T> = anyhow::Result<T, Box<dyn Error>>;
 
 fn value_parser_format(s: &str) -> Result<ResultOutputFormat, String> {
   match s {
@@ -107,37 +113,31 @@ impl App {
     })
   }
 
-  fn unwrap_or_else_fn<T>(error: Error) -> T {
-    panic!("{}", error);
-  }
-
   fn check_interactive(&self) {
     if !self.interactive {
-      panic!("Cannot prompt in non-interactive mode (hint: pipe stdin/stderr to tty or fill in the missing arguments)");
+      eprintln!("error: Cannot prompt in non-interactive mode (hint: pipe stdin/stderr to tty or fill in the missing arguments)");
+
+      process::exit(1);
     }
   }
 
-  fn prompt_tries(&self, term: &Term) -> usize {
+  fn prompt_tries(&self, term: &Term) -> Result<usize, IoError> {
     self.check_interactive();
 
-    let tries = Input::<usize>::with_theme(&ColorfulTheme::default())
+    Input::<usize>::with_theme(&ColorfulTheme::default())
       .with_prompt("How many tries:")
-      .interact_on(term);
-
-    tries.unwrap_or_else(Self::unwrap_or_else_fn)
+      .interact_on(term)
   }
 
-  fn prompt_times(&self, term: &Term) -> usize {
+  fn prompt_times(&self, term: &Term) -> Result<usize, IoError> {
     self.check_interactive();
 
-    let times = Input::<usize>::with_theme(&ColorfulTheme::default())
+    Input::<usize>::with_theme(&ColorfulTheme::default())
       .with_prompt("Wakuchins times:")
-      .interact_on(term);
-
-    times.unwrap_or_else(Self::unwrap_or_else_fn)
+      .interact_on(term)
   }
 
-  fn prompt_regex(&self, term: &Term) -> Regex {
+  fn prompt_regex(&self, term: &Term) -> Result<Regex, Box<dyn Error>> {
     self.check_interactive();
 
     let regex = Input::<String>::with_theme(&ColorfulTheme::default())
@@ -151,17 +151,40 @@ impl App {
           Ok(())
         }
       })
-      .interact_text_on(term)
-      .unwrap_or_else(Self::unwrap_or_else_fn);
+      .interact_text_on(term)?;
 
-    Regex::new(&regex).expect("regular expression check has bypassed")
+    Regex::new(&regex).map_err(|e| e.into())
+  }
+
+  pub(crate) fn set_panic_hook(
+  ) -> Box<dyn Fn(&PanicInfo) + Send + Sync + 'static> {
+    let default_hook = panic::take_hook();
+
+    panic::set_hook(Box::new(|panic_info| {
+      execute!(
+        stderr(),
+        cursor::Show,
+        Print("\n"),
+        cursor::MoveUp(1),
+        cursor::MoveLeft(u16::MAX),
+        Print("wakuchin has panicked.\n"),
+        Print("Please report this to the author.\n"),
+        Print(format!("{:?}", panic_info)),
+        cursor::MoveLeft(u16::MAX),
+      )
+      .unwrap();
+
+      process::exit(1);
+    }));
+
+    default_hook
   }
 
   pub(crate) async fn prompt(&mut self) -> AnyhowResult<Config> {
     let args_config_ref = self.args.config.as_ref();
 
-    if args_config_ref.unwrap_or(&"".to_string()) != "" {
-      let config = load_config(Path::new(&args_config_ref.unwrap())).await?;
+    if let Some(config_path) = args_config_ref {
+      let config = load_config(Path::new(config_path)).await?;
 
       self.args.tries = self.args.tries.or(config.tries);
       self.args.times = self.args.times.or(config.times);
@@ -173,15 +196,15 @@ impl App {
     let term = Term::buffered_stderr();
 
     if self.args.tries.is_none() {
-      self.args.tries = Some(self.prompt_tries(&term));
+      self.args.tries = Some(self.prompt_tries(&term)?);
     }
 
     if self.args.times.is_none() {
-      self.args.times = Some(self.prompt_times(&term));
+      self.args.times = Some(self.prompt_times(&term)?);
     }
 
     if self.args.regex.is_none() {
-      self.args.regex = Some(self.prompt_regex(&term));
+      self.args.regex = Some(self.prompt_regex(&term)?);
     }
 
     self.args.out = self

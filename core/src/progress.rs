@@ -1,8 +1,8 @@
 /// Kind of progress data.
 #[derive(Clone, Debug)]
 pub enum ProgressKind {
-  /// Worker is idle.
-  Idle(usize, usize),
+  /// Worker is idle, do nothing.
+  Idle(IdleDetail),
 
   /// Worker is processing something.
   Processing(ProcessingDetail),
@@ -11,11 +11,19 @@ pub enum ProgressKind {
   Done(DoneDetail),
 }
 
+#[derive(Clone, Debug)]
+pub struct IdleDetail {
+  /// Worker id. 1-indexed, 0 means single worker (sequential).
+  pub id: usize,
+
+  /// Total number of workers.
+  pub total_workers: usize,
+}
+
 /// Detail of processing progress.
-#[allow(dead_code)]
 #[derive(Clone, Debug)]
 pub struct ProcessingDetail {
-  /// Worker ID. 1-indexed, 0 means single worker (sequential).
+  /// Worker id. 1-indexed, 0 means single worker (sequential).
   pub id: usize,
 
   /// Current processing wakuchin chars.
@@ -24,7 +32,7 @@ pub struct ProcessingDetail {
   /// Current processing index.
   pub current: usize,
 
-  /// Total number of wakuchin chars to process.
+  /// Total number of wakuchin chars to process _in this worker_.
   pub total: usize,
 
   /// Total number of workers.
@@ -32,20 +40,7 @@ pub struct ProcessingDetail {
 }
 
 impl ProcessingDetail {
-  /// Create new processing detail.
-  ///
-  /// # Arguments
-  ///
-  /// * `id` - Worker ID. 1-indexed, 0 means single worker (sequential).
-  /// * `wakuchin` - Current processing wakuchin chars.
-  /// * `current` - Current processing index.
-  /// * `total` - Total number of wakuchin chars to process.
-  /// * `total_workers` - Total number of workers.
-  ///
-  /// # Returns
-  ///
-  /// * `ProcessingDetail` - New processing detail.
-  pub fn new(
+  pub(crate) fn new(
     id: usize,
     wakuchin: impl Into<String>,
     current: usize,
@@ -65,10 +60,10 @@ impl ProcessingDetail {
 /// Detail of done progress.
 #[derive(Clone, Debug)]
 pub struct DoneDetail {
-  /// Worker ID. 1-indexed, 0 means single worker (sequential).
+  /// Worker id. 1-indexed, 0 means single worker (sequential).
   pub id: usize,
 
-  /// Total number of wakuchin chars to process.
+  /// Total number of wakuchin chars to process _in this worker_.
   pub total: usize,
 
   /// Total number of workers.
