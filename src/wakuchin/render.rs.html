@@ -291,16 +291,6 @@
 <span id="285">285</span>
 <span id="286">286</span>
 <span id="287">287</span>
-<span id="288">288</span>
-<span id="289">289</span>
-<span id="290">290</span>
-<span id="291">291</span>
-<span id="292">292</span>
-<span id="293">293</span>
-<span id="294">294</span>
-<span id="295">295</span>
-<span id="296">296</span>
-<span id="297">297</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
 <span class="kw">use</span> <span class="ident">std::time::Instant</span>;
 
@@ -313,9 +303,7 @@
 <span class="kw">use</span> <span class="ident">tokio::sync::watch</span>;
 <span class="kw">use</span> <span class="ident">tokio::time</span>::{<span class="ident">sleep</span>, <span class="ident">Duration</span>};
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::progress</span>::{
-  <span class="ident">DoneDetail</span>, <span class="ident">IdleDetail</span>, <span class="ident">ProcessingDetail</span>, <span class="ident">Progress</span>, <span class="ident">ProgressKind</span>,
-};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::progress</span>::{<span class="ident">DoneDetail</span>, <span class="ident">ProcessingDetail</span>, <span class="ident">Progress</span>, <span class="ident">ProgressKind</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::result</span>::{<span class="ident">Hit</span>, <span class="ident">HitCounter</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::utils::DiffStore</span>;
 
@@ -335,6 +323,8 @@
   <span class="ident">progress_channels</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">watch::Receiver</span><span class="op">&lt;</span><span class="ident">Progress</span><span class="op">&gt;</span><span class="op">&gt;</span>,
   <span class="ident">progress_handler</span>: <span class="ident">ArcProgressHandler</span>,
   <span class="ident">stop_rx</span>: <span class="ident">Receiver</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span>,
+  <span class="ident">total</span>: <span class="ident">usize</span>,
+  <span class="ident">total_workers</span>: <span class="ident">usize</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">ThreadRenderInner</span> {
@@ -372,6 +362,8 @@
     <span class="ident">hit_rx</span>: <span class="ident">Receiver</span><span class="op">&lt;</span><span class="ident">Hit</span><span class="op">&gt;</span>,
     <span class="ident">progress_channels</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">watch::Receiver</span><span class="op">&lt;</span><span class="ident">Progress</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">progress_handler</span>: <span class="ident">F</span>,
+    <span class="ident">total</span>: <span class="ident">usize</span>,
+    <span class="ident">total_workers</span>: <span class="ident">usize</span>,
   ) -&gt; <span class="self">Self</span>
   <span class="kw">where</span>
     <span class="ident">F</span>: <span class="ident">Fn</span>(<span class="kw-2">&amp;</span>[<span class="ident">Progress</span>], <span class="kw-2">&amp;</span>[<span class="ident">HitCounter</span>], <span class="ident">Duration</span>, <span class="ident">usize</span>, <span class="ident">bool</span>),
@@ -391,6 +383,8 @@
       <span class="ident">progress_channels</span>,
       <span class="ident">progress_handler</span>: <span class="ident">Arc::new</span>(<span class="ident">progress_handler</span>),
       <span class="ident">stop_rx</span>,
+      <span class="ident">total</span>,
+      <span class="ident">total_workers</span>,
     }
   }
 
@@ -406,8 +400,6 @@
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">start_time</span> <span class="op">=</span> <span class="ident">Instant::now</span>();
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">current_diff</span> <span class="op">=</span> <span class="ident">DiffStore::new</span>(<span class="number">0_usize</span>);
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">current_</span> <span class="op">=</span> <span class="number">0</span>;
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">total_</span> <span class="op">=</span> <span class="prelude-val">None</span>;
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">workers</span> <span class="op">=</span> <span class="prelude-val">None</span>;
 
     <span class="kw">loop</span> {
       <span class="kw">if</span> <span class="self">self</span>.<span class="ident">stop_rx</span>.<span class="ident">try_recv</span>().<span class="ident">is_ok</span>() {
@@ -416,8 +408,8 @@
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">id</span><span class="op">|</span> {
               <span class="ident">Progress</span>(<span class="ident">ProgressKind::Done</span>(<span class="ident">DoneDetail</span> {
                 <span class="ident">id</span>,
-                <span class="ident">total</span>: <span class="ident">total_</span>.<span class="ident">unwrap_or</span>(<span class="number">1</span>),
-                <span class="ident">total_workers</span>: <span class="ident">workers</span>.<span class="ident">unwrap_or</span>(<span class="number">1</span>),
+                <span class="ident">total</span>: <span class="self">self</span>.<span class="ident">total</span>,
+                <span class="ident">total_workers</span>: <span class="self">self</span>.<span class="ident">total_workers</span>,
               }))
             })
             .<span class="ident">collect_vec</span>(),
@@ -454,31 +446,19 @@
           <span class="kw">let</span> <span class="ident">progress</span> <span class="op">=</span> <span class="ident">rx</span>.<span class="ident">borrow</span>().<span class="ident">clone</span>();
 
           <span class="kw">match</span> <span class="ident">progress</span> {
-            <span class="ident">Progress</span>(<span class="ident">ProgressKind::Idle</span>(<span class="ident">IdleDetail</span> {
-              <span class="ident">total_workers</span>: <span class="ident">total</span>,
-              ..
-            })) =&gt; {
-              <span class="ident">workers</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">total</span>);
-            }
             <span class="ident">Progress</span>(<span class="ident">ProgressKind::Processing</span>(<span class="ident">ProcessingDetail</span> {
               <span class="ident">current</span>,
-              <span class="ident">total</span>,
-              <span class="ident">total_workers</span>,
               ..
             })) =&gt; {
               <span class="ident">current_</span> <span class="op">+</span><span class="op">=</span> <span class="ident">current</span>;
-              <span class="ident">total_</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">total</span>);
-              <span class="ident">workers</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">total_workers</span>);
             }
             <span class="ident">Progress</span>(<span class="ident">ProgressKind::Done</span>(<span class="ident">DoneDetail</span> {
               <span class="ident">total</span>,
-              <span class="ident">total_workers</span>,
               ..
             })) =&gt; {
               <span class="ident">current_</span> <span class="op">+</span><span class="op">=</span> <span class="ident">total</span>;
-              <span class="ident">total_</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">total</span>);
-              <span class="ident">workers</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">total_workers</span>);
             }
+            <span class="kw">_</span> =&gt; {}
           }
 
           <span class="ident">progress</span>
