@@ -5,35 +5,57 @@
         </a><div class="sidebar-elems"><h2 class="location"><a href="index.html">In wakuchin::worker</a></h2></div></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../wakuchin/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><div id="settings-menu" tabindex="-1">
                                 <a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div>
                         </div></form></nav></div><section id="main-content" class="content"><div class="main-heading">
-    <h1 class="fqn"><span class="in-band">Function <a href="../index.html">wakuchin</a>::<wbr><a href="index.html">worker</a>::<wbr><a class="fn" href="#">run_par</a><button id="copy-path" onclick="copy_path(this)" title="Copy item path to clipboard"><img src="../../clipboard.svg" width="19" height="18" alt="Copy item path"></button></span></h1><span class="out-of-band"><a class="srclink" href="../../src/wakuchin/worker/mod.rs.html#54-201">source</a> · <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class="inner">&#x2212;</span>]</a></span></div><div class="docblock item-decl"><pre class="rust fn"><code>pub async fn run_par&lt;F&gt;(<br>&nbsp;&nbsp;&nbsp;&nbsp;tries: <a class="primitive" href="https://doc.rust-lang.org/1.63.0/std/primitive.usize.html">usize</a>, <br>&nbsp;&nbsp;&nbsp;&nbsp;times: <a class="primitive" href="https://doc.rust-lang.org/1.63.0/std/primitive.usize.html">usize</a>, <br>&nbsp;&nbsp;&nbsp;&nbsp;regex: Regex, <br>&nbsp;&nbsp;&nbsp;&nbsp;progress_handler: F, <br>&nbsp;&nbsp;&nbsp;&nbsp;interval: <a class="struct" href="https://doc.rust-lang.org/1.63.0/core/time/struct.Duration.html" title="struct core::time::Duration">Duration</a>, <br>&nbsp;&nbsp;&nbsp;&nbsp;workers: <a class="primitive" href="https://doc.rust-lang.org/1.63.0/std/primitive.usize.html">usize</a><br>) -&gt; <a class="type" href="https://docs.rs/anyhow/1.0.62/anyhow/type.Result.html" title="type anyhow::Result">Result</a>&lt;<a class="struct" href="../result/struct.WakuchinResult.html" title="struct wakuchin::result::WakuchinResult">WakuchinResult</a>, <a class="enum" href="../error/enum.Error.html" title="enum wakuchin::error::Error">NormalError</a>&gt; <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;F: <a class="trait" href="https://doc.rust-lang.org/1.63.0/core/ops/function/trait.Fn.html" title="trait core::ops::function::Fn">Fn</a>(&amp;[<a class="struct" href="../progress/struct.Progress.html" title="struct wakuchin::progress::Progress">Progress</a>], &amp;[<a class="struct" href="../result/struct.HitCounter.html" title="struct wakuchin::result::HitCounter">HitCounter</a>], <a class="struct" href="https://doc.rust-lang.org/1.63.0/core/time/struct.Duration.html" title="struct core::time::Duration">Duration</a>, <a class="primitive" href="https://doc.rust-lang.org/1.63.0/std/primitive.usize.html">usize</a>, <a class="primitive" href="https://doc.rust-lang.org/1.63.0/std/primitive.bool.html">bool</a>) + <a class="trait" href="https://doc.rust-lang.org/1.63.0/core/marker/trait.Copy.html" title="trait core::marker::Copy">Copy</a> + <a class="trait" href="https://doc.rust-lang.org/1.63.0/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> + <a class="trait" href="https://doc.rust-lang.org/1.63.0/core/marker/trait.Sync.html" title="trait core::marker::Sync">Sync</a> + 'static,&nbsp;</span></code></pre></div><details class="rustdoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Research wakuchin with parallelism.</p>
+    <h1 class="fqn"><span class="in-band">Function <a href="../index.html">wakuchin</a>::<wbr><a href="index.html">worker</a>::<wbr><a class="fn" href="#">run_par</a><button id="copy-path" onclick="copy_path(this)" title="Copy item path to clipboard"><img src="../../clipboard.svg" width="19" height="18" alt="Copy item path"></button></span></h1><span class="out-of-band"><a class="srclink" href="../../src/wakuchin/worker.rs.html#95-244">source</a> · <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class="inner">&#x2212;</span>]</a></span></div><div class="docblock item-decl"><pre class="rust fn"><code>pub async fn run_par&lt;F&gt;(<br>&nbsp;&nbsp;&nbsp;&nbsp;tries: <a class="primitive" href="https://doc.rust-lang.org/1.63.0/std/primitive.usize.html">usize</a>, <br>&nbsp;&nbsp;&nbsp;&nbsp;times: <a class="primitive" href="https://doc.rust-lang.org/1.63.0/std/primitive.usize.html">usize</a>, <br>&nbsp;&nbsp;&nbsp;&nbsp;regex: Regex, <br>&nbsp;&nbsp;&nbsp;&nbsp;progress_handler: F, <br>&nbsp;&nbsp;&nbsp;&nbsp;progress_interval: <a class="struct" href="https://doc.rust-lang.org/1.63.0/core/time/struct.Duration.html" title="struct core::time::Duration">Duration</a>, <br>&nbsp;&nbsp;&nbsp;&nbsp;workers: <a class="primitive" href="https://doc.rust-lang.org/1.63.0/std/primitive.usize.html">usize</a><br>) -&gt; <a class="enum" href="https://doc.rust-lang.org/1.63.0/core/result/enum.Result.html" title="enum core::result::Result">Result</a>&lt;<a class="struct" href="../result/struct.WakuchinResult.html" title="struct wakuchin::result::WakuchinResult">WakuchinResult</a>, <a class="struct" href="https://doc.rust-lang.org/1.63.0/alloc/boxed/struct.Box.html" title="struct alloc::boxed::Box">Box</a>&lt;dyn <a class="trait" href="https://doc.rust-lang.org/1.63.0/std/error/trait.Error.html" title="trait std::error::Error">Error</a>&gt;&gt; <span class="where fmt-newline">where<br>&nbsp;&nbsp;&nbsp;&nbsp;F: <a class="trait" href="https://doc.rust-lang.org/1.63.0/core/ops/function/trait.Fn.html" title="trait core::ops::function::Fn">Fn</a>(&amp;[<a class="struct" href="../progress/struct.Progress.html" title="struct wakuchin::progress::Progress">Progress</a>], &amp;[<a class="struct" href="../result/struct.HitCounter.html" title="struct wakuchin::result::HitCounter">HitCounter</a>], <a class="struct" href="https://doc.rust-lang.org/1.63.0/core/time/struct.Duration.html" title="struct core::time::Duration">Duration</a>, <a class="primitive" href="https://doc.rust-lang.org/1.63.0/std/primitive.usize.html">usize</a>, <a class="primitive" href="https://doc.rust-lang.org/1.63.0/std/primitive.bool.html">bool</a>),<br>&nbsp;&nbsp;&nbsp;&nbsp;F: <a class="trait" href="https://doc.rust-lang.org/1.63.0/core/marker/trait.Sync.html" title="trait core::marker::Sync">Sync</a> + <a class="trait" href="https://doc.rust-lang.org/1.63.0/core/marker/trait.Send.html" title="trait core::marker::Send">Send</a> + 'static,&nbsp;</span></code></pre></div><details class="rustdoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Research wakuchin with parallelism.</p>
+<h2 id="arguments"><a href="#arguments">Arguments</a></h2>
 <ul>
-<li><code>tries</code> - number of tries</li>
-<li><code>times</code> - wakuchin times n</li>
-<li><code>regex</code> - regular expression to detect hit</li>
+<li><code>tries</code> - number of tries<br />
+If you passed zero, this function do nothing and return immediately with an empty <code>WakuchinResult</code>.</li>
+<li><code>times</code> - wakuchin times n, cannot be zero</li>
+<li><code>regex</code> - compiled regular expression to detect hit</li>
 <li><code>progress_handler</code> - handler function to handle progress
 <ul>
-<li><code>progress</code> - progress information of all workers</li>
-<li><code>hit_counter</code> - hit counter, see <code>HitCounter</code></li>
+<li><code>progress</code> - referenced slice of <a href="../progress/struct.Progress.html" title="Progress"><code>Progress</code></a></li>
+<li><code>counters</code> - referenced slice of <a href="../result/struct.HitCounter.html" title="HitCounter"><code>HitCounter</code></a></li>
 <li><code>interval</code> - interval of progress refresh you were specified, usable for calculation of speed</li>
 <li><code>current_diff</code> - <code>current - previous</code> of progress, usable for calculation of speed</li>
-<li><code>all_done</code> - if all workers are done, usable for finalization</li>
+<li><code>all_done</code> - true if all workers are done, usable for finalization</li>
 </ul>
 </li>
+<li><code>progress_interval</code> - progress refresh interval</li>
 <li><code>workers</code> - number of workers you want to use, default to number of logical cores</li>
 </ul>
 <h2 id="returns"><a href="#returns">Returns</a></h2>
 <ul>
-<li><code>WakuchinResult</code> - the result of the research</li>
+<li><code>Result&lt;WakuchinResult, Box&lt;dyn Error&gt;&gt;</code> - the result of the research (see <a href="../result/struct.WakuchinResult.html" title="WakuchinResult"><code>WakuchinResult</code></a>)</li>
 </ul>
-<h2 id="examples"><a href="#examples">Examples</a></h2>
+<h2 id="errors"><a href="#errors">Errors</a></h2>
+<ul>
+<li><a href="../error/enum.Error.html#variant.TimesIsZero"><code>Error::TimesIsZero</code></a> - Returns if you passed a zero to <code>times</code>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">std::time::Duration</span>;
 
 <span class="kw">use</span> <span class="ident">regex::Regex</span>;
 
 <span class="kw">use</span> <span class="ident">wakuchin::worker::run_par</span>;
 
-<span class="kw">let</span> <span class="ident">result</span> <span class="op">=</span> <span class="ident">run_par</span>(<span class="number">10</span>, <span class="number">1</span>, <span class="ident">Regex::new</span>(<span class="string">r&quot;WKCN&quot;</span>).<span class="ident">unwrap</span>(), <span class="op">|</span><span class="kw">_</span>, <span class="ident">counters</span>, <span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span><span class="op">|</span> {
+<span class="kw">let</span> <span class="ident">result</span> <span class="op">=</span> <span class="ident">run_par</span>(<span class="number">10</span>, <span class="number">0</span>, <span class="ident">Regex::new</span>(<span class="string">r&quot;WKCN&quot;</span>)<span class="question-mark">?</span>, <span class="op">|</span><span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span><span class="op">|</span> {}, <span class="ident">Duration::from_secs</span>(<span class="number">1</span>), <span class="number">0</span>).<span class="kw">await</span>;
+
+<span class="macro">assert!</span>(<span class="ident">result</span>.<span class="ident">is_err</span>());
+<span class="macro">assert_eq!</span>(<span class="ident">result</span>.<span class="ident">err</span>().<span class="ident">unwrap</span>().<span class="ident">to_string</span>(), <span class="string">&quot;times cannot be zero&quot;</span>);</code></pre></div>
+</li>
+<li><code>JoinError</code> - Returns when any worker raised an error</li>
+</ul>
+<h2 id="examples"><a href="#examples">Examples</a></h2>
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use</span> <span class="ident">std::time::Duration</span>;
+
+<span class="kw">use</span> <span class="ident">regex::Regex</span>;
+
+<span class="kw">use</span> <span class="ident">wakuchin::result</span>::{<span class="ident">out</span>, <span class="ident">ResultOutputFormat</span>};
+<span class="kw">use</span> <span class="ident">wakuchin::worker::run_par</span>;
+
+<span class="kw">let</span> <span class="ident">result</span> <span class="op">=</span> <span class="ident">run_par</span>(<span class="number">10</span>, <span class="number">1</span>, <span class="ident">Regex::new</span>(<span class="string">r&quot;WKCN&quot;</span>)<span class="question-mark">?</span>, <span class="op">|</span><span class="kw">_</span>, <span class="ident">counters</span>, <span class="kw">_</span>, <span class="kw">_</span>, <span class="kw">_</span><span class="op">|</span> {
   <span class="macro">println!</span>(<span class="string">&quot;total hits: {}&quot;</span>, <span class="ident">counters</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">c</span>.<span class="ident">hits</span>).<span class="ident">sum</span>::<span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>());
-}, <span class="ident">Duration::from_secs</span>(<span class="number">1</span>), <span class="number">4</span>);</code></pre></div>
+}, <span class="ident">Duration::from_secs</span>(<span class="number">1</span>), <span class="number">4</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+
+<span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">result</span>.<span class="ident">out</span>(<span class="ident">ResultOutputFormat::Text</span>)<span class="question-mark">?</span>);</code></pre></div>
 </div></details></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="wakuchin" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.63.0 (4b91a6ea7 2022-08-08)" ></div>
 </body></html>

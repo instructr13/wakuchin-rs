@@ -79,16 +79,11 @@
 <span id="73">73</span>
 <span id="74">74</span>
 <span id="75">75</span>
-<span id="76">76</span>
-<span id="77">77</span>
-<span id="78">78</span>
-<span id="79">79</span>
-<span id="80">80</span>
 </pre><pre class="rust"><code><span class="doccomment">/// Kind of progress data.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProgressKind</span> {
-  <span class="doccomment">/// Worker is idle.</span>
-  <span class="ident">Idle</span>(<span class="ident">usize</span>, <span class="ident">usize</span>),
+  <span class="doccomment">/// Worker is idle, do nothing.</span>
+  <span class="ident">Idle</span>(<span class="ident">IdleDetail</span>),
 
   <span class="doccomment">/// Worker is processing something.</span>
   <span class="ident">Processing</span>(<span class="ident">ProcessingDetail</span>),
@@ -97,11 +92,19 @@
   <span class="ident">Done</span>(<span class="ident">DoneDetail</span>),
 }
 
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">IdleDetail</span> {
+  <span class="doccomment">/// Worker id. 1-indexed, 0 means single worker (sequential).</span>
+  <span class="kw">pub</span> <span class="ident">id</span>: <span class="ident">usize</span>,
+
+  <span class="doccomment">/// Total number of workers.</span>
+  <span class="kw">pub</span> <span class="ident">total_workers</span>: <span class="ident">usize</span>,
+}
+
 <span class="doccomment">/// Detail of processing progress.</span>
-<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ProcessingDetail</span> {
-  <span class="doccomment">/// Worker ID. 1-indexed, 0 means single worker (sequential).</span>
+  <span class="doccomment">/// Worker id. 1-indexed, 0 means single worker (sequential).</span>
   <span class="kw">pub</span> <span class="ident">id</span>: <span class="ident">usize</span>,
 
   <span class="doccomment">/// Current processing wakuchin chars.</span>
@@ -110,7 +113,7 @@
   <span class="doccomment">/// Current processing index.</span>
   <span class="kw">pub</span> <span class="ident">current</span>: <span class="ident">usize</span>,
 
-  <span class="doccomment">/// Total number of wakuchin chars to process.</span>
+  <span class="doccomment">/// Total number of wakuchin chars to process _in this worker_.</span>
   <span class="kw">pub</span> <span class="ident">total</span>: <span class="ident">usize</span>,
 
   <span class="doccomment">/// Total number of workers.</span>
@@ -118,20 +121,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">ProcessingDetail</span> {
-  <span class="doccomment">/// Create new processing detail.</span>
-  <span class="doccomment">///</span>
-  <span class="doccomment">/// # Arguments</span>
-  <span class="doccomment">///</span>
-  <span class="doccomment">/// * `id` - Worker ID. 1-indexed, 0 means single worker (sequential).</span>
-  <span class="doccomment">/// * `wakuchin` - Current processing wakuchin chars.</span>
-  <span class="doccomment">/// * `current` - Current processing index.</span>
-  <span class="doccomment">/// * `total` - Total number of wakuchin chars to process.</span>
-  <span class="doccomment">/// * `total_workers` - Total number of workers.</span>
-  <span class="doccomment">///</span>
-  <span class="doccomment">/// # Returns</span>
-  <span class="doccomment">///</span>
-  <span class="doccomment">/// * `ProcessingDetail` - New processing detail.</span>
-  <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
+  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(
     <span class="ident">id</span>: <span class="ident">usize</span>,
     <span class="ident">wakuchin</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
     <span class="ident">current</span>: <span class="ident">usize</span>,
@@ -151,10 +141,10 @@
 <span class="doccomment">/// Detail of done progress.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DoneDetail</span> {
-  <span class="doccomment">/// Worker ID. 1-indexed, 0 means single worker (sequential).</span>
+  <span class="doccomment">/// Worker id. 1-indexed, 0 means single worker (sequential).</span>
   <span class="kw">pub</span> <span class="ident">id</span>: <span class="ident">usize</span>,
 
-  <span class="doccomment">/// Total number of wakuchin chars to process.</span>
+  <span class="doccomment">/// Total number of wakuchin chars to process _in this worker_.</span>
   <span class="kw">pub</span> <span class="ident">total</span>: <span class="ident">usize</span>,
 
   <span class="doccomment">/// Total number of workers.</span>
