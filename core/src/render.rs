@@ -10,9 +10,7 @@ use itertools::Itertools;
 use tokio::sync::watch;
 use tokio::time::{sleep, Duration};
 
-use crate::progress::{
-  DoneDetail, IdleDetail, ProcessingDetail, Progress, ProgressKind,
-};
+use crate::progress::{DoneDetail, ProcessingDetail, Progress, ProgressKind};
 use crate::result::{Hit, HitCounter};
 use crate::utils::DiffStore;
 
@@ -32,6 +30,8 @@ pub(crate) struct ThreadRender {
   progress_channels: Vec<watch::Receiver<Progress>>,
   progress_handler: ArcProgressHandler,
   stop_rx: Receiver<bool>,
+  total: usize,
+  total_workers: usize,
 }
 
 impl ThreadRenderInner {
@@ -69,6 +69,8 @@ impl ThreadRender {
     hit_rx: Receiver<Hit>,
     progress_channels: Vec<watch::Receiver<Progress>>,
     progress_handler: F,
+    total: usize,
+    total_workers: usize,
   ) -> Self
   where
     F: Fn(&[Progress], &[HitCounter], Duration, usize, bool),
@@ -88,6 +90,8 @@ impl ThreadRender {
       progress_channels,
       progress_handler: Arc::new(progress_handler),
       stop_rx,
+      total,
+      total_workers,
     }
   }
 
@@ -103,8 +107,6 @@ impl ThreadRender {
     let mut start_time = Instant::now();
     let mut current_diff = DiffStore::new(0_usize);
     let mut current_ = 0;
-    let mut total_ = None;
-    let mut workers = None;
 
     loop {
       if self.stop_rx.try_recv().is_ok() {
@@ -113,8 +115,8 @@ impl ThreadRender {
             .map(|id| {
               Progress(ProgressKind::Done(DoneDetail {
                 id,
-                total: total_.unwrap_or(1),
-                total_workers: workers.unwrap_or(1),
+                total: self.total,
+                total_workers: self.total_workers,
               }))
             })
             .collect_vec(),
@@ -151,31 +153,19 @@ impl ThreadRender {
           let progress = rx.borrow().clone();
 
           match progress {
-            Progress(ProgressKind::Idle(IdleDetail {
-              total_workers: total,
-              ..
-            })) => {
-              workers = Some(total);
-            }
             Progress(ProgressKind::Processing(ProcessingDetail {
               current,
-              total,
-              total_workers,
               ..
             })) => {
               current_ += current;
-              total_ = Some(total);
-              workers = Some(total_workers);
             }
             Progress(ProgressKind::Done(DoneDetail {
               total,
-              total_workers,
               ..
             })) => {
               current_ += total;
-              total_ = Some(total);
-              workers = Some(total_workers);
             }
+            _ => {}
           }
 
           progress

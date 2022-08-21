@@ -146,6 +146,8 @@ where
     hit_rx,
     progress_rx_vec,
     progress_handler,
+    tries,
+    workers,
   )));
 
   // create temporary lock to get inner
