@@ -37,6 +37,7 @@ async fn run() -> Result<bool> {
     .tries(tries)
     .times(times)
     .regex(args.regex.ok_or("regex compilation failed")?)
+    .progress_interval(args.interval)
     .progress_handler(handlers::progress(tries, times));
 
   execute!(
