@@ -260,6 +260,7 @@
 <span id="260">260</span>
 <span id="261">261</span>
 <span id="262">262</span>
+<span id="263">263</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Functions to manipulate the result of a research</span>
 
 <span class="kw">use</span> <span class="ident">std::error::Error</span>;
@@ -451,7 +452,8 @@ Tries: {}
 {}
 Total hits: {} ({}%)&quot;</span>,
       <span class="ident">result</span>.<span class="ident">tries</span>,
-      (<span class="kw-2">&amp;</span><span class="ident">result</span>.<span class="ident">hits</span>)
+      <span class="ident">result</span>
+        .<span class="ident">hits</span>
         .<span class="ident">iter</span>()
         .<span class="ident">map</span>(<span class="op">|</span><span class="ident">h</span><span class="op">|</span> <span class="macro">format!</span>(
           <span class="string">&quot;{} hits: {} ({}%)&quot;</span>,
