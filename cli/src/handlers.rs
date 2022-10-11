@@ -1,3 +1,4 @@
+use std::fmt::Display;
 use std::io::stderr;
 use std::time::Duration;
 
@@ -6,6 +7,7 @@ use crossterm::style::{Attribute, Print, Stylize};
 use crossterm::terminal::ClearType;
 use crossterm::{execute, terminal};
 
+use serde::{Deserialize, Serialize};
 use wakuchin::convert::chars_to_wakuchin;
 use wakuchin::progress::{
   DoneDetail, IdleDetail, ProcessingDetail, Progress, ProgressKind,
@@ -13,6 +15,28 @@ use wakuchin::progress::{
 use wakuchin::result::HitCounter;
 
 const PROGRESS_BAR_WIDTH: u16 = 33;
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum HandlerKind {
+  Console,
+  Msgpack,
+}
+
+impl Default for HandlerKind {
+  fn default() -> Self {
+    Self::Console
+  }
+}
+
+impl Display for HandlerKind {
+  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    match self {
+      HandlerKind::Console => write!(f, "console"),
+      HandlerKind::Msgpack => write!(f, "msgpack"),
+    }
+  }
+}
 
 pub(crate) fn progress(
   tries: usize,

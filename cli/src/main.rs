@@ -11,8 +11,10 @@ use crossterm::{cursor, execute};
 
 use wakuchin::builder::ResearchBuilder;
 use wakuchin::error::WakuchinError;
+use wakuchin::handlers::msgpack;
 
 use crate::app::App;
+use crate::handlers::{progress, HandlerKind};
 
 #[cfg(all(not(target_os = "android"), not(target_env = "msvc")))]
 use tikv_jemallocator::Jemalloc;
@@ -43,8 +45,16 @@ async fn main() -> Result<()> {
         .regex
         .ok_or_else(|| anyhow!("regex compilation failed"))?,
     )
-    .progress_interval(args.interval)
-    .progress_handler(handlers::progress(tries, times));
+    .progress_interval(args.interval);
+
+  let builder = {
+    match args.handler {
+      HandlerKind::Console => builder.progress_handler(progress(tries, times)),
+      HandlerKind::Msgpack => {
+        builder.progress_handler(msgpack::progress(tries))
+      }
+    }
+  };
 
   execute!(
     stderr(),

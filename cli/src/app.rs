@@ -17,6 +17,15 @@ use serde_with::{serde_as, DurationMilliSeconds};
 use wakuchin::result::ResultOutputFormat;
 
 use crate::config::load_config;
+use crate::handlers::HandlerKind;
+
+fn value_parser_handler(s: &str) -> Result<HandlerKind> {
+  match s {
+    "console" => Ok(HandlerKind::Console),
+    "msgpack" => Ok(HandlerKind::Msgpack),
+    _ => Err(anyhow!("Invalid handler type")),
+  }
+}
 
 fn value_parser_format(s: &str) -> Result<ResultOutputFormat> {
   match s {
@@ -83,6 +92,17 @@ pub(crate) struct Config {
     default_value_t = 0
   )]
   pub(crate) workers: usize,
+
+  #[serde(default)]
+  #[arg(
+    short = 'H',
+    long,
+    value_name = "console|msgpack",
+    value_parser = value_parser_handler,
+    help = "Progress output handler to use",
+    default_value_t = HandlerKind::Console
+  )]
+  pub(crate) handler: HandlerKind,
 }
 
 pub(crate) struct App {

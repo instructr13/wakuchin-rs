@@ -10,7 +10,7 @@ pub struct BuiltinProgressHandler {
   pub progresses: Vec<Progress>,
   pub hit_counters: Vec<HitCounter>,
   pub current_rate: f32,
-  pub remaining_time: Duration,
+  pub remaining_time: f32,
   pub tries: usize,
   pub all_done: bool,
 }
@@ -39,10 +39,13 @@ pub fn progress(
       }
     }
 
+    if current_total > tries {
+      current_total = tries;
+    }
+
     let elapsed_time = elapsed_time.as_secs_f32();
     let current_rate = current_diff as f32 / elapsed_time;
-    let remaining_time =
-      Duration::from_secs_f32((tries - current_total) as f32 / current_rate);
+    let remaining_time = (tries - current_total) as f32 / current_rate;
 
     let handler = BuiltinProgressHandler {
       progresses: progresses.to_vec(),
