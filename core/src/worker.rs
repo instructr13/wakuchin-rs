@@ -1,6 +1,5 @@
 //! Wakuchin researcher main functions
 
-use std::error::Error;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -10,7 +9,7 @@ use itertools::Itertools;
 use regex::Regex;
 use tokio::sync::{watch::channel as progress_channel, RwLock};
 
-use crate::error::Error as NormalError;
+use crate::error::WakuchinError;
 use crate::progress::{
   DoneDetail, IdleDetail, ProcessingDetail, Progress, ProgressKind,
 };
@@ -18,13 +17,13 @@ use crate::render::{Render, ThreadRender};
 use crate::result::{Hit, HitCounter, WakuchinResult};
 use crate::{check, gen};
 
-type Result<T> = std::result::Result<T, Box<dyn Error>>;
+type Result<T> = std::result::Result<T, WakuchinError>;
 
 /// Research wakuchin with parallelism.
 ///
 /// # Arguments
 ///
-/// * `tries` - number of tries  
+/// * `tries` - number of tries
 ///   If you passed zero, this function do nothing and return immediately with an empty `WakuchinResult`.
 /// * `times` - wakuchin times n, cannot be zero
 /// * `regex` - compiled regular expression to detect hit
@@ -43,7 +42,7 @@ type Result<T> = std::result::Result<T, Box<dyn Error>>;
 ///
 /// # Errors
 ///
-/// * [`Error::TimesIsZero`](crate::error::Error::TimesIsZero) - Returns if you passed a zero to `times`  
+/// * [`Error::TimesIsZero`](crate::error::Error::TimesIsZero) - Returns if you passed a zero to `times`
 ///   ```rust
 ///   use std::time::Duration;
 ///
@@ -114,7 +113,7 @@ where
   }
 
   if times == 0 {
-    return Err(Box::new(NormalError::TimesIsZero));
+    return Err(WakuchinError::TimesIsZero);
   }
 
   let workers = {
@@ -250,7 +249,7 @@ where
 ///
 /// # Arguments
 ///
-/// * `tries` - number of tries  
+/// * `tries` - number of tries
 ///   If you passed zero, this function do nothing and return immediately with an empty `WakuchinResult`.
 /// * `times` - wakuchin times n, cannot be zero
 /// * `regex` - compiled regular expression to detect hit
@@ -268,7 +267,7 @@ where
 ///
 /// # Errors
 ///
-/// * `wakuchin::error::Error::TimesIsZero` - Returns if you passed a zero to `times`  
+/// * `wakuchin::error::Error::TimesIsZero` - Returns if you passed a zero to `times`
 ///   ```rust
 ///   use std::time::Duration;
 ///
@@ -322,7 +321,7 @@ where
   }
 
   if times == 0 {
-    return Err(Box::new(NormalError::TimesIsZero));
+    return Err(WakuchinError::TimesIsZero);
   }
 
   let mut render = Render::new(progress_handler);

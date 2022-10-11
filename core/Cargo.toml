@@ -20,6 +20,7 @@ simd-accel = ["simd-json"]
 criterion = { version = "0.4", features = ["async_tokio"] }
 
 [dependencies]
+anyhow = "1.0"
 dashmap = "5.3"
 divide_range = "0.1"
 fastrand = "1.8"

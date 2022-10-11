@@ -2,16 +2,15 @@ mod app;
 mod config;
 mod handlers;
 
-use std::error::Error;
 use std::io::stderr;
 use std::panic;
-use std::process;
 
+use anyhow::{anyhow, Result};
 use crossterm::style::Print;
-use crossterm::style::Stylize;
 use crossterm::{cursor, execute};
 
 use wakuchin::builder::ResearchBuilder;
+use wakuchin::error::WakuchinError;
 
 use crate::app::App;
 
@@ -22,21 +21,28 @@ use tikv_jemallocator::Jemalloc;
 #[global_allocator]
 static GLOBAL: Jemalloc = Jemalloc;
 
-type Result<T> = anyhow::Result<T, Box<dyn Error>>;
-
-async fn run() -> Result<bool> {
-  let mut app = App::new()?;
+#[tokio::main]
+async fn main() -> Result<()> {
+  let mut app = App::new();
   let args = app.prompt().await?;
 
   let default_hook = App::set_panic_hook();
 
-  let tries = args.tries.ok_or("tries is required")?;
-  let times = args.times.ok_or("times is required")?;
+  let tries = args
+    .tries
+    .ok_or_else(|| anyhow!("tries is required but was undefined"))?;
+  let times = args
+    .times
+    .ok_or_else(|| anyhow!("times is required but was undefined"))?;
 
   let builder = ResearchBuilder::new()
     .tries(tries)
     .times(times)
-    .regex(args.regex.ok_or("regex compilation failed")?)
+    .regex(
+      args
+        .regex
+        .ok_or_else(|| anyhow!("regex compilation failed"))?,
+    )
     .progress_interval(args.interval)
     .progress_handler(handlers::progress(tries, times));
 
@@ -48,44 +54,41 @@ async fn run() -> Result<bool> {
   )?;
 
   #[cfg(not(feature = "sequential"))]
-  let result = builder.run_par().await?;
+  let result = builder.run_par().await;
 
   #[cfg(feature = "sequential")]
-  let result = builder.run_seq()?;
+  let result = builder.run_seq();
+
+  if result.is_err() {
+    if let Err(WakuchinError::WorkerError(e)) = result {
+      execute!(
+        stderr(),
+        cursor::Show,
+        Print("\n"),
+        cursor::MoveUp(1),
+        cursor::MoveLeft(u16::MAX),
+        Print("wakuchin has panicked.\n"),
+        Print("Please report this to the author.\n"),
+        Print(format!("{:?}", e)),
+        cursor::MoveLeft(u16::MAX),
+      )?;
+
+      panic::resume_unwind(e.into_panic());
+    }
+  }
+
+  let result = result?;
 
   panic::set_hook(default_hook);
 
   println!(
     "{}",
-    result.out(app.args.out.ok_or("output format is undefined")?)?
+    result.out(app.args.out.ok_or_else(|| anyhow!(
+      "output format is required but was undefined"
+    ))?)?
   );
 
-  Ok(true)
-}
+  execute!(stderr(), cursor::MoveLeft(u16::MAX), cursor::Show)?;
 
-#[tokio::main]
-async fn main() {
-  let result = run().await;
-
-  execute!(stderr(), cursor::MoveLeft(u16::MAX), cursor::Show).unwrap_or_else(
-    |_| {
-      eprintln!("error: failed to restore cursor");
-
-      process::exit(1)
-    },
-  );
-
-  match result {
-    Err(error) => {
-      eprintln!("{} {error}", "error:".red());
-
-      process::exit(1);
-    }
-    Ok(false) => {
-      process::exit(1);
-    }
-    Ok(true) => {
-      process::exit(0);
-    }
-  }
+  Ok(())
 }

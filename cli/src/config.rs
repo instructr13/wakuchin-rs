@@ -6,16 +6,16 @@ use tokio::fs::read_to_string;
 
 use crate::app::Config;
 
-pub(crate) async fn load_config(
-  path: &Path,
-) -> Result<Config, Box<dyn std::error::Error>> {
+pub(crate) async fn load_config(path: &Path) -> Result<Config> {
   let contents = read_to_string(path)
     .await
-    .map_err(|e| format!("'{}': {}", path.to_string_lossy(), e))?;
+    .map_err(|e| anyhow!("'{}': {}", path.to_string_lossy(), e))?;
 
   let config: Config = match path
     .extension()
-    .ok_or(format!("'{}': Invalid config type", path.to_string_lossy()))?
+    .ok_or_else(|| {
+      anyhow!("'{}': Invalid config type", path.to_string_lossy())
+    })?
     .to_string_lossy()
     .borrow()
   {
