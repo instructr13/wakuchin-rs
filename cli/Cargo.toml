@@ -20,10 +20,10 @@ sequential = []
 simd-accel = ["wakuchin/simd-accel"]
 
 [build-dependencies]
-wakuchin = { version = "0.2.0", path = "../core" }
+wakuchin = { version = "0.3.0", path = "../core" }
 
 [dependencies]
-wakuchin = { version = "0.2.0", path = "../core" }
+wakuchin = { version = "0.3.0", path = "../core" }
 
 anyhow = "1.0"
 atty = "0.2"
