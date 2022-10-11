@@ -3,6 +3,7 @@
 pub mod builder;
 pub mod convert;
 pub mod error;
+pub mod handlers;
 pub mod progress;
 pub mod result;
 pub mod symbol;

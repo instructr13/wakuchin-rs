@@ -1,5 +1,7 @@
+use serde::{Deserialize, Serialize};
+
 /// Kind of progress data.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum ProgressKind {
   /// Worker is idle, do nothing.
   Idle(IdleDetail),
@@ -11,7 +13,7 @@ pub enum ProgressKind {
   Done(DoneDetail),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct IdleDetail {
   /// Worker id. 1-indexed, 0 means single worker (sequential).
   pub id: usize,
@@ -21,7 +23,7 @@ pub struct IdleDetail {
 }
 
 /// Detail of processing progress.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ProcessingDetail {
   /// Worker id. 1-indexed, 0 means single worker (sequential).
   pub id: usize,
@@ -58,7 +60,7 @@ impl ProcessingDetail {
 }
 
 /// Detail of done progress.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct DoneDetail {
   /// Worker id. 1-indexed, 0 means single worker (sequential).
   pub id: usize,
@@ -71,5 +73,5 @@ pub struct DoneDetail {
 }
 
 /// Progress data that you will use in progress_handler.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Progress(pub ProgressKind);

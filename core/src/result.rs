@@ -67,7 +67,7 @@ impl Hit {
 }
 
 /// The count of hits that you will use in progress_handler.
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct HitCounter {
   /// Wakuchin chars that were hit.
   pub chars: String,
