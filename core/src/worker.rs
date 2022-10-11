@@ -1,5 +1,6 @@
 //! Wakuchin researcher main functions
 
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -7,7 +8,9 @@ use divide_range::RangeDivisions;
 use flume::unbounded as channel;
 use itertools::Itertools;
 use regex::Regex;
+use tokio::runtime::Builder;
 use tokio::sync::{watch::channel as progress_channel, RwLock};
+use tokio::task::JoinSet;
 
 use crate::error::WakuchinError;
 use crate::progress::{
@@ -116,27 +119,42 @@ where
     return Err(WakuchinError::TimesIsZero);
   }
 
-  let workers = {
-    let workers = if workers == 0 {
-      num_cpus::get() - 2 // to work progress render thread and hit notifier thread
+  let total_workers = {
+    let total_workers = if workers == 0 {
+      num_cpus::get()
     } else {
       workers
     };
 
-    if tries < workers {
+    if tries < total_workers {
       tries
     } else {
-      workers
+      total_workers
     }
   };
 
+  let runtime = Builder::new_multi_thread()
+    .worker_threads(total_workers + 2)
+    .thread_name_fn(|| {
+      static ATOMIC_ID: AtomicUsize = AtomicUsize::new(0);
+
+      let id = ATOMIC_ID.fetch_add(1, Ordering::SeqCst);
+
+      format!("wakuchin-worker-{}", id)
+    })
+    .thread_stack_size(4 * 1024 * 1024)
+    .enable_time()
+    .build()?;
+
+  let runtime_handle = runtime.handle();
+
   let (hit_tx, hit_rx) = channel();
 
-  let (progress_tx_vec, progress_rx_vec): (Vec<_>, Vec<_>) = (0..workers)
+  let (progress_tx_vec, progress_rx_vec): (Vec<_>, Vec<_>) = (0..total_workers)
     .map(|id| {
       progress_channel(Progress(ProgressKind::Idle(IdleDetail {
         id: id + 1,
-        total_workers: workers,
+        total_workers,
       })))
     })
     .unzip();
@@ -146,7 +164,7 @@ where
     progress_rx_vec,
     progress_handler,
     tries,
-    workers,
+    total_workers,
   )));
 
   // create temporary lock to get inner
@@ -156,22 +174,34 @@ where
 
   drop(render_guard);
 
-  let hit_handle = tokio::spawn(async move {
-    inner.wait_for_hit().await;
-  });
+  let mut ui_handles = JoinSet::new();
 
-  let progress_handle = tokio::spawn({
-    let render = render.clone();
-
+  // hit handler
+  ui_handles.spawn_on(
     async move {
-      let mut render = render.write().await;
+      inner.wait_for_hit().await;
+    },
+    runtime_handle,
+  );
 
-      render.start_render_progress(progress_interval).await;
-    }
-  });
+  // progress reporter
+  ui_handles.spawn_on(
+    {
+      let render = render.clone();
 
-  let handles = (0..tries)
-    .divide_evenly_into(workers)
+      async move {
+        let mut render = render.write().await;
+
+        render.start_render_progress(progress_interval).await;
+      }
+    },
+    runtime_handle,
+  );
+
+  let mut worker_handles = JoinSet::new();
+
+  (0..tries)
+    .divide_evenly_into(total_workers)
     .zip(progress_tx_vec.into_iter())
     .enumerate()
     .map(|(id, (wakuchins, progress_tx))| {
@@ -179,62 +209,72 @@ where
       let regex = regex.clone();
       let total = wakuchins.len();
 
-      tokio::spawn(async move {
-        let mut hits = Vec::new();
+      worker_handles.spawn_on(
+        async move {
+          let mut hits = Vec::new();
 
-        for (i, wakuchin) in wakuchins.map(|_| gen(times)).enumerate() {
+          for (i, wakuchin) in wakuchins.map(|_| gen(times)).enumerate() {
+            progress_tx
+              .send(Progress(ProgressKind::Processing(ProcessingDetail::new(
+                id + 1,
+                &wakuchin,
+                i,
+                total,
+                total_workers,
+              ))))
+              .expect("progress channel is unavailable");
+
+            if check(&wakuchin, &regex) {
+              let hit = Hit::new(i, &wakuchin);
+
+              hit_tx
+                .send_async(hit.clone())
+                .await
+                .expect("hit channel is unavailable");
+
+              hits.push(hit);
+            }
+          }
+
+          drop(hit_tx);
+
           progress_tx
-            .send(Progress(ProgressKind::Processing(ProcessingDetail::new(
-              id + 1,
-              &wakuchin,
-              i,
+            .send(Progress(ProgressKind::Done(DoneDetail {
+              id: id + 1,
               total,
-              workers,
-            ))))
+              total_workers,
+            })))
             .expect("progress channel is unavailable");
 
-          if check(&wakuchin, &regex) {
-            let hit = Hit::new(i, &wakuchin);
-
-            hit_tx
-              .send_async(hit.clone())
-              .await
-              .expect("hit channel is unavailable");
-
-            hits.push(hit);
-          }
-        }
-
-        drop(hit_tx);
-
-        progress_tx
-          .send(Progress(ProgressKind::Done(DoneDetail {
-            id: id + 1,
-            total,
-            total_workers: workers,
-          })))
-          .expect("progress channel is unavailable");
-
-        hits
-      })
+          hits
+        },
+        runtime_handle,
+      );
     })
     .collect_vec();
 
   drop(hit_tx);
 
-  let mut hits_per_worker = Vec::new();
+  let mut hits_detail = Vec::new();
 
-  for handle in handles {
-    hits_per_worker.push(handle.await?);
+  while let Some(hits) = worker_handles.join_next().await {
+    let hits = hits?;
+
+    for hit in hits.into_iter() {
+      hits_detail.push(hit);
+    }
   }
 
-  for handle in vec![progress_handle, hit_handle] {
-    handle.await?;
+  // after all workers have finished, wait for ui threads to finish
+  while let Some(result) = ui_handles.join_next().await {
+    result?;
   }
+
+  // cleanup
+  runtime.shutdown_background();
 
   let hits = render.read().await.hits();
   let hits_total = hits.iter().map(|c| c.hits).sum::<usize>();
-  let hits_detail = hits_per_worker.into_iter().flatten().collect_vec();
 
   Ok(WakuchinResult {
     tries,

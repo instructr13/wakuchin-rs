@@ -54,7 +54,7 @@ async fn main() -> Result<()> {
   )?;
 
   #[cfg(not(feature = "sequential"))]
-  let result = builder.run_par().await;
+  let result = builder.workers(args.workers).run_par().await;
 
   #[cfg(feature = "sequential")]
   let result = builder.run_seq();
