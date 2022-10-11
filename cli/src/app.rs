@@ -1,5 +1,6 @@
 use std::error::Error;
 use std::io::{stderr, Error as IoError};
+use std::num::ParseIntError;
 use std::panic::{self, PanicInfo};
 use std::path::Path;
 use std::process;
@@ -31,68 +32,57 @@ fn default_duration() -> Duration {
   Duration::from_millis(300)
 }
 
-fn parse_duration(arg: &str) -> Result<Duration, std::num::ParseIntError> {
+fn parse_duration(arg: &str) -> Result<Duration, ParseIntError> {
   let seconds = arg.parse()?;
+
   Ok(Duration::from_millis(seconds))
 }
 
 #[serde_as]
 #[derive(Clone, Debug, Parser, Deserialize)]
-#[clap(author, version, about, long_about = None)]
+#[command(author, version, about, long_about = None)]
 pub(crate) struct Config {
-  #[clap(
-    short = 'i',
-    long,
-    value_parser,
-    value_name = "N",
-    help = "Number of tries"
-  )]
+  #[arg(short = 'i', long, value_name = "N", help = "Number of tries")]
   pub(crate) tries: Option<usize>,
 
-  #[clap(
-    short,
-    long,
-    value_parser,
-    value_name = "N",
-    help = "Wakuchin times n"
-  )]
+  #[arg(short, long, value_name = "N", help = "Wakuchin times n")]
   pub(crate) times: Option<usize>,
 
   #[serde(default)]
   #[serde(with = "serde_regex")]
-  #[clap(short, long, value_parser, help = "Regex to detect hits")]
+  #[arg(short, long, help = "Regex to detect hits")]
   pub(crate) regex: Option<Regex>,
 
   #[serde(rename(deserialize = "output"))]
-  #[clap(short = 'f', long = "format", value_parser = value_parser_format, value_name = "text|json", help = "Output format")]
+  #[arg(short = 'f', long = "format", value_parser = value_parser_format, value_name = "text|json", help = "Output format")]
   pub(crate) out: Option<ResultOutputFormat>,
 
-  #[clap(
-    value_name = "config",
+  #[arg(
+    value_name = "FILE",
     help = "Config file path, can be json, yaml, and toml, detected by extension"
   )]
   pub(crate) config: Option<String>,
 
   #[serde(default = "default_duration")]
   #[serde_as(as = "DurationMilliSeconds<u64>")]
-  #[clap(
+  #[arg(
     short = 'd',
-    long = "interval",
+    long,
     value_name = "DURATION",
     help = "Progress refresh interval, in milliseconds",
     default_value = "300",
-    parse(try_from_str = parse_duration)
+    value_parser = parse_duration
   )]
   pub(crate) interval: Duration,
 
   #[cfg(not(feature = "sequential"))]
   #[serde(default)]
-  #[clap(
-    short = 'w',
-    long = "workers",
+  #[arg(
+    short,
+    long,
     value_name = "N",
     help = "Number of workers, 0 means number of logical CPUs",
-    default_value = "0"
+    default_value_t = 0
   )]
   pub(crate) workers: usize,
 }
