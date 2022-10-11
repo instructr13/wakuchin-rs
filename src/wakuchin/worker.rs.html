@@ -381,10 +381,8 @@
 <span id="381">381</span>
 <span id="382">382</span>
 <span id="383">383</span>
-<span id="384">384</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Wakuchin researcher main functions</span>
 
-<span class="kw">use</span> <span class="ident">std::error::Error</span>;
 <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
 <span class="kw">use</span> <span class="ident">std::time::Duration</span>;
 
@@ -394,7 +392,7 @@
 <span class="kw">use</span> <span class="ident">regex::Regex</span>;
 <span class="kw">use</span> <span class="ident">tokio::sync</span>::{<span class="ident">watch::channel</span> <span class="kw">as</span> <span class="ident">progress_channel</span>, <span class="ident">RwLock</span>};
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::Error</span> <span class="kw">as</span> <span class="ident">NormalError</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::WakuchinError</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::progress</span>::{
   <span class="ident">DoneDetail</span>, <span class="ident">IdleDetail</span>, <span class="ident">ProcessingDetail</span>, <span class="ident">Progress</span>, <span class="ident">ProgressKind</span>,
 };
@@ -402,13 +400,13 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::result</span>::{<span class="ident">Hit</span>, <span class="ident">HitCounter</span>, <span class="ident">WakuchinResult</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">check</span>, <span class="ident">gen</span>};
 
-<span class="kw">type</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">std::result::Result</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Error</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+<span class="kw">type</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">std::result::Result</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">WakuchinError</span><span class="op">&gt;</span>;
 
 <span class="doccomment">/// Research wakuchin with parallelism.</span>
 <span class="doccomment">///</span>
 <span class="doccomment">/// # Arguments</span>
 <span class="doccomment">///</span>
-<span class="doccomment">/// * `tries` - number of tries  </span>
+<span class="doccomment">/// * `tries` - number of tries</span>
 <span class="doccomment">///   If you passed zero, this function do nothing and return immediately with an empty `WakuchinResult`.</span>
 <span class="doccomment">/// * `times` - wakuchin times n, cannot be zero</span>
 <span class="doccomment">/// * `regex` - compiled regular expression to detect hit</span>
@@ -427,7 +425,7 @@
 <span class="doccomment">///</span>
 <span class="doccomment">/// # Errors</span>
 <span class="doccomment">///</span>
-<span class="doccomment">/// * [`Error::TimesIsZero`](crate::error::Error::TimesIsZero) - Returns if you passed a zero to `times`  </span>
+<span class="doccomment">/// * [`Error::TimesIsZero`](crate::error::Error::TimesIsZero) - Returns if you passed a zero to `times`</span>
 <span class="doccomment">///   ```rust</span>
 <span class="doccomment">///   use std::time::Duration;</span>
 <span class="doccomment">///</span>
@@ -498,7 +496,7 @@
   }
 
   <span class="kw">if</span> <span class="ident">times</span> <span class="op">==</span> <span class="number">0</span> {
-    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Box::new</span>(<span class="ident">NormalError::TimesIsZero</span>));
+    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">WakuchinError::TimesIsZero</span>);
   }
 
   <span class="kw">let</span> <span class="ident">workers</span> <span class="op">=</span> {
@@ -634,7 +632,7 @@
 <span class="doccomment">///</span>
 <span class="doccomment">/// # Arguments</span>
 <span class="doccomment">///</span>
-<span class="doccomment">/// * `tries` - number of tries  </span>
+<span class="doccomment">/// * `tries` - number of tries</span>
 <span class="doccomment">///   If you passed zero, this function do nothing and return immediately with an empty `WakuchinResult`.</span>
 <span class="doccomment">/// * `times` - wakuchin times n, cannot be zero</span>
 <span class="doccomment">/// * `regex` - compiled regular expression to detect hit</span>
@@ -652,7 +650,7 @@
 <span class="doccomment">///</span>
 <span class="doccomment">/// # Errors</span>
 <span class="doccomment">///</span>
-<span class="doccomment">/// * `wakuchin::error::Error::TimesIsZero` - Returns if you passed a zero to `times`  </span>
+<span class="doccomment">/// * `wakuchin::error::Error::TimesIsZero` - Returns if you passed a zero to `times`</span>
 <span class="doccomment">///   ```rust</span>
 <span class="doccomment">///   use std::time::Duration;</span>
 <span class="doccomment">///</span>
@@ -706,7 +704,7 @@
   }
 
   <span class="kw">if</span> <span class="ident">times</span> <span class="op">==</span> <span class="number">0</span> {
-    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Box::new</span>(<span class="ident">NormalError::TimesIsZero</span>));
+    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">WakuchinError::TimesIsZero</span>);
   }
 
   <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">render</span> <span class="op">=</span> <span class="ident">Render::new</span>(<span class="ident">progress_handler</span>);
