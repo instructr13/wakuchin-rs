@@ -9,6 +9,8 @@ pub enum WakuchinError {
   /// You may specified bad number of times.
   #[error("times cannot be zero")]
   TimesIsZero,
+  #[error("'{0}': unknown result output format")]
+  UnknownResultOutputFormat(String),
   #[error(transparent)]
   WorkerError(#[from] JoinError),
   #[error("error while serializing result: {0}")]

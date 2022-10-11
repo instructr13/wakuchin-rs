@@ -1,7 +1,9 @@
 use std::fmt::Display;
 use std::io::stderr;
+use std::str::FromStr;
 use std::time::Duration;
 
+use anyhow::anyhow;
 use crossterm::cursor::{MoveLeft, MoveUp};
 use crossterm::style::{Attribute, Print, Stylize};
 use crossterm::terminal::ClearType;
@@ -34,6 +36,18 @@ impl Display for HandlerKind {
     match self {
       HandlerKind::Console => write!(f, "console"),
       HandlerKind::Msgpack => write!(f, "msgpack"),
+    }
+  }
+}
+
+impl FromStr for HandlerKind {
+  type Err = anyhow::Error;
+
+  fn from_str(s: &str) -> Result<Self, Self::Err> {
+    match s {
+      "console" => Ok(Self::Console),
+      "msgpack" => Ok(Self::Msgpack),
+      _ => Err(anyhow!("Unknown handler kind: {}", s)),
     }
   }
 }

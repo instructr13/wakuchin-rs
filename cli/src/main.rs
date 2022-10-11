@@ -91,12 +91,7 @@ async fn main() -> Result<()> {
 
   panic::set_hook(default_hook);
 
-  println!(
-    "{}",
-    result.out(app.args.out.ok_or_else(|| anyhow!(
-      "output format is required but was undefined"
-    ))?)?
-  );
+  println!("{}", result.out(app.args.out)?);
 
   execute!(stderr(), cursor::MoveLeft(u16::MAX), cursor::Show)?;
 

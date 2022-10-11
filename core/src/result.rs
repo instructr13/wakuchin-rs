@@ -1,5 +1,7 @@
 //! Functions to manipulate the result of a research
 
+use std::str::FromStr;
+
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use smooth::Smooth;
@@ -45,6 +47,24 @@ pub enum ResultOutputFormat {
   /// ```
   #[serde(rename = "json")]
   Json,
+}
+
+impl Default for ResultOutputFormat {
+  fn default() -> Self {
+    Self::Text
+  }
+}
+
+impl FromStr for ResultOutputFormat {
+  type Err = WakuchinError;
+
+  fn from_str(s: &str) -> Result<Self, Self::Err> {
+    match s {
+      "text" => Ok(Self::Text),
+      "json" => Ok(Self::Json),
+      _ => Err(WakuchinError::UnknownResultOutputFormat(s.into())),
+    }
+  }
 }
 
 /// Used when the researcher detects a hit

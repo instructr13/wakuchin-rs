@@ -5,7 +5,7 @@ use std::path::Path;
 use std::process;
 use std::time::Duration;
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use clap::Parser;
 use console::Term;
 use crossterm::{cursor, execute, style::Print};
@@ -18,22 +18,6 @@ use wakuchin::result::ResultOutputFormat;
 
 use crate::config::load_config;
 use crate::handlers::HandlerKind;
-
-fn value_parser_handler(s: &str) -> Result<HandlerKind> {
-  match s {
-    "console" => Ok(HandlerKind::Console),
-    "msgpack" => Ok(HandlerKind::Msgpack),
-    _ => Err(anyhow!("Invalid handler type")),
-  }
-}
-
-fn value_parser_format(s: &str) -> Result<ResultOutputFormat> {
-  match s {
-    "text" => Ok(ResultOutputFormat::Text),
-    "json" => Ok(ResultOutputFormat::Json),
-    _ => Err(anyhow!("Unknown format: {}", s)),
-  }
-}
 
 fn default_duration() -> Duration {
   Duration::from_millis(300)
@@ -60,9 +44,16 @@ pub(crate) struct Config {
   #[arg(short, long, help = "Regex to detect hits")]
   pub(crate) regex: Option<Regex>,
 
+  #[serde(default)]
   #[serde(rename(deserialize = "output"))]
-  #[arg(short = 'f', long = "format", value_parser = value_parser_format, value_name = "text|json", help = "Output format")]
-  pub(crate) out: Option<ResultOutputFormat>,
+  #[arg(
+    short = 'f',
+    long = "format",
+    value_name = "text|json",
+    help = "Output format",
+    default_value = "text"
+  )]
+  pub(crate) out: ResultOutputFormat,
 
   #[arg(
     value_name = "FILE",
@@ -98,7 +89,6 @@ pub(crate) struct Config {
     short = 'H',
     long,
     value_name = "console|msgpack",
-    value_parser = value_parser_handler,
     help = "Progress output handler to use",
     default_value_t = HandlerKind::Console
   )]
@@ -207,7 +197,6 @@ impl App {
       self.args.times = self.args.times.or(config.times);
       self.args.regex =
         self.args.regex.as_ref().or(config.regex.as_ref()).cloned();
-      self.args.out = self.args.out.as_ref().or(config.out.as_ref()).cloned();
     }
 
     let term = Term::buffered_stderr();
@@ -223,13 +212,6 @@ impl App {
     if self.args.regex.is_none() {
       self.args.regex = Some(self.prompt_regex(&term)?);
     }
-
-    self.args.out = self
-      .args
-      .out
-      .as_ref()
-      .or(Some(&ResultOutputFormat::Text))
-      .cloned();
 
     Ok(self.args.clone())
   }
