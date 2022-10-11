@@ -189,7 +189,8 @@ Tries: {}
 {}
 Total hits: {} ({}%)",
       result.tries,
-      (&result.hits)
+      result
+        .hits
         .iter()
         .map(|h| format!(
           "{} hits: {} ({}%)",
