@@ -73,8 +73,12 @@
 <span id="73">73</span>
 <span id="74">74</span>
 <span id="75">75</span>
-</pre><pre class="rust"><code><span class="doccomment">/// Kind of progress data.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
+<span id="76">76</span>
+<span id="77">77</span>
+</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
+
+<span class="doccomment">/// Kind of progress data.</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ProgressKind</span> {
   <span class="doccomment">/// Worker is idle, do nothing.</span>
   <span class="ident">Idle</span>(<span class="ident">IdleDetail</span>),
@@ -86,7 +90,7 @@
   <span class="ident">Done</span>(<span class="ident">DoneDetail</span>),
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">IdleDetail</span> {
   <span class="doccomment">/// Worker id. 1-indexed, 0 means single worker (sequential).</span>
   <span class="kw">pub</span> <span class="ident">id</span>: <span class="ident">usize</span>,
@@ -96,7 +100,7 @@
 }
 
 <span class="doccomment">/// Detail of processing progress.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ProcessingDetail</span> {
   <span class="doccomment">/// Worker id. 1-indexed, 0 means single worker (sequential).</span>
   <span class="kw">pub</span> <span class="ident">id</span>: <span class="ident">usize</span>,
@@ -133,7 +137,7 @@
 }
 
 <span class="doccomment">/// Detail of done progress.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DoneDetail</span> {
   <span class="doccomment">/// Worker id. 1-indexed, 0 means single worker (sequential).</span>
   <span class="kw">pub</span> <span class="ident">id</span>: <span class="ident">usize</span>,
@@ -146,7 +150,7 @@
 }
 
 <span class="doccomment">/// Progress data that you will use in progress_handler.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Progress</span>(<span class="kw">pub</span> <span class="ident">ProgressKind</span>);
 </code></pre></div>
 </section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="wakuchin" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>

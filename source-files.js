@@ -1,4 +1,4 @@
 var sourcesIndex = JSON.parse('{\
-"wakuchin":["",[],["builder.rs","convert.rs","error.rs","lib.rs","progress.rs","render.rs","result.rs","symbol.rs","utils.rs","worker.rs"]]\
+"wakuchin":["",[["handlers",[],["msgpack.rs"]]],["builder.rs","convert.rs","error.rs","handlers.rs","lib.rs","progress.rs","render.rs","result.rs","symbol.rs","utils.rs","worker.rs"]]\
 }');
 createSourceSidebar();
