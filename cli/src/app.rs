@@ -159,7 +159,14 @@ impl App {
         cursor::MoveLeft(u16::MAX),
         Print("wakuchin has panicked.\n"),
         Print("Please report this to the author.\n"),
-        Print(format!("{:?}", panic_info)),
+        Print(format!(
+          "{:?}",
+          panic_info
+            .payload()
+            .downcast_ref::<&str>()
+            .unwrap_or(&"no message")
+        )),
+        Print(format!("Location: {:?}", panic_info.location())),
         cursor::MoveLeft(u16::MAX),
       )
       .unwrap();
