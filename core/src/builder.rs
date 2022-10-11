@@ -1,13 +1,13 @@
-use std::error::Error;
 use std::time::Duration;
 
 use regex::Regex;
 
+use crate::error::WakuchinError;
 use crate::progress::Progress;
 use crate::result::{HitCounter, WakuchinResult};
 use crate::worker::{run_par, run_seq};
 
-type Result<T> = std::result::Result<T, Box<dyn Error>>;
+type Result<T> = std::result::Result<T, WakuchinError>;
 type ProgressHandler =
   Box<dyn Fn(&[Progress], &[HitCounter], Duration, usize, bool) + Sync + Send>;
 

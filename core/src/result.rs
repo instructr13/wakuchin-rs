@@ -1,10 +1,10 @@
 //! Functions to manipulate the result of a research
 
-use std::error::Error;
-
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use smooth::Smooth;
+
+use crate::error::WakuchinError;
 
 /// The output format of the result
 #[derive(Clone, Debug, Deserialize)]
@@ -116,7 +116,7 @@ impl WakuchinResult {
   pub fn out(
     &self,
     format: ResultOutputFormat,
-  ) -> Result<String, Box<dyn Error>> {
+  ) -> Result<String, WakuchinError> {
     out(format, self)
   }
 }
@@ -179,7 +179,7 @@ impl WakuchinResult {
 pub fn out(
   format: ResultOutputFormat,
   result: &WakuchinResult,
-) -> Result<String, Box<dyn Error>> {
+) -> Result<String, WakuchinError> {
   let mut itoa_buf = itoa::Buffer::new();
 
   match format {
@@ -205,7 +205,10 @@ Total hits: {} ({}%)",
     #[cfg(feature = "simd-accel")]
     ResultOutputFormat::Json => Ok(simd_json::to_string(result)?),
     #[cfg(not(feature = "simd-accel"))]
-    ResultOutputFormat::Json => Ok(serde_json::to_string(result)?),
+    ResultOutputFormat::Json => Ok(
+      serde_json::to_string(result)
+        .map_err(|e| WakuchinError::SerializeError(e.into()))?,
+    ),
   }
 }
 

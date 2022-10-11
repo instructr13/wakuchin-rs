@@ -1,11 +1,11 @@
-use std::error::Error;
-use std::io::{stderr, Error as IoError};
+use std::io::stderr;
 use std::num::ParseIntError;
 use std::panic::{self, PanicInfo};
 use std::path::Path;
 use std::process;
 use std::time::Duration;
 
+use anyhow::{anyhow, Result};
 use clap::Parser;
 use console::Term;
 use crossterm::{cursor, execute, style::Print};
@@ -18,13 +18,11 @@ use wakuchin::result::ResultOutputFormat;
 
 use crate::config::load_config;
 
-type AnyhowResult<T> = anyhow::Result<T, Box<dyn Error>>;
-
-fn value_parser_format(s: &str) -> Result<ResultOutputFormat, String> {
+fn value_parser_format(s: &str) -> Result<ResultOutputFormat> {
   match s {
     "text" => Ok(ResultOutputFormat::Text),
     "json" => Ok(ResultOutputFormat::Json),
-    _ => Err(format!("Unknown format: {}", s)),
+    _ => Err(anyhow!("Unknown format: {}", s)),
   }
 }
 
@@ -93,14 +91,14 @@ pub(crate) struct App {
 }
 
 impl App {
-  pub(crate) fn new() -> AnyhowResult<Self> {
+  pub(crate) fn new() -> Self {
     let interactive =
       atty::is(atty::Stream::Stdin) && atty::is(atty::Stream::Stderr);
 
-    Ok(App {
+    App {
       args: Config::parse(),
       interactive,
-    })
+    }
   }
 
   fn check_interactive(&self) {
@@ -111,23 +109,25 @@ impl App {
     }
   }
 
-  fn prompt_tries(&self, term: &Term) -> Result<usize, IoError> {
+  fn prompt_tries(&self, term: &Term) -> Result<usize> {
     self.check_interactive();
 
     Input::<usize>::with_theme(&ColorfulTheme::default())
       .with_prompt("How many tries:")
       .interact_on(term)
+      .map_err(|e| e.into())
   }
 
-  fn prompt_times(&self, term: &Term) -> Result<usize, IoError> {
+  fn prompt_times(&self, term: &Term) -> Result<usize> {
     self.check_interactive();
 
     Input::<usize>::with_theme(&ColorfulTheme::default())
       .with_prompt("Wakuchins times:")
       .interact_on(term)
+      .map_err(|e| e.into())
   }
 
-  fn prompt_regex(&self, term: &Term) -> Result<Regex, Box<dyn Error>> {
+  fn prompt_regex(&self, term: &Term) -> Result<Regex> {
     self.check_interactive();
 
     let regex = Input::<String>::with_theme(&ColorfulTheme::default())
@@ -177,7 +177,7 @@ impl App {
     default_hook
   }
 
-  pub(crate) async fn prompt(&mut self) -> AnyhowResult<Config> {
+  pub(crate) async fn prompt(&mut self) -> Result<Config> {
     let args_config_ref = self.args.config.as_ref();
 
     if let Some(config_path) = args_config_ref {

@@ -1,6 +1,5 @@
 //! Wakuchin researcher main functions
 
-use std::error::Error;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
@@ -13,7 +12,7 @@ use tokio::runtime::Builder;
 use tokio::sync::{watch::channel as progress_channel, RwLock};
 use tokio::task::JoinSet;
 
-use crate::error::Error as NormalError;
+use crate::error::WakuchinError;
 use crate::progress::{
   DoneDetail, IdleDetail, ProcessingDetail, Progress, ProgressKind,
 };
@@ -21,7 +20,7 @@ use crate::render::{Render, ThreadRender};
 use crate::result::{Hit, HitCounter, WakuchinResult};
 use crate::{check, gen};
 
-type Result<T> = std::result::Result<T, Box<dyn Error>>;
+type Result<T> = std::result::Result<T, WakuchinError>;
 
 /// Research wakuchin with parallelism.
 ///
@@ -117,7 +116,7 @@ where
   }
 
   if times == 0 {
-    return Err(Box::new(NormalError::TimesIsZero));
+    return Err(WakuchinError::TimesIsZero);
   }
 
   let total_workers = {
@@ -362,7 +361,7 @@ where
   }
 
   if times == 0 {
-    return Err(Box::new(NormalError::TimesIsZero));
+    return Err(WakuchinError::TimesIsZero);
   }
 
   let mut render = Render::new(progress_handler);
