@@ -9,7 +9,7 @@ use smooth::Smooth;
 use crate::error::WakuchinError;
 
 /// The output format of the result
-#[derive(Clone, Debug, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Deserialize)]
 pub enum ResultOutputFormat {
   /// Text output
   ///

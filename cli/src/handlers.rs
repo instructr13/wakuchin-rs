@@ -18,7 +18,9 @@ use wakuchin::result::HitCounter;
 
 const PROGRESS_BAR_WIDTH: u16 = 33;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(
+  Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
+)]
 #[serde(rename_all = "snake_case")]
 pub(crate) enum HandlerKind {
   Console,
