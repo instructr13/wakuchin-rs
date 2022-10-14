@@ -1,10 +1,10 @@
 use std::io::stderr;
 use std::panic::{self, PanicInfo};
-use std::path::Path;
+use std::path::PathBuf;
 use std::process;
 use std::time::Duration;
 
-use anyhow::Result;
+use anyhow::anyhow;
 use clap::Parser;
 use console::Term;
 use crossterm::{cursor, execute, style::Print};
@@ -16,13 +16,16 @@ use serde::Deserialize;
 use wakuchin::result::ResultOutputFormat;
 
 use crate::config::load_config;
+use crate::error::Result;
 use crate::handlers::HandlerKind;
 
 fn default_duration() -> Duration {
   Duration::from_millis(300)
 }
 
-fn parse_duration(duration: &str) -> Result<Duration, DurationError> {
+fn parse_duration(
+  duration: &str,
+) -> std::result::Result<Duration, DurationError> {
   Ok(duration.parse::<humantime::Duration>()?.into())
 }
 
@@ -55,7 +58,7 @@ pub(crate) struct Config {
     value_name = "FILE",
     help = "Config file path, can be json, yaml, and toml, detected by extension"
   )]
-  pub(crate) config: Option<String>,
+  pub(crate) config: Option<PathBuf>,
 
   #[serde(default = "default_duration")]
   #[serde(with = "humantime_serde")]
@@ -149,7 +152,7 @@ impl App {
       })
       .interact_text_on(term)?;
 
-    Regex::new(&regex).map_err(|e| e.into())
+    Regex::new(&regex).map_err(|e| anyhow!(e).into())
   }
 
   pub(crate) fn set_panic_hook(
@@ -184,15 +187,17 @@ impl App {
   }
 
   pub(crate) async fn prompt(&mut self) -> Result<Config> {
-    let args_config_ref = self.args.config.as_ref();
-
-    if let Some(config_path) = args_config_ref {
-      let config = load_config(Path::new(config_path)).await?;
+    if let Some(config_path) = &self.args.config {
+      let config = load_config(config_path.as_path()).await?;
 
       self.args.tries = self.args.tries.or(config.tries);
       self.args.times = self.args.times.or(config.times);
       self.args.regex =
         self.args.regex.as_ref().or(config.regex.as_ref()).cloned();
+      self.args.out = config.out;
+      self.args.interval = config.interval;
+      self.args.handler = config.handler;
+      self.args.workers = config.workers;
     }
 
     let term = Term::buffered_stderr();

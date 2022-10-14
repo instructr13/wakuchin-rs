@@ -1,33 +1,62 @@
 use std::borrow::Borrow;
 use std::path::Path;
 
-use anyhow::{anyhow, Result};
 use format_serde_error::SerdeError;
 use tokio::fs::read_to_string;
 
 use crate::app::Config;
+use crate::error::{AppError, Result};
 
 pub(crate) async fn load_config(path: &Path) -> Result<Config> {
-  let contents = read_to_string(path)
-    .await
-    .map_err(|e| anyhow!("'{}': {}", path.to_string_lossy(), e))?;
+  let contents =
+    read_to_string(path)
+      .await
+      .map_err(|e| AppError::ConfigIoError {
+        path: path.into(),
+        source: e,
+      })?;
 
   let config: Config = match path
     .extension()
-    .ok_or_else(|| {
-      anyhow!("'{}': Invalid config type", path.to_string_lossy())
-    })?
+    .ok_or_else(|| AppError::ConfigTypeNotSupported { path: path.into() })?
     .to_string_lossy()
     .borrow()
   {
-    "json" => serde_json::from_str(&contents)
-      .map_err(|e| SerdeError::new(contents, e))?,
-    "yaml" | "yml" => serde_yaml::from_str(&contents)
-      .map_err(|e| SerdeError::new(contents, e))?,
-    "toml" => {
-      toml::from_str(&contents).map_err(|e| SerdeError::new(contents, e))?
-    }
-    _ => Err(anyhow!("'{}': Invalid config type", path.to_string_lossy()))?,
+    "json" => serde_json::from_str(&contents).map_err(|e| {
+      AppError::ConfigDeserializeError {
+        path: path.into(),
+        line: Some(e.line()),
+        column: Some(e.column()),
+        source: SerdeError::new(contents, e),
+      }
+    })?,
+    "yaml" | "yml" => serde_yaml::from_str(&contents).map_err(|e| {
+      let location = e.location();
+
+      let line = location.as_ref().map(|l| l.line()).as_ref().copied();
+      let column = location.as_ref().map(|l| l.column()).as_ref().copied();
+
+      AppError::ConfigDeserializeError {
+        path: path.into(),
+        line,
+        column,
+        source: SerdeError::new(contents, e),
+      }
+    })?,
+    "toml" => toml::from_str(&contents).map_err(|e| {
+      let (line, column) = e
+        .line_col()
+        .map(|(l, c)| (Some(l), Some(c)))
+        .unwrap_or((None, None));
+
+      AppError::ConfigDeserializeError {
+        path: path.into(),
+        line,
+        column,
+        source: SerdeError::new(contents, e),
+      }
+    })?,
+    _ => Err(AppError::ConfigTypeNotSupported { path: path.into() })?,
   };
 
   Ok(config)
@@ -39,9 +68,9 @@ mod test {
   use std::time::Duration;
 
   use anyhow::Result;
-  use format_serde_error::SerdeError;
   use wakuchin::result::ResultOutputFormat;
 
+  use crate::error::AppError;
   use crate::handlers::HandlerKind;
 
   fn init() {
@@ -76,11 +105,13 @@ mod test {
     let invalid_regex_yaml_err =
       super::load_config(&invalid_regex_yaml).await.unwrap_err();
 
-    assert!(format!(
-      "{}",
-      invalid_regex_yaml_err.downcast_ref::<SerdeError>().unwrap()
-    )
-    .contains("regex parse error"));
+    if let AppError::ConfigDeserializeError { source, .. } =
+      invalid_regex_yaml_err
+    {
+      assert!(source.to_string().contains("invalid regex"));
+    } else {
+      panic!("Unexpected error: {:?}", invalid_regex_yaml_err);
+    }
 
     let mut correct_toml = PathBuf::from(base_path);
 

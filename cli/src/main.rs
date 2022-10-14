@@ -1,12 +1,13 @@
 mod app;
 mod config;
+mod error;
 mod handlers;
 
 use std::io::stderr;
 use std::panic;
 
 use anyhow::{anyhow, Result};
-use crossterm::style::Print;
+use crossterm::style::{Print, Stylize};
 use crossterm::{cursor, execute};
 
 use wakuchin::builder::ResearchBuilder;
@@ -24,7 +25,15 @@ use tikv_jemallocator::Jemalloc;
 static GLOBAL: Jemalloc = Jemalloc;
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() {
+  if let Err(err) = try_main().await {
+    eprintln!("{} {}", "error:".red().bold(), err);
+
+    std::process::exit(1);
+  }
+}
+
+async fn try_main() -> Result<()> {
   let mut app = App::new();
   let args = app.prompt().await?;
 
@@ -91,7 +100,7 @@ async fn main() -> Result<()> {
 
   panic::set_hook(default_hook);
 
-  println!("{}", result.out(app.args.out)?);
+  println!("{}", result.out(args.out.clone())?);
 
   execute!(stderr(), cursor::MoveLeft(u16::MAX), cursor::Show)?;
 
