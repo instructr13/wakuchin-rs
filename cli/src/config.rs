@@ -68,8 +68,8 @@ mod test {
   use std::time::Duration;
 
   use anyhow::Result;
-  use wakuchin::result::ResultOutputFormat;
 
+  use crate::app::InternalResultOutputFormat;
   use crate::error::AppError;
   use crate::handlers::HandlerKind;
 
@@ -127,7 +127,7 @@ mod test {
       assert_eq!(regex.as_str(), "(WKNCWKNC|WCKNWCKN)");
     }
 
-    assert_eq!(config.out, ResultOutputFormat::Text);
+    assert_eq!(config.out, InternalResultOutputFormat::Text);
     assert_eq!(config.config, None);
     assert_eq!(config.interval, Duration::from_millis(300));
     assert_eq!(config.workers, 0);

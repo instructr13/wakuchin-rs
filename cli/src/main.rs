@@ -100,7 +100,7 @@ async fn try_main() -> Result<()> {
 
   panic::set_hook(default_hook);
 
-  println!("{}", result.out(args.out.clone())?);
+  println!("{}", result.out(args.out.clone().into())?);
 
   execute!(stderr(), cursor::MoveLeft(u16::MAX), cursor::Show)?;
 

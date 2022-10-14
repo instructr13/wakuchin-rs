@@ -5,7 +5,7 @@ use std::process;
 use std::time::Duration;
 
 use anyhow::anyhow;
-use clap::Parser;
+use clap::{Parser, ValueEnum};
 use console::Term;
 use crossterm::{cursor, execute, style::Print};
 use dialoguer::{theme::ColorfulTheme, Input};
@@ -29,6 +29,31 @@ fn parse_duration(
   Ok(duration.parse::<humantime::Duration>()?.into())
 }
 
+#[derive(
+  Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Deserialize,
+)]
+pub(crate) enum InternalResultOutputFormat {
+  #[serde(rename = "text")]
+  Text,
+  #[serde(rename = "json")]
+  Json,
+}
+
+impl Default for InternalResultOutputFormat {
+  fn default() -> Self {
+    Self::Text
+  }
+}
+
+impl From<InternalResultOutputFormat> for ResultOutputFormat {
+  fn from(format: InternalResultOutputFormat) -> Self {
+    match format {
+      InternalResultOutputFormat::Text => Self::Text,
+      InternalResultOutputFormat::Json => Self::Json,
+    }
+  }
+}
+
 #[derive(Clone, Debug, Parser, Deserialize)]
 #[command(author, version, about, long_about = None)]
 pub(crate) struct Config {
@@ -48,11 +73,12 @@ pub(crate) struct Config {
   #[arg(
     short = 'f',
     long = "format",
-    value_name = "text|json",
-    help = "Output format",
-    default_value = "text"
+    value_name = "FORMAT",
+    value_enum,
+    help = "Result output format",
+    default_value_t = InternalResultOutputFormat::Text
   )]
-  pub(crate) out: ResultOutputFormat,
+  pub(crate) out: InternalResultOutputFormat,
 
   #[arg(
     value_name = "FILE",
@@ -87,7 +113,7 @@ pub(crate) struct Config {
   #[arg(
     short = 'H',
     long,
-    value_name = "console|msgpack",
+    value_enum,
     help = "Progress output handler to use",
     default_value_t = HandlerKind::Console
   )]

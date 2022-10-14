@@ -1,9 +1,7 @@
-use std::fmt::Display;
 use std::io::stderr;
-use std::str::FromStr;
 use std::time::Duration;
 
-use anyhow::anyhow;
+use clap::ValueEnum;
 use crossterm::cursor::{MoveLeft, MoveUp};
 use crossterm::style::{Attribute, Print, Stylize};
 use crossterm::terminal::ClearType;
@@ -19,7 +17,15 @@ use wakuchin::result::HitCounter;
 const PROGRESS_BAR_WIDTH: u16 = 33;
 
 #[derive(
-  Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize,
+  Clone,
+  Debug,
+  PartialEq,
+  Eq,
+  PartialOrd,
+  Ord,
+  Serialize,
+  Deserialize,
+  ValueEnum,
 )]
 #[serde(rename_all = "snake_case")]
 pub(crate) enum HandlerKind {
@@ -30,27 +36,6 @@ pub(crate) enum HandlerKind {
 impl Default for HandlerKind {
   fn default() -> Self {
     Self::Console
-  }
-}
-
-impl Display for HandlerKind {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    match self {
-      HandlerKind::Console => write!(f, "console"),
-      HandlerKind::Msgpack => write!(f, "msgpack"),
-    }
-  }
-}
-
-impl FromStr for HandlerKind {
-  type Err = anyhow::Error;
-
-  fn from_str(s: &str) -> Result<Self, Self::Err> {
-    match s {
-      "console" => Ok(Self::Console),
-      "msgpack" => Ok(Self::Msgpack),
-      _ => Err(anyhow!("Unknown handler kind: {}", s)),
-    }
   }
 }
 
