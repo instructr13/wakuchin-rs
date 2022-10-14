@@ -19,6 +19,10 @@ use crate::config::load_config;
 use crate::error::Result;
 use crate::handlers::HandlerKind;
 
+use shadow_rs::shadow;
+
+shadow!(build);
+
 fn default_duration() -> Duration {
   Duration::from_millis(300)
 }
@@ -55,7 +59,7 @@ impl From<InternalResultOutputFormat> for ResultOutputFormat {
 }
 
 #[derive(Clone, Debug, Parser, Deserialize)]
-#[command(author, version, about, long_about = None)]
+#[command(author, version, about, long_about = None, long_version = build::CLAP_LONG_VERSION)]
 pub(crate) struct Config {
   #[arg(short = 'i', long, value_name = "N", help = "Number of tries")]
   pub(crate) tries: Option<usize>,

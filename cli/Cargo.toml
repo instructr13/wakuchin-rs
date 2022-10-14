@@ -10,6 +10,7 @@ license-file = "../LICENSE"
 repository = "https://github.com/P2P-Develop/wakuchin-rs"
 description = "A next generation wakuchin researcher software written in Rust"
 readme = "README.md"
+build = "build.rs"
 
 [[bin]]
 name = "wakuchin"
@@ -20,7 +21,7 @@ sequential = []
 simd-accel = ["wakuchin/simd-accel"]
 
 [build-dependencies]
-wakuchin = { version = "0.3.0", path = "../core" }
+shadow-rs = "0.16"
 
 [dependencies]
 wakuchin = { version = "0.3.0", path = "../core" }
@@ -42,6 +43,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_regex = "1.1"
 serde_yaml = "=0.8"
+shadow-rs = "0.16"
 thiserror = "1.0"
 tokio = { version = "=1.21", features = [
   "fs",
