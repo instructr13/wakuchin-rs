@@ -122,6 +122,13 @@ pub(crate) struct Config {
     default_value_t = HandlerKind::Console
   )]
   pub(crate) handler: HandlerKind,
+
+  #[serde(default)]
+  #[arg(
+    long,
+    help = "Do not show progress, able to use with --handler=console"
+  )]
+  pub(crate) no_progress: bool,
 }
 
 pub(crate) struct App {

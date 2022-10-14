@@ -58,19 +58,27 @@ async fn try_main() -> Result<()> {
 
   let builder = {
     match args.handler {
-      HandlerKind::Console => builder.progress_handler(progress(tries, times)),
+      HandlerKind::Console => {
+        if args.no_progress {
+          builder
+        } else {
+          builder.progress_handler(progress(tries, times))
+        }
+      }
       HandlerKind::Msgpack => {
         builder.progress_handler(msgpack::progress(tries))
       }
     }
   };
 
-  execute!(
-    stderr(),
-    cursor::Hide,
-    Print("Spawning workers..."),
-    cursor::MoveLeft(u16::MAX)
-  )?;
+  if !args.no_progress {
+    execute!(
+      stderr(),
+      cursor::Hide,
+      Print("Spawning workers..."),
+      cursor::MoveLeft(u16::MAX)
+    )?;
+  }
 
   #[cfg(not(feature = "sequential"))]
   let result = builder.workers(args.workers).run_par().await;
@@ -100,7 +108,7 @@ async fn try_main() -> Result<()> {
 
   panic::set_hook(default_hook);
 
-  println!("{}", result.out(args.out.clone().into())?);
+  println!("{}", result.out(args.out.into())?);
 
   execute!(stderr(), cursor::MoveLeft(u16::MAX), cursor::Show)?;
 
