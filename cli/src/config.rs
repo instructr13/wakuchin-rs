@@ -108,7 +108,7 @@ mod test {
     if let AppError::ConfigDeserializeError { source, .. } =
       invalid_regex_yaml_err
     {
-      assert!(source.to_string().contains("invalid regex"));
+      assert!(source.to_string().contains("regex parse error"));
     } else {
       panic!("Unexpected error: {:?}", invalid_regex_yaml_err);
     }
