@@ -20,7 +20,7 @@ pub(crate) async fn load_config(path: &Path) -> Result<Config> {
     .borrow()
   {
     "json" => serde_json::from_str(&contents)?,
-    "yaml" => serde_yaml::from_str(&contents)?,
+    "yaml" | "yml" => serde_yaml::from_str(&contents)?,
     "toml" => toml::from_str(&contents)?,
     _ => Err(anyhow!("'{}': Invalid config type", path.to_string_lossy()))?,
   };
