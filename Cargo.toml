@@ -1,13 +1,9 @@
 [workspace]
 resolver = "2"
-members = [
-  "core",
-  "cli"
-]
+members = ["core", "cli"]
 
 [profile.release]
 lto = true
 incremental = true
 panic = "abort"
 strip = true
-
