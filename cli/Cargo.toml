@@ -31,16 +31,23 @@ clap = { version = "4.0", features = ["cargo", "derive"] }
 console = "0.15"
 crossterm = "0.25"
 dialoguer = { version = "0.10", default-features = false }
+format_serde_error = { git = "https://github.com/AlexanderThaller/format_serde_error", rev = "b114501c468bfe4f0a8c3f48f84530414bdeeaa1" }
 human_format = "1.0"
+humantime = "2.1"
+humantime-serde = "1.1"
 itoa = "1.0"
 once_cell = "1.13"
 regex = "1.6"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_regex = "1.1"
-serde_with = "2.0"
-serde_yaml = "0.9"
-tokio = { version = "=1.21", features = ["fs", "io-util", "macros", "rt-multi-thread"] }
+serde_yaml = "=0.8"
+tokio = { version = "=1.21", features = [
+  "fs",
+  "io-util",
+  "macros",
+  "rt-multi-thread",
+] }
 toml = "0.5"
 
 [target.'cfg(all(not(target_os = "android"), not(target_env = "msvc")))'.dependencies]
