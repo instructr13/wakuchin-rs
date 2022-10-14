@@ -1,5 +1,4 @@
 use std::io::stderr;
-use std::num::ParseIntError;
 use std::panic::{self, PanicInfo};
 use std::path::Path;
 use std::process;
@@ -10,9 +9,9 @@ use clap::Parser;
 use console::Term;
 use crossterm::{cursor, execute, style::Print};
 use dialoguer::{theme::ColorfulTheme, Input};
+use humantime::DurationError;
 use regex::Regex;
 use serde::Deserialize;
-use serde_with::{serde_as, DurationMilliSeconds};
 
 use wakuchin::result::ResultOutputFormat;
 
@@ -23,13 +22,10 @@ fn default_duration() -> Duration {
   Duration::from_millis(300)
 }
 
-fn parse_duration(arg: &str) -> Result<Duration, ParseIntError> {
-  let seconds = arg.parse()?;
-
-  Ok(Duration::from_millis(seconds))
+fn parse_duration(duration: &str) -> Result<Duration, DurationError> {
+  Ok(duration.parse::<humantime::Duration>()?.into())
 }
 
-#[serde_as]
 #[derive(Clone, Debug, Parser, Deserialize)]
 #[command(author, version, about, long_about = None)]
 pub(crate) struct Config {
@@ -62,13 +58,13 @@ pub(crate) struct Config {
   pub(crate) config: Option<String>,
 
   #[serde(default = "default_duration")]
-  #[serde_as(as = "DurationMilliSeconds<u64>")]
+  #[serde(with = "humantime_serde")]
   #[arg(
     short = 'd',
     long,
     value_name = "DURATION",
-    help = "Progress refresh interval, in milliseconds",
-    default_value = "300",
+    help = "Progress refresh interval",
+    default_value = "300ms",
     value_parser = parse_duration
   )]
   pub(crate) interval: Duration,
@@ -214,5 +210,27 @@ impl App {
     }
 
     Ok(self.args.clone())
+  }
+}
+
+#[cfg(test)]
+mod test {
+  use std::time::Duration;
+
+  use humantime::DurationError;
+
+  #[test]
+  fn test_parse_duration() -> Result<(), DurationError> {
+    use super::parse_duration;
+
+    assert_eq!(parse_duration("1s")?, Duration::from_secs(1));
+    assert_eq!(parse_duration("1ms")?, Duration::from_millis(1));
+    assert_eq!(parse_duration("1us")?, Duration::from_micros(1));
+    assert_eq!(parse_duration("1ns")?, Duration::from_nanos(1));
+    assert_eq!(parse_duration("1m")?, Duration::from_secs(60));
+    assert_eq!(parse_duration("1h")?, Duration::from_secs(60 * 60));
+    assert_eq!(parse_duration("1d")?, Duration::from_secs(60 * 60 * 24));
+
+    Ok(())
   }
 }
