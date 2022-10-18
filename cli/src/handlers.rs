@@ -2,13 +2,14 @@ use std::io::stderr;
 use std::time::Duration;
 
 use clap::ValueEnum;
-use crossterm::cursor::{MoveLeft, MoveUp};
+use crossterm::cursor::{self, MoveLeft, MoveUp};
 use crossterm::style::{Attribute, Print, Stylize};
 use crossterm::terminal::ClearType;
 use crossterm::{execute, terminal};
 
 use serde::{Deserialize, Serialize};
 use wakuchin::convert::chars_to_wakuchin;
+use wakuchin::handlers::ProgressHandler;
 use wakuchin::progress::{
   DoneDetail, IdleDetail, ProcessingDetail, Progress, ProgressKind,
 };
@@ -39,14 +40,47 @@ impl Default for HandlerKind {
   }
 }
 
-pub(crate) fn progress(
+pub(crate) struct ConsoleProgressHandler {
+  no_progress: bool,
   tries: usize,
   times: usize,
-) -> impl Fn(&[Progress], &[HitCounter], Duration, usize, bool) {
-  move |progresses, counters, elapsed_time, current_diff, all_done| {
+}
+
+impl ConsoleProgressHandler {
+  pub(crate) fn new(no_progress: bool, tries: usize, times: usize) -> Self {
+    Self {
+      no_progress,
+      tries,
+      times,
+    }
+  }
+}
+
+impl ProgressHandler for ConsoleProgressHandler {
+  fn before_start(&self) -> anyhow::Result<()> {
+    if !self.no_progress {
+      execute!(
+        stderr(),
+        cursor::Hide,
+        Print("Spawning workers..."),
+        cursor::MoveLeft(u16::MAX)
+      )?;
+    }
+
+    Ok(())
+  }
+
+  fn handle(
+    &mut self,
+    progresses: &[Progress],
+    counters: &[HitCounter],
+    elapsed_time: Duration,
+    current_diff: usize,
+    all_done: bool,
+  ) -> anyhow::Result<()> {
     let progress_len = progresses.len() + counters.len() + 1;
     let elapsed_time = elapsed_time.as_secs_f32();
-    let tries_width = tries.to_string().len();
+    let tries_width = self.tries.to_string().len();
     let bold_start = Attribute::Bold;
     let bold_end = Attribute::Reset;
 
@@ -65,7 +99,7 @@ pub(crate) fn progress(
         "        {} {chars}: {bold_start}{:<tries_width$}{bold_end} ({:.3}%)",
         "hits".blue().underlined(),
         itoa_buf.format(count),
-        count as f64 / tries as f64 * 100.0,
+        count as f64 / self.tries as f64 * 100.0,
       );
     }
 
@@ -73,7 +107,8 @@ pub(crate) fn progress(
       "  {} {bold_start}{:<tries_width$}{bold_end} / {tries} ({:.3}%)",
       "total hits".blue().underlined(),
       itoa_buf.format(current_hit_total),
-      current_hit_total as f64 / tries as f64 * 100.0,
+      current_hit_total as f64 / self.tries as f64 * 100.0,
+      tries = self.tries
     );
 
     for progress in progresses {
@@ -141,7 +176,7 @@ pub(crate) fn progress(
           eprintln!(
             "{} {}",
             "Done      ".green(),
-            " ".repeat(times * 8 + tries.to_string().len() * 2 + 5),
+            " ".repeat(self.times * 8 + self.tries.to_string().len() * 2 + 5),
           );
         }
         Progress(ProgressKind::Done(DoneDetail {
@@ -156,7 +191,7 @@ pub(crate) fn progress(
           eprintln!(
             "{bold_start}#{id:<id_width$}{bold_end} {} {}",
             "Done      ".green(),
-            " ".repeat(times * 8 + tries.to_string().len() * 2 + 5),
+            " ".repeat(self.times * 8 + self.tries.to_string().len() * 2 + 5),
           );
         }
       }
@@ -168,8 +203,7 @@ pub(crate) fn progress(
         terminal::Clear(ClearType::CurrentLine),
         Print("Status ".bold()),
         Print("All Done".bold().green())
-      )
-      .unwrap();
+      )?;
 
       for _ in 0..progress_len {
         execute!(
@@ -177,11 +211,10 @@ pub(crate) fn progress(
           terminal::Clear(ClearType::CurrentLine),
           MoveUp(1),
           terminal::Clear(ClearType::CurrentLine)
-        )
-        .unwrap();
+        )?;
       }
     } else {
-      let width = terminal::size().unwrap().0 - tries_width as u16 * 2 - 55;
+      let width = terminal::size()?.0 - tries_width as u16 * 2 - 55;
 
       let mut progress = String::new();
 
@@ -191,10 +224,11 @@ pub(crate) fn progress(
         PROGRESS_BAR_WIDTH
       };
 
-      let progress_percentage = current_total as f64 / tries as f64 * 100.0;
+      let progress_percentage =
+        current_total as f64 / self.tries as f64 * 100.0;
       let progress_rate = current_diff as f32 / elapsed_time;
       let progress_remaining_time =
-        (tries - current_total) as f32 / progress_rate;
+        (self.tries - current_total) as f32 / progress_rate;
 
       if progress_percentage >= 100.0 {
         progress.push_str(&"━".repeat(progress_size.into()).blue().to_string());
@@ -218,12 +252,14 @@ pub(crate) fn progress(
           "{progress} • {}: {bold_start}{:<tries_width$}{bold_end} / {tries} ({progress_percentage:.0}%, {progress_rate}/sec, eta: {progress_remaining_time:>3.0}sec)   ",
           "total".green().underlined(),
           itoa_buf.format(current_total),
+          tries = self.tries,
           progress_rate = human_format::Formatter::new().format(progress_rate.into()),
         )),
         MoveLeft(u16::MAX),
         MoveUp(progress_len as u16)
-      )
-      .unwrap();
+      )?;
     }
+
+    Ok(())
   }
 }

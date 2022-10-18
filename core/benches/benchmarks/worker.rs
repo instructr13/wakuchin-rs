@@ -1,9 +1,14 @@
+use std::cell::RefCell;
+use std::rc::Rc;
+use std::sync::Arc;
+use std::sync::Mutex;
 use std::time::Duration;
 
 use criterion::{criterion_group, Criterion};
 
 use regex::Regex;
 
+use wakuchin::handlers::empty::EmptyProgressHandler;
 use wakuchin::worker::run_par;
 use wakuchin::worker::run_seq;
 
@@ -16,7 +21,7 @@ fn speed_par(c: &mut Criterion) {
         30000,
         2,
         Regex::new(r"^WKNCWKNC$").unwrap(),
-        |_, _, _, _, _| {},
+        Arc::new(Mutex::new(Box::new(EmptyProgressHandler::new()))),
         Duration::from_millis(20),
         0,
       )
@@ -32,7 +37,7 @@ fn speed_seq(c: &mut Criterion) {
         30000,
         2,
         Regex::new(r"^WKNCWKNC$").unwrap(),
-        |_, _, _, _, _| {},
+        Rc::new(RefCell::new(EmptyProgressHandler::new())),
         Duration::from_millis(20),
       )
     });

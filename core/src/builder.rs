@@ -1,26 +1,21 @@
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use regex::Regex;
 
 use crate::error::WakuchinError;
-use crate::progress::Progress;
-use crate::result::{HitCounter, WakuchinResult};
+use crate::handlers::empty::EmptyProgressHandler;
+use crate::handlers::ProgressHandler;
+use crate::result::WakuchinResult;
 use crate::worker::{run_par, run_seq};
 
 type Result<T> = std::result::Result<T, WakuchinError>;
-type ProgressHandler =
-  Box<dyn Fn(&[Progress], &[HitCounter], Duration, usize, bool) + Sync + Send>;
-
-fn empty_progress_handler(
-) -> fn(&[Progress], &[HitCounter], Duration, usize, bool) {
-  |_, _, _, _, _| {}
-}
 
 pub struct ResearchBuilder<Tries, Times, TRegex> {
   tries: Tries,
   times: Times,
   regex: TRegex,
-  progress_handler: ProgressHandler,
+  progress_handler: Box<dyn ProgressHandler>,
   progress_interval: Duration,
   workers: usize,
 }
@@ -31,7 +26,7 @@ impl ResearchBuilder<(), (), ()> {
       tries: (),
       times: (),
       regex: (),
-      progress_handler: Box::new(empty_progress_handler()),
+      progress_handler: Box::new(EmptyProgressHandler::new()),
       progress_interval: Duration::from_millis(500),
       workers: 0,
     }
@@ -78,11 +73,10 @@ impl<Tries, Times, TRegex> ResearchBuilder<Tries, Times, TRegex> {
     }
   }
 
-  pub fn progress_handler<F>(mut self, progress_handler: F) -> Self
-  where
-    F: Fn(&[Progress], &[HitCounter], Duration, usize, bool),
-    F: Sync + Send + 'static,
-  {
+  pub fn progress_handler(
+    mut self,
+    progress_handler: impl ProgressHandler,
+  ) -> Self {
     self.progress_handler = Box::new(progress_handler);
 
     self
@@ -107,7 +101,7 @@ impl ResearchBuilder<usize, usize, Regex> {
       self.tries,
       self.times,
       self.regex,
-      self.progress_handler,
+      Arc::new(Mutex::new(self.progress_handler)),
       self.progress_interval,
       self.workers,
     )
@@ -119,7 +113,7 @@ impl ResearchBuilder<usize, usize, Regex> {
       self.tries,
       self.times,
       self.regex,
-      self.progress_handler,
+      self.progress_handler.wrap_in_refcell(),
       self.progress_interval,
     )
   }

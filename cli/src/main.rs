@@ -3,8 +3,9 @@ mod config;
 mod error;
 mod handlers;
 
-use std::io::stderr;
+use std::io::{stderr, stdout};
 use std::panic;
+use std::sync::{Arc, Mutex};
 
 use anyhow::{anyhow, Result};
 use crossterm::style::{Print, Stylize};
@@ -12,10 +13,10 @@ use crossterm::{cursor, execute};
 
 use wakuchin::builder::ResearchBuilder;
 use wakuchin::error::WakuchinError;
-use wakuchin::handlers::msgpack;
+use wakuchin::handlers::msgpack::MsgpackProgressHandler;
 
 use crate::app::App;
-use crate::handlers::{progress, HandlerKind};
+use crate::handlers::{ConsoleProgressHandler, HandlerKind};
 
 #[cfg(all(not(target_os = "android"), not(target_env = "msvc")))]
 use tikv_jemallocator::Jemalloc;
@@ -58,27 +59,14 @@ async fn try_main() -> Result<()> {
 
   let builder = {
     match args.handler {
-      HandlerKind::Console => {
-        if args.no_progress {
-          builder
-        } else {
-          builder.progress_handler(progress(tries, times))
-        }
-      }
-      HandlerKind::Msgpack => {
-        builder.progress_handler(msgpack::progress(tries))
-      }
+      HandlerKind::Console => builder.progress_handler(
+        ConsoleProgressHandler::new(args.no_progress, tries, times),
+      ),
+      HandlerKind::Msgpack => builder.progress_handler(
+        MsgpackProgressHandler::new(tries, Arc::new(Mutex::new(stdout()))),
+      ),
     }
   };
-
-  if !args.no_progress {
-    execute!(
-      stderr(),
-      cursor::Hide,
-      Print("Spawning workers..."),
-      cursor::MoveLeft(u16::MAX)
-    )?;
-  }
 
   #[cfg(not(feature = "sequential"))]
   let result = builder.workers(args.workers).run_par().await;

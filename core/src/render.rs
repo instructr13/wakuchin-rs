@@ -1,6 +1,9 @@
-use std::sync::Arc;
+use std::cell::RefCell;
+use std::rc::Rc;
+use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
+use anyhow::Result;
 use dashmap::DashMap;
 use flume::{
   bounded as channel, unbounded as channel_unbounded, Receiver, Sender,
@@ -10,12 +13,10 @@ use itertools::Itertools;
 use tokio::sync::watch;
 use tokio::time::{sleep, Duration};
 
+use crate::handlers::ProgressHandler;
 use crate::progress::{DoneDetail, ProcessingDetail, Progress, ProgressKind};
 use crate::result::{Hit, HitCounter};
 use crate::utils::DiffStore;
-
-type ArcProgressHandler =
-  Arc<dyn Fn(&[Progress], &[HitCounter], Duration, usize, bool) + Sync + Send>;
 
 pub(crate) struct ThreadRenderInner {
   hit_rx: Receiver<Hit>,
@@ -28,7 +29,7 @@ pub(crate) struct ThreadRender {
   pub(crate) inner: Arc<ThreadRenderInner>,
   internal_hit_rx: Receiver<Hit>,
   progress_channels: Vec<watch::Receiver<Progress>>,
-  progress_handler: ArcProgressHandler,
+  progress_handler: Arc<Mutex<Box<dyn ProgressHandler>>>,
   stop_rx: Receiver<bool>,
   total: usize,
   total_workers: usize,
@@ -65,17 +66,13 @@ impl ThreadRenderInner {
 }
 
 impl ThreadRender {
-  pub(crate) fn new<F>(
+  pub(crate) fn new(
     hit_rx: Receiver<Hit>,
     progress_channels: Vec<watch::Receiver<Progress>>,
-    progress_handler: F,
+    progress_handler: Arc<Mutex<Box<dyn ProgressHandler>>>,
     total: usize,
     total_workers: usize,
-  ) -> Self
-  where
-    F: Fn(&[Progress], &[HitCounter], Duration, usize, bool),
-    F: Sync + Send + 'static,
-  {
+  ) -> Self {
     let (internal_hit_tx, internal_hit_rx) = channel_unbounded();
     let (stop_tx, stop_rx) = channel(1);
 
@@ -88,7 +85,7 @@ impl ThreadRender {
       }),
       internal_hit_rx,
       progress_channels,
-      progress_handler: Arc::new(progress_handler),
+      progress_handler,
       stop_rx,
       total,
       total_workers,
@@ -103,14 +100,19 @@ impl ThreadRender {
       .collect()
   }
 
-  pub(crate) async fn start_render_progress(&mut self, interval: Duration) {
+  pub(crate) async fn start_render_progress(
+    &mut self,
+    interval: Duration,
+  ) -> Result<()> {
     let mut start_time = Instant::now();
     let mut current_diff = DiffStore::new(0_usize);
     let mut current_ = 0;
 
+    let mut progress_handler = self.progress_handler.lock().unwrap();
+
     loop {
       if self.stop_rx.try_recv().is_ok() {
-        (self.progress_handler)(
+        progress_handler.handle(
           &(0..self.progress_channels.len())
             .map(|id| {
               Progress(ProgressKind::Done(DoneDetail {
@@ -124,7 +126,7 @@ impl ThreadRender {
           interval,
           0,
           true,
-        );
+        )?;
 
         break;
       }
@@ -159,10 +161,7 @@ impl ThreadRender {
             })) => {
               current_ += current;
             }
-            Progress(ProgressKind::Done(DoneDetail {
-              total,
-              ..
-            })) => {
+            Progress(ProgressKind::Done(DoneDetail { total, .. })) => {
               current_ += total;
             }
             _ => {}
@@ -172,7 +171,7 @@ impl ThreadRender {
         })
         .collect_vec();
 
-      (self.progress_handler)(
+      progress_handler.handle(
         progressses,
         &self
           .hit_counter
@@ -182,29 +181,27 @@ impl ThreadRender {
         interval,
         current_diff.update(current_),
         false,
-      );
+      )?;
 
       current_ = 0;
       start_time = Instant::now();
     }
+
+    Ok(())
   }
 }
 
-pub(crate) struct Render<F>
-where
-  F: Fn(&[Progress], &[HitCounter], Duration, usize, bool),
-{
+pub(crate) struct Render {
   current_diff: DiffStore<usize>,
   hit_counter: DashMap<String, HitCounter>,
-  progress_handler: F,
+  progress_handler: Rc<RefCell<dyn ProgressHandler>>,
   start_time: Instant,
 }
 
-impl<F> Render<F>
-where
-  F: Fn(&[Progress], &[HitCounter], Duration, usize, bool),
-{
-  pub(crate) fn new(progress_handler: F) -> Self {
+impl Render {
+  pub(crate) fn new(
+    progress_handler: Rc<RefCell<dyn ProgressHandler>>,
+  ) -> Self {
     Self {
       current_diff: DiffStore::new(0),
       hit_counter: DashMap::new(),
@@ -237,9 +234,11 @@ where
     interval: Duration,
     progress: Progress,
     all_done: bool,
-  ) {
+  ) -> Result<()> {
     if interval.is_zero() {
-      (self.progress_handler)(
+      let mut progress_handler = self.progress_handler.borrow_mut();
+
+      progress_handler.handle(
         &[progress],
         &self
           .hit_counter
@@ -249,20 +248,22 @@ where
         interval,
         0,
         all_done,
-      );
+      )?;
 
-      return;
+      return Ok(());
     }
 
     if self.start_time.elapsed() <= interval {
-      return;
+      return Ok(());
     }
 
     if matches!(progress, Progress(ProgressKind::Done(_))) {
-      return;
+      return Ok(());
     }
 
-    (self.progress_handler)(
+    let mut progress_handler = self.progress_handler.borrow_mut();
+
+    progress_handler.handle(
       &[progress.clone()],
       &self
         .hit_counter
@@ -280,8 +281,10 @@ where
         0
       },
       all_done,
-    );
+    )?;
 
     self.start_time = Instant::now();
+
+    Ok(())
   }
 }

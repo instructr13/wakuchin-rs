@@ -25,3 +25,19 @@ where
     ret
   }
 }
+
+#[cfg(test)]
+mod test {
+  use crate::utils::DiffStore;
+
+  #[test]
+  fn test_diff_store() {
+    let mut store = DiffStore::new(0);
+
+    assert_eq!(store.update(1), 1);
+    assert_eq!(store.update(2), 1);
+    assert_eq!(store.update(3), 1);
+    assert_eq!(store.update(4), 1);
+    assert_eq!(store.update(5), 1);
+  }
+}
