@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":[["progress",""]],"struct":[["BuiltinProgressHandler",""]]};
+window.SIDEBAR_ITEMS = {"struct":[["MsgpackProgressHandler",""]]};
