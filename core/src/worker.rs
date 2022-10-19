@@ -6,14 +6,16 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use anyhow::anyhow;
 use divide_range::RangeDivisions;
-use flume::unbounded as channel;
 use itertools::Itertools;
 use regex::Regex;
 use tokio::runtime::Builder;
-use tokio::sync::{watch::channel as progress_channel, RwLock};
+use tokio::signal;
+use tokio::sync::RwLock;
 use tokio::task::JoinSet;
 
+use crate::channel::{channel, oneshot, watch};
 use crate::error::WakuchinError;
 use crate::handlers::ProgressHandler;
 use crate::progress::{
@@ -161,20 +163,25 @@ pub async fn run_par(
 
   let (progress_tx_vec, progress_rx_vec): (Vec<_>, Vec<_>) = (0..total_workers)
     .map(|id| {
-      progress_channel(Progress(ProgressKind::Idle(IdleDetail {
+      watch(Progress(ProgressKind::Idle(IdleDetail {
         id: id + 1,
         total_workers,
       })))
     })
     .unzip();
 
+  let (accidential_stop_tx, accidential_stop_rx) = watch(false);
+
   let render = Arc::new(RwLock::new(ThreadRender::new(
+    accidential_stop_rx.clone(),
     hit_rx,
     progress_rx_vec,
     progress_handler.clone(),
     tries,
     total_workers,
   )));
+
+  let mut handles_to_abort = Vec::new();
 
   // create temporary lock to get inner
   let render_guard = render.read().await;
@@ -183,18 +190,18 @@ pub async fn run_par(
 
   drop(render_guard);
 
-  let mut ui_handles = JoinSet::new();
+  let mut ui_join_set = JoinSet::new();
 
   // hit handler
-  ui_handles.spawn_on(
+  handles_to_abort.push(ui_join_set.spawn_on(
     async move {
       inner.wait_for_hit().await;
     },
     runtime_handle,
-  );
+  ));
 
   // progress reporter
-  ui_handles.spawn_on(
+  handles_to_abort.push(ui_join_set.spawn_on(
     {
       let render = render.clone();
 
@@ -208,20 +215,30 @@ pub async fn run_par(
       }
     },
     runtime_handle,
-  );
+  ));
 
-  let mut worker_handles = JoinSet::new();
+  // set SIGINT/SIGTERM handler
+  let mut signal_join_set = JoinSet::new();
+
+  signal_join_set.spawn(async move {
+    signal::ctrl_c().await.unwrap();
+
+    accidential_stop_tx.send(true).unwrap();
+  });
+
+  let mut worker_join_set = JoinSet::new();
 
   (0..tries)
     .divide_evenly_into(total_workers)
     .zip(progress_tx_vec.into_iter())
     .enumerate()
     .map(|(id, (wakuchins, progress_tx))| {
+      let accidential_stop_rx = accidential_stop_rx.clone();
       let hit_tx = hit_tx.clone();
       let regex = regex.clone();
       let total = wakuchins.len();
 
-      worker_handles.spawn_on(
+      handles_to_abort.push(worker_join_set.spawn_on(
         async move {
           let mut hits = Vec::new();
 
@@ -235,6 +252,10 @@ pub async fn run_par(
                 total_workers,
               ))))
               .expect("progress channel is unavailable");
+
+            if *accidential_stop_rx.borrow() {
+              break;
+            }
 
             if check(&wakuchin, &regex) {
               let hit = Hit::new(i, &wakuchin);
@@ -261,26 +282,61 @@ pub async fn run_par(
           hits
         },
         runtime_handle,
-      );
+      ));
     })
     .collect_vec();
 
   drop(hit_tx);
 
+  signal_join_set.spawn({
+    let mut accidential_stop_rx = accidential_stop_rx.clone();
+
+    async move {
+      accidential_stop_rx.changed().await.unwrap();
+
+      for handle in handles_to_abort {
+        handle.abort();
+      }
+    }
+  });
+
   let mut hits_detail = Vec::new();
 
-  while let Some(hits) = worker_handles.join_next().await {
-    let hits = hits?;
+  while let Some(hits) = worker_join_set.join_next().await {
+    match hits {
+      Ok(hits) => {
+        for hit in hits.into_iter() {
+          hits_detail.push(hit);
+        }
+      }
+      Err(e) => {
+        runtime.shutdown_background();
 
-    for hit in hits.into_iter() {
-      hits_detail.push(hit);
+        if e.is_cancelled() {
+          return Err(WakuchinError::Cancelled);
+        }
+
+        return Err(e.into());
+      }
     }
   }
 
   // after all workers have finished, wait for ui threads to finish
-  while let Some(result) = ui_handles.join_next().await {
-    result?;
+  while let Some(result) = ui_join_set.join_next().await {
+    if let Err(e) = result {
+      runtime.shutdown_background();
+
+      if e.is_cancelled() {
+        return Err(WakuchinError::Cancelled);
+      }
+
+      return Err(e.into());
+    }
   }
+
+  signal_join_set.abort_all();
+
+  while signal_join_set.join_next().await.is_some() {}
 
   // cleanup
   runtime.shutdown_background();
@@ -393,6 +449,13 @@ pub fn run_seq(
     progress_handler.before_start()
   }?;
 
+  let (accidential_stop_tx, accidential_stop_rx) = oneshot();
+
+  ctrlc::set_handler(move || {
+    accidential_stop_tx.send(()).unwrap();
+  })
+  .map_err(|e| anyhow!(e))?;
+
   let mut render = Render::new(progress_handler.clone());
 
   render.render_progress(
@@ -407,7 +470,7 @@ pub fn run_seq(
   let hits_detail = (0..tries)
     .map(|_| gen(times))
     .enumerate()
-    .map(|(i, wakuchin)| -> Result<Option<Hit>> {
+    .map(|(i, wakuchin)| {
       render.render_progress(
         progress_interval,
         Progress(ProgressKind::Processing(ProcessingDetail::new(
@@ -415,6 +478,12 @@ pub fn run_seq(
         ))),
         false,
       )?;
+
+      if accidential_stop_rx.try_recv().is_ok() {
+        progress_handler.borrow().after_finish()?;
+
+        return Err(WakuchinError::Cancelled);
+      }
 
       if check(&wakuchin, &regex) {
         let hit = Hit::new(i, &wakuchin);
@@ -426,11 +495,8 @@ pub fn run_seq(
         Ok(None)
       }
     })
-    .collect::<Result<Vec<Option<_>>>>()?
-    .into_iter()
-    .filter(|hit| hit.is_some())
-    .collect::<Option<Vec<_>>>()
-    .expect("hits filtering failed");
+    .filter_map_ok(|hit| hit)
+    .collect::<Result<Vec<_>>>()?;
 
   render.render_progress(
     Duration::ZERO,

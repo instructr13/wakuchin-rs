@@ -28,6 +28,11 @@ static GLOBAL: Jemalloc = Jemalloc;
 #[tokio::main]
 async fn main() {
   if let Err(err) = try_main().await {
+    if let Some(WakuchinError::Cancelled) = err.downcast_ref::<WakuchinError>()
+    {
+      std::process::exit(1);
+    }
+
     eprintln!("{} {}", "error:".red().bold(), err);
 
     std::process::exit(1);
@@ -101,8 +106,6 @@ async fn try_main() -> Result<()> {
   panic::set_hook(default_hook);
 
   println!("{}", result.out(args.out.into())?);
-
-  execute!(stderr(), cursor::MoveLeft(u16::MAX), cursor::Show)?;
 
   Ok(())
 }

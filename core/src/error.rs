@@ -6,6 +6,8 @@ use tokio::task::JoinError;
 /// Error type for wakuchin.
 #[derive(Debug, Error)]
 pub enum WakuchinError {
+  #[error("cancelled")]
+  Cancelled,
   /// You may specified bad number of times.
   #[error("times cannot be zero")]
   TimesIsZero,

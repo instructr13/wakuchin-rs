@@ -25,8 +25,9 @@ pub(crate) struct ThreadRenderInner {
 }
 
 pub(crate) struct ThreadRender {
-  hit_counter: DashMap<String, HitCounter>,
   pub(crate) inner: Arc<ThreadRenderInner>,
+  accidential_stop_rx: watch::Receiver<bool>,
+  hit_counter: DashMap<String, HitCounter>,
   internal_hit_rx: Receiver<Hit>,
   progress_channels: Vec<watch::Receiver<Progress>>,
   progress_handler: Arc<Mutex<Box<dyn ProgressHandler>>>,
@@ -67,6 +68,7 @@ impl ThreadRenderInner {
 
 impl ThreadRender {
   pub(crate) fn new(
+    accidential_stop_rx: watch::Receiver<bool>,
     hit_rx: Receiver<Hit>,
     progress_channels: Vec<watch::Receiver<Progress>>,
     progress_handler: Arc<Mutex<Box<dyn ProgressHandler>>>,
@@ -77,6 +79,7 @@ impl ThreadRender {
     let (stop_tx, stop_rx) = channel(1);
 
     Self {
+      accidential_stop_rx,
       hit_counter: DashMap::new(),
       inner: Arc::new(ThreadRenderInner {
         internal_hit_tx,
@@ -111,6 +114,12 @@ impl ThreadRender {
     let mut progress_handler = self.progress_handler.lock().unwrap();
 
     loop {
+      let accidential_stop = self.accidential_stop_rx.borrow();
+
+      if *accidential_stop {
+        return progress_handler.on_accidential_stop();
+      }
+
       if self.stop_rx.try_recv().is_ok() {
         progress_handler.handle(
           &(0..self.progress_channels.len())

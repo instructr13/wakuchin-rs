@@ -26,6 +26,10 @@ pub trait ProgressHandler: RefCellWrapper + Sync + Send + 'static {
   fn after_finish(&self) -> Result<()> {
     Ok(())
   }
+
+  fn on_accidential_stop(&self) -> Result<()> {
+    self.after_finish()
+  }
 }
 
 pub trait RefCellWrapper {

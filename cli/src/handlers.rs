@@ -2,10 +2,10 @@ use std::io::stderr;
 use std::time::Duration;
 
 use clap::ValueEnum;
-use crossterm::cursor::{self, MoveLeft, MoveUp};
+use crossterm::cursor::{Hide, MoveLeft, MoveUp, Show};
+use crossterm::execute;
 use crossterm::style::{Attribute, Print, Stylize};
-use crossterm::terminal::ClearType;
-use crossterm::{execute, terminal};
+use crossterm::terminal::{size as terminal_size, Clear, ClearType};
 
 use serde::{Deserialize, Serialize};
 use wakuchin::convert::chars_to_wakuchin;
@@ -42,6 +42,7 @@ impl Default for HandlerKind {
 
 pub(crate) struct ConsoleProgressHandler {
   no_progress: bool,
+  handler_height: usize,
   tries: usize,
   times: usize,
 }
@@ -50,6 +51,7 @@ impl ConsoleProgressHandler {
   pub(crate) fn new(no_progress: bool, tries: usize, times: usize) -> Self {
     Self {
       no_progress,
+      handler_height: 0,
       tries,
       times,
     }
@@ -61,9 +63,9 @@ impl ProgressHandler for ConsoleProgressHandler {
     if !self.no_progress {
       execute!(
         stderr(),
-        cursor::Hide,
+        Hide,
         Print("Spawning workers..."),
-        cursor::MoveLeft(u16::MAX)
+        MoveLeft(u16::MAX)
       )?;
     }
 
@@ -78,7 +80,20 @@ impl ProgressHandler for ConsoleProgressHandler {
     current_diff: usize,
     all_done: bool,
   ) -> anyhow::Result<()> {
-    let progress_len = progresses.len() + counters.len() + 1;
+    if self.no_progress {
+      return Ok(());
+    }
+
+    if self.handler_height == 0 {
+      self.handler_height = progresses.len() + counters.len() + 1;
+    } else {
+      execute!(
+        stderr(),
+        MoveLeft(u16::MAX),
+        MoveUp(self.handler_height as u16)
+      )?;
+    }
+
     let elapsed_time = elapsed_time.as_secs_f32();
     let tries_width = self.tries.to_string().len();
     let bold_start = Attribute::Bold;
@@ -200,65 +215,71 @@ impl ProgressHandler for ConsoleProgressHandler {
     if all_done {
       execute!(
         stderr(),
-        terminal::Clear(ClearType::CurrentLine),
+        Clear(ClearType::CurrentLine),
         Print("Status ".bold()),
         Print("All Done".bold().green())
       )?;
 
-      for _ in 0..progress_len {
+      return Ok(());
+    }
+
+    let width = terminal_size()?.0 - tries_width as u16 * 2 - 55;
+
+    let mut progress = String::new();
+
+    let progress_size = if PROGRESS_BAR_WIDTH > width {
+      width
+    } else {
+      PROGRESS_BAR_WIDTH
+    };
+
+    let progress_percentage = current_total as f64 / self.tries as f64 * 100.0;
+    let progress_rate = current_diff as f32 / elapsed_time;
+    let progress_remaining_time =
+      (self.tries - current_total) as f32 / progress_rate;
+
+    if progress_percentage >= 100.0 {
+      progress.push_str(&"━".repeat(progress_size.into()).blue().to_string());
+    } else {
+      let block = (progress_size as f64 * progress_percentage / 100.0) as usize;
+
+      progress.push_str(&("━".repeat(block) + "╸").blue().to_string());
+      progress.push_str(
+        &"━"
+          .repeat(progress_size as usize - block - 1)
+          .dim()
+          .to_string(),
+      );
+    }
+
+    execute!(
+      stderr(),
+      Print("Status ".bold()),
+      Print(format!(
+        "{progress} • {}: {bold_start}{:<tries_width$}{bold_end} / {tries} ({progress_percentage:.0}%, {progress_rate}/sec, eta: {progress_remaining_time:>3.0}sec)   ",
+        "total".green().underlined(),
+        itoa_buf.format(current_total),
+        tries = self.tries,
+        progress_rate = human_format::Formatter::new().format(progress_rate.into()),
+      ))
+    )?;
+
+    Ok(())
+  }
+
+  fn after_finish(&self) -> anyhow::Result<()> {
+    if !self.no_progress {
+      for _ in 0..self.handler_height {
         execute!(
           stderr(),
-          terminal::Clear(ClearType::CurrentLine),
+          Clear(ClearType::CurrentLine),
           MoveUp(1),
-          terminal::Clear(ClearType::CurrentLine)
+          Clear(ClearType::CurrentLine)
         )?;
       }
-    } else {
-      let width = terminal::size()?.0 - tries_width as u16 * 2 - 55;
-
-      let mut progress = String::new();
-
-      let progress_size = if PROGRESS_BAR_WIDTH > width {
-        width
-      } else {
-        PROGRESS_BAR_WIDTH
-      };
-
-      let progress_percentage =
-        current_total as f64 / self.tries as f64 * 100.0;
-      let progress_rate = current_diff as f32 / elapsed_time;
-      let progress_remaining_time =
-        (self.tries - current_total) as f32 / progress_rate;
-
-      if progress_percentage >= 100.0 {
-        progress.push_str(&"━".repeat(progress_size.into()).blue().to_string());
-      } else {
-        let block =
-          (progress_size as f64 * progress_percentage / 100.0) as usize;
-
-        progress.push_str(&("━".repeat(block) + "╸").blue().to_string());
-        progress.push_str(
-          &"━"
-            .repeat(progress_size as usize - block - 1)
-            .dim()
-            .to_string(),
-        );
-      }
-
-      execute!(
-        stderr(),
-        Print("Status ".bold()),
-        Print(format!(
-          "{progress} • {}: {bold_start}{:<tries_width$}{bold_end} / {tries} ({progress_percentage:.0}%, {progress_rate}/sec, eta: {progress_remaining_time:>3.0}sec)   ",
-          "total".green().underlined(),
-          itoa_buf.format(current_total),
-          tries = self.tries,
-          progress_rate = human_format::Formatter::new().format(progress_rate.into()),
-        )),
-        MoveLeft(u16::MAX),
-        MoveUp(progress_len as u16)
-      )?;
     }
+
+    execute!(stderr(), MoveLeft(u16::MAX), Show)?;
 
     Ok(())
   }

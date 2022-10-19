@@ -205,13 +205,7 @@ impl App {
         cursor::MoveLeft(u16::MAX),
         Print("wakuchin has panicked.\n"),
         Print("Please report this to the author.\n"),
-        Print(format!(
-          "{:?}",
-          panic_info
-            .payload()
-            .downcast_ref::<&str>()
-            .unwrap_or(&"no message")
-        )),
+        Print(format!("{}", panic_info)),
         Print(format!("Location: {:?}", panic_info.location())),
         cursor::MoveLeft(u16::MAX),
       )
@@ -221,6 +215,11 @@ impl App {
     }));
 
     default_hook
+  }
+
+  #[cfg(not(feature = "sequential"))]
+  fn set_workers(&mut self, new: usize) {
+    self.args.workers = new;
   }
 
   pub(crate) async fn prompt(&mut self) -> Result<Config> {
@@ -234,7 +233,9 @@ impl App {
       self.args.out = config.out;
       self.args.interval = config.interval;
       self.args.handler = config.handler;
-      self.args.workers = config.workers;
+
+      #[cfg(not(feature = "sequential"))]
+      self.set_workers(config.workers);
     }
 
     let term = Term::buffered_stderr();
