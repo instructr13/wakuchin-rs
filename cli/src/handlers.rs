@@ -15,7 +15,11 @@ use wakuchin::progress::{
 };
 use wakuchin::result::HitCounter;
 
+type Result<T> = anyhow::Result<T>;
+
 const PROGRESS_BAR_WIDTH: u16 = 33;
+const BOLD_START: Attribute = Attribute::Bold;
+const BOLD_END: Attribute = Attribute::Reset;
 
 #[derive(
   Clone,
@@ -44,6 +48,7 @@ pub(crate) struct ConsoleProgressHandler {
   no_progress: bool,
   handler_height: usize,
   tries: usize,
+  tries_string: String,
   times: usize,
 }
 
@@ -53,8 +58,188 @@ impl ConsoleProgressHandler {
       no_progress,
       handler_height: 0,
       tries,
+      tries_string: format!("{}", tries),
       times,
     }
+  }
+
+  fn render_hit_counters(
+    &self,
+    buf: &mut itoa::Buffer,
+    counters: &[HitCounter],
+  ) -> usize {
+    let mut current_hit_total = 0;
+
+    let tries_width = self.tries_string.len();
+
+    for counter in counters {
+      let chars = chars_to_wakuchin(&counter.chars).dim();
+      let count = counter.hits;
+
+      current_hit_total += count;
+
+      eprintln!(
+        "        {} {chars}: {BOLD_START}{:<tries_width$}{BOLD_END} ({:.3}%)",
+        "hits".blue().underlined(),
+        buf.format(count),
+        count as f64 / self.tries as f64 * 100.0,
+      );
+    }
+
+    eprintln!(
+      "  {} {BOLD_START}{:<tries_width$}{BOLD_END} / {tries} ({:.3}%)",
+      "total hits".blue().underlined(),
+      buf.format(current_hit_total),
+      current_hit_total as f64 / self.tries as f64 * 100.0,
+      tries = self.tries
+    );
+
+    current_hit_total
+  }
+
+  fn render_workers(
+    &self,
+    buf: &mut itoa::Buffer,
+    progresses: &[Progress],
+  ) -> usize {
+    let mut current_total = 0;
+
+    let tries_width = self.tries_string.len();
+
+    for progress in progresses {
+      match progress {
+        Progress(ProgressKind::Idle(IdleDetail {
+          id: 0,
+          total_workers: 1,
+        })) => {
+          eprintln!("{}", "Idle".yellow());
+        }
+        Progress(ProgressKind::Idle(IdleDetail { id, total_workers })) => {
+          let id_width = total_workers.to_string().len();
+
+          eprintln!(
+            "{BOLD_START}#{id:<id_width$}{BOLD_END} {}",
+            "Idle".yellow(),
+          );
+        }
+        Progress(ProgressKind::Processing(processing_detail)) => {
+          match processing_detail {
+            ProcessingDetail {
+              id: 0,
+              current,
+              total,
+              total_workers: 1,
+              ..
+            } => {
+              current_total += current;
+
+              eprintln!(
+                "{} {} • {:<tries_width$} / {total}",
+                "Processing".blue(),
+                chars_to_wakuchin(&processing_detail.wakuchin).dim(),
+                buf.format(*current)
+              );
+            }
+            ProcessingDetail {
+              id,
+              current,
+              total,
+              total_workers,
+              ..
+            } => {
+              current_total += current;
+
+              let id_width = total_workers.to_string().len();
+
+              eprintln!(
+                "{BOLD_START}#{id:<id_width$}{BOLD_END} {} {} • {:<tries_width$} / {total}",
+                "Processing".blue(),
+                chars_to_wakuchin(&processing_detail.wakuchin).dim(),
+                buf.format(*current)
+              );
+            }
+          }
+        }
+        Progress(ProgressKind::Done(DoneDetail {
+          id: 0,
+          total,
+          total_workers: 1,
+          ..
+        })) => {
+          current_total += total;
+
+          eprintln!(
+            "{} {}",
+            "Done      ".green(),
+            " ".repeat(self.times * 8 + self.tries_string.len() * 2 + 5),
+          );
+        }
+        Progress(ProgressKind::Done(DoneDetail {
+          id,
+          total,
+          total_workers,
+        })) => {
+          current_total += total;
+
+          let id_width = total_workers.to_string().len();
+
+          eprintln!(
+            "{BOLD_START}#{id:<id_width$}{BOLD_END} {} {}",
+            "Done      ".green(),
+            " ".repeat(self.times * 8 + self.tries_string.len() * 2 + 5),
+          );
+        }
+      }
+    }
+
+    current_total
+  }
+
+  fn render_progress_bar(
+    &self,
+    buf: &mut itoa::Buffer,
+    current: usize,
+    elapsed_time: Duration,
+    current_diff: usize,
+  ) -> Result<()> {
+    let tries_width = self.tries_string.len();
+    let bar_width = terminal_size()?.0 - tries_width as u16 * 2 - 55;
+
+    let mut bar = String::new();
+
+    let bar_size = if PROGRESS_BAR_WIDTH > bar_width {
+      bar_width
+    } else {
+      PROGRESS_BAR_WIDTH
+    };
+
+    let percentage = current as f64 / self.tries as f64 * 100.0;
+    let rate = current_diff as f32 / elapsed_time.as_secs_f32();
+    let eta = (self.tries - current) as f32 / rate;
+
+    if percentage >= 100.0 {
+      bar.push_str(&"━".repeat(bar_size.into()).blue().to_string());
+    } else {
+      let block = (bar_size as f64 * percentage / 100.0) as usize;
+
+      bar.push_str(&("━".repeat(block) + "╸").blue().to_string());
+      bar
+        .push_str(&"━".repeat(bar_size as usize - block - 1).dim().to_string());
+    }
+
+    execute!(
+      stderr(),
+      Print("Status ".bold()),
+      Print(format!(
+        "{bar} • {}: {BOLD_START}{:<tries_width$}{BOLD_END} / {tries} ({percentage:.0}%, {rate}/sec, eta: {eta:>3.0}sec)   ",
+        "total".green().underlined(),
+        buf.format(current),
+        tries = self.tries,
+        rate = human_format::Formatter::new().format(rate.into()),
+      ))
+    )?;
+
+    Ok(())
   }
 }
 
@@ -94,123 +279,11 @@ impl ProgressHandler for ConsoleProgressHandler {
       )?;
     }
 
-    let elapsed_time = elapsed_time.as_secs_f32();
-    let tries_width = self.tries.to_string().len();
-    let bold_start = Attribute::Bold;
-    let bold_end = Attribute::Reset;
-
-    let mut current_total = 0;
-    let mut current_hit_total = 0;
-
     let mut itoa_buf = itoa::Buffer::new();
 
-    for counter in counters {
-      let chars = chars_to_wakuchin(&counter.chars).dim();
-      let count = counter.hits;
+    self.render_hit_counters(&mut itoa_buf, counters);
 
-      current_hit_total += count;
-
-      eprintln!(
-        "        {} {chars}: {bold_start}{:<tries_width$}{bold_end} ({:.3}%)",
-        "hits".blue().underlined(),
-        itoa_buf.format(count),
-        count as f64 / self.tries as f64 * 100.0,
-      );
-    }
-
-    eprintln!(
-      "  {} {bold_start}{:<tries_width$}{bold_end} / {tries} ({:.3}%)",
-      "total hits".blue().underlined(),
-      itoa_buf.format(current_hit_total),
-      current_hit_total as f64 / self.tries as f64 * 100.0,
-      tries = self.tries
-    );
-
-    for progress in progresses {
-      match progress {
-        Progress(ProgressKind::Idle(IdleDetail {
-          id: 0,
-          total_workers: 1,
-        })) => {
-          eprintln!("{}", "Idle".yellow());
-        }
-        Progress(ProgressKind::Idle(IdleDetail { id, total_workers })) => {
-          let id_width = total_workers.to_string().len();
-
-          eprintln!(
-            "{bold_start}#{id:<id_width$}{bold_end} {}",
-            "Idle".yellow(),
-          );
-        }
-        Progress(ProgressKind::Processing(processing_detail)) => {
-          match processing_detail {
-            ProcessingDetail {
-              id: 0,
-              current,
-              total,
-              total_workers: 1,
-              ..
-            } => {
-              current_total += current;
-
-              eprintln!(
-                "{} {} • {:<tries_width$} / {total}",
-                "Processing".blue(),
-                chars_to_wakuchin(&processing_detail.wakuchin).dim(),
-                itoa_buf.format(*current)
-              );
-            }
-            ProcessingDetail {
-              id,
-              current,
-              total,
-              total_workers,
-              ..
-            } => {
-              current_total += current;
-
-              let id_width = total_workers.to_string().len();
-
-              eprintln!(
-                "{bold_start}#{id:<id_width$}{bold_end} {} {} • {:<tries_width$} / {total}",
-                "Processing".blue(),
-                chars_to_wakuchin(&processing_detail.wakuchin).dim(),
-                itoa_buf.format(*current)
-              );
-            }
-          }
-        }
-        Progress(ProgressKind::Done(DoneDetail {
-          id: 0,
-          total,
-          total_workers: 1,
-          ..
-        })) => {
-          current_total += total;
-
-          eprintln!(
-            "{} {}",
-            "Done      ".green(),
-            " ".repeat(self.times * 8 + self.tries.to_string().len() * 2 + 5),
-          );
-        }
-        Progress(ProgressKind::Done(DoneDetail {
-          id,
-          total,
-          total_workers,
-        })) => {
-          current_total += total;
-
-          let id_width = total_workers.to_string().len();
-
-          eprintln!(
-            "{bold_start}#{id:<id_width$}{bold_end} {} {}",
-            "Done      ".green(),
-            " ".repeat(self.times * 8 + self.tries.to_string().len() * 2 + 5),
-          );
-        }
-      }
-    }
+    let current_total = self.render_workers(&mut itoa_buf, progresses);
 
     if all_done {
       execute!(
@@ -223,45 +296,11 @@ impl ProgressHandler for ConsoleProgressHandler {
       return Ok(());
     }
 
-    let width = terminal_size()?.0 - tries_width as u16 * 2 - 55;
-
-    let mut progress = String::new();
-
-    let progress_size = if PROGRESS_BAR_WIDTH > width {
-      width
-    } else {
-      PROGRESS_BAR_WIDTH
-    };
-
-    let progress_percentage = current_total as f64 / self.tries as f64 * 100.0;
-    let progress_rate = current_diff as f32 / elapsed_time;
-    let progress_remaining_time =
-      (self.tries - current_total) as f32 / progress_rate;
-
-    if progress_percentage >= 100.0 {
-      progress.push_str(&"━".repeat(progress_size.into()).blue().to_string());
-    } else {
-      let block = (progress_size as f64 * progress_percentage / 100.0) as usize;
-
-      progress.push_str(&("━".repeat(block) + "╸").blue().to_string());
-      progress.push_str(
-        &"━"
-          .repeat(progress_size as usize - block - 1)
-          .dim()
-          .to_string(),
-      );
-    }
-
-    execute!(
-      stderr(),
-      Print("Status ".bold()),
-      Print(format!(
-        "{progress} • {}: {bold_start}{:<tries_width$}{bold_end} / {tries} ({progress_percentage:.0}%, {progress_rate}/sec, eta: {progress_remaining_time:>3.0}sec)   ",
-        "total".green().underlined(),
-        itoa_buf.format(current_total),
-        tries = self.tries,
-        progress_rate = human_format::Formatter::new().format(progress_rate.into()),
-      ))
+    self.render_progress_bar(
+      &mut itoa_buf,
+      current_total,
+      elapsed_time,
+      current_diff,
     )?;
 
     Ok(())
