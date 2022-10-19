@@ -43,7 +43,7 @@ type Result<T> = std::result::Result<T, WakuchinError>;
 ///
 /// # Errors
 ///
-/// * [`Error::TimesIsZero`](crate::error::Error::TimesIsZero) - Returns if you passed a zero to `times`
+/// * [`WakuchinError::TimesIsZero`](crate::error::WakuchinError::TimesIsZero) - Returns if you passed a zero to `times`
 ///   ```rust
 ///   use std::sync::{Arc, Mutex};
 ///   use std::time::Duration;
@@ -69,7 +69,7 @@ type Result<T> = std::result::Result<T, WakuchinError>;
 ///   #   try_main_async().await.unwrap();
 ///   # }
 ///   ```
-/// * `JoinError` - Returns when any worker raised an error
+/// * [`WakuchinError::WorkerError`](crate::error::WakuchinError::WorkerError) - Returns when any worker raised an error
 ///
 /// # Examples
 ///
@@ -311,20 +311,15 @@ pub async fn run_par(
 /// * `times` - wakuchin times n, cannot be zero
 /// * `regex` - compiled regular expression to detect hit
 /// * `progress_handler` - handler function to handle progress
-///   * `progress` - referenced slice of [`Progress`]
-///   * `counters` - referenced slice of [`HitCounter`]
-///   * `interval` - interval of progress refresh you were specified, usable for calculation of speed
-///   * `current_diff` - `current - previous` of progress, usable for calculation of speed
-///   * `all_done` - true if all workers are done, usable for finalization
 /// * `progress_interval` - progress refresh interval
 ///
 /// # Returns
 ///
-/// * `Result<WakuchinResult, Box<dyn Error>>` - the result of the research (see [`WakuchinResult`])
+/// * `Result<WakuchinResult, WakuchinError>` - the result of the research (see [`WakuchinResult`])
 ///
 /// # Errors
 ///
-/// * `wakuchin::error::Error::TimesIsZero` - Returns if you passed a zero to `times`
+/// * [`WakuchinError::TimesIsZero`](crate::error::WakuchinError::TimesIsZero) - Returns if you passed a zero to `times`
 ///   ```rust
 ///   use std::cell::RefCell;
 ///   use std::rc::Rc;
