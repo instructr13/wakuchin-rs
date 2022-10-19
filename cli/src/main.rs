@@ -76,6 +76,10 @@ async fn try_main() -> Result<()> {
 
   if result.is_err() {
     if let Err(WakuchinError::WorkerError(e)) = result {
+      if !e.is_panic() {
+        return Err(e.into());
+      }
+
       execute!(
         stderr(),
         cursor::Show,
