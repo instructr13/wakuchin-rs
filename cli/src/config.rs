@@ -51,14 +51,12 @@ impl From<InternalResultOutputFormat> for ResultOutputFormat {
 #[derive(Clone, Debug, ClapSerde)]
 pub(crate) struct Config {
   /// Number of tries
-  #[default(0)]
   #[arg(short = 'i', long, value_name = "N")]
   pub(crate) tries: usize,
 
   /// Wakuchin times n
   ///
   /// Repeats "わくちん" n times.
-  #[default(0)]
   #[arg(short, long, value_name = "N")]
   pub(crate) times: usize,
 
@@ -76,7 +74,6 @@ pub(crate) struct Config {
   pub(crate) regex: Regex,
 
   // Result output format
-  #[default(InternalResultOutputFormat::Text)]
   #[serde(rename(deserialize = "output"))]
   #[arg(short = 'f', long = "format", value_name = "FORMAT", value_enum)]
   pub(crate) out: InternalResultOutputFormat,
@@ -100,17 +97,14 @@ pub(crate) struct Config {
   /// Available handlers:
   ///  - "console": Prints progress to stderr with pretty progress bar
   ///  - "msgpack": Prints progress to stdout as raw msgpack-encoded data
-  #[default(HandlerKind::Console)]
   #[arg(short = 'H', long, value_enum, verbatim_doc_comment)]
   pub(crate) handler: HandlerKind,
 
   /// Do not show progress, able to use with --handler=console
-  #[default(false)]
   #[arg(long, value_name = "BOOL")]
   pub(crate) no_progress: bool,
 
   #[cfg(not(feature = "sequential"))]
-  #[default(0)]
   #[arg(
     short,
     long,

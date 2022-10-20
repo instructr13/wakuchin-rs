@@ -106,25 +106,20 @@ mod test {
     let tries = 100;
     let cursor = Arc::new(Mutex::new(Cursor::new(Vec::new())));
     let mut handler = MsgpackProgressHandler::new(tries, cursor.clone());
-    let mut progresses = Vec::new();
-    let mut counters = Vec::new();
 
-    let progress_item = Progress(ProgressKind::Processing(ProcessingDetail {
-      current: 0,
-      total: 100,
-      id: 0,
-      wakuchin: "WKNCWKNC".into(),
-      total_workers: 1,
-    }));
+    let progresses =
+      vec![Progress(ProgressKind::Processing(ProcessingDetail {
+        current: 0,
+        total: 100,
+        id: 0,
+        wakuchin: "WKNCWKNC".into(),
+        total_workers: 1,
+      }))];
 
-    progresses.push(progress_item);
-
-    let counter = HitCounter {
+    let counters = vec![HitCounter {
       chars: "あ".to_string(),
       hits: 0,
-    };
-
-    counters.push(counter);
+    }];
 
     let elapsed_time = Duration::from_secs(1);
     let current_diff = 1;

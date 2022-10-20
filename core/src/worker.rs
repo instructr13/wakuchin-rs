@@ -181,7 +181,7 @@ pub async fn run_par(
     total_workers,
   )));
 
-  let mut handles_to_abort = Vec::new();
+  let mut handles_to_abort = Vec::with_capacity(workers + 2);
 
   // create temporary lock to get inner
   let render_guard = render.read().await;
@@ -232,7 +232,7 @@ pub async fn run_par(
     .divide_evenly_into(total_workers)
     .zip(progress_tx_vec.into_iter())
     .enumerate()
-    .map(|(id, (wakuchins, progress_tx))| {
+    .for_each(|(id, (wakuchins, progress_tx))| {
       let accidential_stop_rx = accidential_stop_rx.clone();
       let hit_tx = hit_tx.clone();
       let regex = regex.clone();
@@ -283,8 +283,7 @@ pub async fn run_par(
         },
         runtime_handle,
       ));
-    })
-    .collect_vec();
+    });
 
   drop(hit_tx);
 
