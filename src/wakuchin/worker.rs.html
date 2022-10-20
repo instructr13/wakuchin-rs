@@ -518,11 +518,6 @@
 <span id="518">518</span>
 <span id="519">519</span>
 <span id="520">520</span>
-<span id="521">521</span>
-<span id="522">522</span>
-<span id="523">523</span>
-<span id="524">524</span>
-<span id="525">525</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Wakuchin researcher main functions</span>
 
 <span class="kw">use</span> <span class="ident">std::cell::RefCell</span>;
@@ -537,7 +532,6 @@
 <span class="kw">use</span> <span class="ident">regex::Regex</span>;
 <span class="kw">use</span> <span class="ident">tokio::runtime::Builder</span>;
 <span class="kw">use</span> <span class="ident">tokio::signal</span>;
-<span class="kw">use</span> <span class="ident">tokio::sync::RwLock</span>;
 <span class="kw">use</span> <span class="ident">tokio::task::JoinSet</span>;
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::channel</span>::{<span class="ident">channel</span>, <span class="ident">oneshot</span>, <span class="ident">watch</span>};
@@ -697,30 +691,27 @@
 
   <span class="kw">let</span> (<span class="ident">accidential_stop_tx</span>, <span class="ident">accidential_stop_rx</span>) <span class="op">=</span> <span class="ident">watch</span>(<span class="bool-val">false</span>);
 
-  <span class="kw">let</span> <span class="ident">render</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">ThreadRender::new</span>(
+  <span class="kw">let</span> <span class="ident">render</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">ThreadRender::new</span>(
     <span class="ident">accidential_stop_rx</span>.<span class="ident">clone</span>(),
     <span class="ident">hit_rx</span>,
     <span class="ident">progress_rx_vec</span>,
     <span class="ident">progress_handler</span>.<span class="ident">clone</span>(),
     <span class="ident">tries</span>,
     <span class="ident">total_workers</span>,
-  )));
+  ));
 
   <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">handles_to_abort</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="ident">workers</span> <span class="op">+</span> <span class="number">2</span>);
-
-  <span class="comment">// create temporary lock to get inner</span>
-  <span class="kw">let</span> <span class="ident">render_guard</span> <span class="op">=</span> <span class="ident">render</span>.<span class="ident">read</span>().<span class="kw">await</span>;
-
-  <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="ident">render_guard</span>.<span class="ident">inner</span>.<span class="ident">clone</span>();
-
-  <span class="ident">drop</span>(<span class="ident">render_guard</span>);
 
   <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ui_join_set</span> <span class="op">=</span> <span class="ident">JoinSet::new</span>();
 
   <span class="comment">// hit handler</span>
   <span class="ident">handles_to_abort</span>.<span class="ident">push</span>(<span class="ident">ui_join_set</span>.<span class="ident">spawn_on</span>(
-    <span class="kw">async</span> <span class="kw">move</span> {
-      <span class="ident">inner</span>.<span class="ident">wait_for_hit</span>().<span class="kw">await</span>;
+    {
+      <span class="kw">let</span> <span class="ident">render</span> <span class="op">=</span> <span class="ident">render</span>.<span class="ident">clone</span>();
+
+      <span class="kw">async</span> <span class="kw">move</span> {
+        <span class="ident">render</span>.<span class="ident">wait_for_hit</span>().<span class="kw">await</span>;
+      }
     },
     <span class="ident">runtime_handle</span>,
   ));
@@ -731,8 +722,6 @@
       <span class="kw">let</span> <span class="ident">render</span> <span class="op">=</span> <span class="ident">render</span>.<span class="ident">clone</span>();
 
       <span class="kw">async</span> <span class="kw">move</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">render</span> <span class="op">=</span> <span class="ident">render</span>.<span class="ident">write</span>().<span class="kw">await</span>;
-
         <span class="ident">render</span>
           .<span class="ident">start_render_progress</span>(<span class="ident">progress_interval</span>)
           .<span class="kw">await</span>
@@ -864,13 +853,14 @@
 
   <span class="comment">// cleanup</span>
   <span class="ident">runtime</span>.<span class="ident">shutdown_background</span>();
+
   {
     <span class="kw">let</span> <span class="ident">progress_handler</span> <span class="op">=</span> <span class="ident">progress_handler</span>.<span class="ident">lock</span>().<span class="ident">unwrap</span>();
 
     <span class="ident">progress_handler</span>.<span class="ident">after_finish</span>()
   }<span class="question-mark">?</span>;
 
-  <span class="kw">let</span> <span class="ident">hits</span> <span class="op">=</span> <span class="ident">render</span>.<span class="ident">read</span>().<span class="kw">await</span>.<span class="ident">hits</span>();
+  <span class="kw">let</span> <span class="ident">hits</span> <span class="op">=</span> <span class="ident">render</span>.<span class="ident">hits</span>().<span class="kw">await</span>;
   <span class="kw">let</span> <span class="ident">hits_total</span> <span class="op">=</span> <span class="ident">hits</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">c</span>.<span class="ident">hits</span>).<span class="ident">sum</span>::<span class="op">&lt;</span><span class="ident">usize</span><span class="op">&gt;</span>();
 
   <span class="prelude-val">Ok</span>(<span class="ident">WakuchinResult</span> {

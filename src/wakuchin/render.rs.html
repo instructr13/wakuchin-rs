@@ -297,6 +297,18 @@
 <span id="297">297</span>
 <span id="298">298</span>
 <span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::cell::RefCell</span>;
 <span class="kw">use</span> <span class="ident">std::rc::Rc</span>;
 <span class="kw">use</span> <span class="ident">std::sync</span>::{<span class="ident">Arc</span>, <span class="ident">Mutex</span>};
@@ -309,7 +321,7 @@
   <span class="ident">TryRecvError</span>,
 };
 <span class="kw">use</span> <span class="ident">itertools::Itertools</span>;
-<span class="kw">use</span> <span class="ident">tokio::sync::watch</span>;
+<span class="kw">use</span> <span class="ident">tokio::sync</span>::{<span class="ident">watch</span>, <span class="ident">RwLock</span>};
 <span class="kw">use</span> <span class="ident">tokio::time</span>::{<span class="ident">sleep</span>, <span class="ident">Duration</span>};
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::handlers::ProgressHandler</span>;
@@ -317,14 +329,7 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::result</span>::{<span class="ident">Hit</span>, <span class="ident">HitCounter</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::utils::DiffStore</span>;
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">ThreadRenderInner</span> {
-  <span class="ident">hit_rx</span>: <span class="ident">Receiver</span><span class="op">&lt;</span><span class="ident">Hit</span><span class="op">&gt;</span>,
-  <span class="ident">internal_hit_tx</span>: <span class="ident">Sender</span><span class="op">&lt;</span><span class="ident">Hit</span><span class="op">&gt;</span>,
-  <span class="ident">stop_tx</span>: <span class="ident">Sender</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span>,
-}
-
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">ThreadRender</span> {
-  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">inner</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">ThreadRenderInner</span><span class="op">&gt;</span>,
+<span class="kw">struct</span> <span class="ident">ThreadRenderInner</span> {
   <span class="ident">accidential_stop_rx</span>: <span class="ident">watch::Receiver</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span>,
   <span class="ident">hit_counter</span>: <span class="ident">DashMap</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">HitCounter</span><span class="op">&gt;</span>,
   <span class="ident">internal_hit_rx</span>: <span class="ident">Receiver</span><span class="op">&lt;</span><span class="ident">Hit</span><span class="op">&gt;</span>,
@@ -336,65 +341,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">ThreadRenderInner</span> {
-  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">wait_for_hit</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-    <span class="kw">loop</span> {
-      <span class="kw">let</span> <span class="ident">hit</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">hit_rx</span>.<span class="ident">try_recv</span>();
-
-      <span class="kw">match</span> <span class="ident">hit</span> {
-        <span class="prelude-val">Ok</span>(<span class="ident">hit</span>) =&gt; {
-          <span class="self">self</span>
-            .<span class="ident">internal_hit_tx</span>
-            .<span class="ident">send_async</span>(<span class="ident">hit</span>)
-            .<span class="kw">await</span>
-            .<span class="ident">expect</span>(<span class="string">&quot;internal hit channel sending failed&quot;</span>);
-        }
-        <span class="prelude-val">Err</span>(<span class="ident">TryRecvError::Disconnected</span>) =&gt; {
-          <span class="self">self</span>
-            .<span class="ident">stop_tx</span>
-            .<span class="ident">send_async</span>(<span class="bool-val">true</span>)
-            .<span class="kw">await</span>
-            .<span class="ident">expect</span>(<span class="string">&quot;stop channel sending failed&quot;</span>);
-
-          <span class="kw">break</span>;
-        }
-        <span class="prelude-val">Err</span>(<span class="ident">TryRecvError::Empty</span>) =&gt; {
-          <span class="ident">sleep</span>(<span class="ident">Duration::from_millis</span>(<span class="number">5</span>)).<span class="kw">await</span>;
-        }
-      }
-    }
-  }
-}
-
-<span class="kw">impl</span> <span class="ident">ThreadRender</span> {
-  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(
-    <span class="ident">accidential_stop_rx</span>: <span class="ident">watch::Receiver</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span>,
-    <span class="ident">hit_rx</span>: <span class="ident">Receiver</span><span class="op">&lt;</span><span class="ident">Hit</span><span class="op">&gt;</span>,
-    <span class="ident">progress_channels</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">watch::Receiver</span><span class="op">&lt;</span><span class="ident">Progress</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">progress_handler</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">ProgressHandler</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">total</span>: <span class="ident">usize</span>,
-    <span class="ident">total_workers</span>: <span class="ident">usize</span>,
-  ) -&gt; <span class="self">Self</span> {
-    <span class="kw">let</span> (<span class="ident">internal_hit_tx</span>, <span class="ident">internal_hit_rx</span>) <span class="op">=</span> <span class="ident">channel_unbounded</span>();
-    <span class="kw">let</span> (<span class="ident">stop_tx</span>, <span class="ident">stop_rx</span>) <span class="op">=</span> <span class="ident">channel</span>(<span class="number">1</span>);
-
-    <span class="self">Self</span> {
-      <span class="ident">accidential_stop_rx</span>,
-      <span class="ident">hit_counter</span>: <span class="ident">DashMap::new</span>(),
-      <span class="ident">inner</span>: <span class="ident">Arc::new</span>(<span class="ident">ThreadRenderInner</span> {
-        <span class="ident">internal_hit_tx</span>,
-        <span class="ident">hit_rx</span>,
-        <span class="ident">stop_tx</span>,
-      }),
-      <span class="ident">internal_hit_rx</span>,
-      <span class="ident">progress_channels</span>,
-      <span class="ident">progress_handler</span>,
-      <span class="ident">stop_rx</span>,
-      <span class="ident">total</span>,
-      <span class="ident">total_workers</span>,
-    }
-  }
-
-  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">hits</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">HitCounter</span><span class="op">&gt;</span> {
+  <span class="kw">fn</span> <span class="ident">hits</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">HitCounter</span><span class="op">&gt;</span> {
     <span class="self">self</span>
       .<span class="ident">hit_counter</span>
       .<span class="ident">iter</span>()
@@ -402,10 +349,7 @@
       .<span class="ident">collect</span>()
   }
 
-  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">start_render_progress</span>(
-    <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
-    <span class="ident">interval</span>: <span class="ident">Duration</span>,
-  ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
+  <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">start_render_progress</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">interval</span>: <span class="ident">Duration</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">start_time</span> <span class="op">=</span> <span class="ident">Instant::now</span>();
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">current_diff</span> <span class="op">=</span> <span class="ident">DiffStore::new</span>(<span class="number">0_usize</span>);
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">current_</span> <span class="op">=</span> <span class="number">0</span>;
@@ -496,6 +440,86 @@
     }
 
     <span class="prelude-val">Ok</span>(())
+  }
+}
+
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">ThreadRender</span> {
+  <span class="ident">inner</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">ThreadRenderInner</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+  <span class="ident">hit_rx</span>: <span class="ident">Receiver</span><span class="op">&lt;</span><span class="ident">Hit</span><span class="op">&gt;</span>,
+  <span class="ident">internal_hit_tx</span>: <span class="ident">Sender</span><span class="op">&lt;</span><span class="ident">Hit</span><span class="op">&gt;</span>,
+  <span class="ident">stop_tx</span>: <span class="ident">Sender</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">ThreadRender</span> {
+  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new</span>(
+    <span class="ident">accidential_stop_rx</span>: <span class="ident">watch::Receiver</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span>,
+    <span class="ident">hit_rx</span>: <span class="ident">Receiver</span><span class="op">&lt;</span><span class="ident">Hit</span><span class="op">&gt;</span>,
+    <span class="ident">progress_channels</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">watch::Receiver</span><span class="op">&lt;</span><span class="ident">Progress</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">progress_handler</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">ProgressHandler</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">total</span>: <span class="ident">usize</span>,
+    <span class="ident">total_workers</span>: <span class="ident">usize</span>,
+  ) -&gt; <span class="self">Self</span> {
+    <span class="kw">let</span> (<span class="ident">internal_hit_tx</span>, <span class="ident">internal_hit_rx</span>) <span class="op">=</span> <span class="ident">channel_unbounded</span>();
+    <span class="kw">let</span> (<span class="ident">stop_tx</span>, <span class="ident">stop_rx</span>) <span class="op">=</span> <span class="ident">channel</span>(<span class="number">1</span>);
+
+    <span class="self">Self</span> {
+      <span class="ident">inner</span>: <span class="ident">Arc::new</span>(<span class="ident">RwLock::new</span>(<span class="ident">ThreadRenderInner</span> {
+        <span class="ident">accidential_stop_rx</span>,
+        <span class="ident">hit_counter</span>: <span class="ident">DashMap::new</span>(),
+        <span class="ident">internal_hit_rx</span>,
+        <span class="ident">progress_channels</span>,
+        <span class="ident">progress_handler</span>,
+        <span class="ident">stop_rx</span>,
+        <span class="ident">total</span>,
+        <span class="ident">total_workers</span>,
+      })),
+      <span class="ident">stop_tx</span>,
+      <span class="ident">hit_rx</span>,
+      <span class="ident">internal_hit_tx</span>,
+    }
+  }
+
+  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">hits</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">HitCounter</span><span class="op">&gt;</span> {
+    <span class="kw">let</span> <span class="ident">inner</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">read</span>().<span class="kw">await</span>;
+
+    <span class="ident">inner</span>.<span class="ident">hits</span>()
+  }
+
+  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">wait_for_hit</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+    <span class="kw">loop</span> {
+      <span class="kw">let</span> <span class="ident">hit</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">hit_rx</span>.<span class="ident">try_recv</span>();
+
+      <span class="kw">match</span> <span class="ident">hit</span> {
+        <span class="prelude-val">Ok</span>(<span class="ident">hit</span>) =&gt; {
+          <span class="self">self</span>
+            .<span class="ident">internal_hit_tx</span>
+            .<span class="ident">send_async</span>(<span class="ident">hit</span>)
+            .<span class="kw">await</span>
+            .<span class="ident">expect</span>(<span class="string">&quot;internal hit channel sending failed&quot;</span>);
+        }
+        <span class="prelude-val">Err</span>(<span class="ident">TryRecvError::Disconnected</span>) =&gt; {
+          <span class="self">self</span>
+            .<span class="ident">stop_tx</span>
+            .<span class="ident">send_async</span>(<span class="bool-val">true</span>)
+            .<span class="kw">await</span>
+            .<span class="ident">expect</span>(<span class="string">&quot;stop channel sending failed&quot;</span>);
+
+          <span class="kw">break</span>;
+        }
+        <span class="prelude-val">Err</span>(<span class="ident">TryRecvError::Empty</span>) =&gt; {
+          <span class="ident">sleep</span>(<span class="ident">Duration::from_millis</span>(<span class="number">5</span>)).<span class="kw">await</span>;
+        }
+      }
+    }
+  }
+
+  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">start_render_progress</span>(
+    <span class="kw-2">&amp;</span><span class="self">self</span>,
+    <span class="ident">interval</span>: <span class="ident">Duration</span>,
+  ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">inner</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">write</span>().<span class="kw">await</span>;
+
+    <span class="ident">inner</span>.<span class="ident">start_render_progress</span>(<span class="ident">interval</span>).<span class="kw">await</span>
   }
 }
 
