@@ -7,7 +7,7 @@ use std::io::{stderr, stdout};
 use std::panic;
 use std::sync::{Arc, Mutex};
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use crossterm::style::{Print, Stylize};
 use crossterm::{cursor, execute};
 
@@ -41,40 +41,39 @@ async fn main() {
 
 async fn try_main() -> Result<()> {
   let mut app = App::new();
-  let args = app.prompt().await?;
+
+  app.setup_config().await?;
+
+  let config = app.config;
 
   let default_hook = App::set_panic_hook();
 
-  let tries = args
-    .tries
-    .ok_or_else(|| anyhow!("tries is required but was undefined"))?;
-  let times = args
-    .times
-    .ok_or_else(|| anyhow!("times is required but was undefined"))?;
-
   let builder = ResearchBuilder::new()
-    .tries(tries)
-    .times(times)
-    .regex(
-      args
-        .regex
-        .ok_or_else(|| anyhow!("regex compilation failed"))?,
-    )
-    .progress_interval(args.interval);
+    .tries(config.tries)
+    .times(config.times)
+    .regex(config.regex)
+    .progress_interval(config.interval);
 
   let builder = {
-    match args.handler {
-      HandlerKind::Console => builder.progress_handler(
-        ConsoleProgressHandler::new(args.no_progress, tries, times),
-      ),
-      HandlerKind::Msgpack => builder.progress_handler(
-        MsgpackProgressHandler::new(tries, Arc::new(Mutex::new(stdout()))),
-      ),
+    match config.handler {
+      HandlerKind::Console => {
+        builder.progress_handler(ConsoleProgressHandler::new(
+          config.no_progress,
+          config.tries,
+          config.times,
+        ))
+      }
+      HandlerKind::Msgpack => {
+        builder.progress_handler(MsgpackProgressHandler::new(
+          config.tries,
+          Arc::new(Mutex::new(stdout())),
+        ))
+      }
     }
   };
 
   #[cfg(not(feature = "sequential"))]
-  let result = builder.workers(args.workers).run_par().await;
+  let result = builder.workers(config.workers).run_par().await;
 
   #[cfg(feature = "sequential")]
   let result = builder.run_seq();
@@ -105,7 +104,7 @@ async fn try_main() -> Result<()> {
 
   panic::set_hook(default_hook);
 
-  println!("{}", result.out(args.out.into())?);
+  println!("{}", result.out(config.out.into())?);
 
   Ok(())
 }

@@ -29,6 +29,7 @@ wakuchin = { version = "0.3.0", path = "../core" }
 anyhow = "1.0"
 atty = "0.2"
 clap = { version = "4.0", features = ["cargo", "derive"] }
+clap-serde-derive = "0.2"
 console = "0.15"
 crossterm = "0.25"
 dialoguer = { version = "0.10", default-features = false }
