@@ -1,3 +1,9 @@
+use std::time::Duration;
+
+use anyhow::Result;
+
+use crate::{progress::Progress, result::HitCounter};
+
 use super::ProgressHandler;
 
 pub struct EmptyProgressHandler {}
@@ -17,12 +23,12 @@ impl Default for EmptyProgressHandler {
 impl ProgressHandler for EmptyProgressHandler {
   fn handle(
     &mut self,
-    _: &[crate::progress::Progress],
-    _: &[crate::result::HitCounter],
-    _: std::time::Duration,
+    _: &[Progress],
+    _: &[HitCounter],
+    _: Duration,
     _: usize,
     _: bool,
-  ) -> anyhow::Result<()> {
+  ) -> Result<()> {
     Ok(())
   }
 }
