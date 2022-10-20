@@ -195,6 +195,28 @@ impl ConsoleProgressHandler {
     current_total
   }
 
+  fn render_progress_segment(&self, width: usize, percentage: f64) -> String {
+    if percentage >= 100.0 {
+      "━".repeat(width).blue().to_string()
+    } else {
+      let block = (width as f64 * percentage / 100.0) as usize;
+      let current = "━".repeat(block) + "╸";
+      let space = width - block - 1;
+
+      format!(
+        "{}{}",
+        if space == 0 {
+          current.green()
+        } else {
+          current.blue()
+        },
+        "━".repeat(space).dim()
+      )
+    }
+  }
+
+  /// Use blue bar to indicate progress that is processing.
+  /// Use green bar to indicate progress that is done.
   fn render_progress_bar(
     &self,
     buf: &mut itoa::Buffer,
@@ -203,29 +225,18 @@ impl ConsoleProgressHandler {
     current_diff: usize,
   ) -> Result<()> {
     let tries_width = self.tries_string.len();
-    let bar_width = terminal_size()?.0 - tries_width as u16 * 2 - 55;
+    let possible_bar_width = terminal_size()?.0 - tries_width as u16 * 2 - 55;
 
-    let mut bar = String::new();
-
-    let bar_size = if PROGRESS_BAR_WIDTH > bar_width {
-      bar_width
+    let bar_width = if PROGRESS_BAR_WIDTH > possible_bar_width {
+      possible_bar_width
     } else {
       PROGRESS_BAR_WIDTH
     };
 
     let percentage = current as f64 / self.tries as f64 * 100.0;
+    let bar = self.render_progress_segment(bar_width.into(), percentage);
     let rate = current_diff as f32 / elapsed_time.as_secs_f32();
     let eta = (self.tries - current) as f32 / rate;
-
-    if percentage >= 100.0 {
-      bar.push_str(&"━".repeat(bar_size.into()).blue().to_string());
-    } else {
-      let block = (bar_size as f64 * percentage / 100.0) as usize;
-
-      bar.push_str(&("━".repeat(block) + "╸").blue().to_string());
-      bar
-        .push_str(&"━".repeat(bar_size as usize - block - 1).dim().to_string());
-    }
 
     execute!(
       stderr(),
