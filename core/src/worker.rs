@@ -12,7 +12,6 @@ use itertools::Itertools;
 use regex::Regex;
 use tokio::runtime::Builder;
 use tokio::signal;
-use tokio::sync::RwLock;
 use tokio::task::JoinSet;
 
 use crate::channel::{channel, oneshot, watch};
@@ -172,30 +171,27 @@ pub async fn run_par(
 
   let (accidential_stop_tx, accidential_stop_rx) = watch(false);
 
-  let render = Arc::new(RwLock::new(ThreadRender::new(
+  let render = Arc::new(ThreadRender::new(
     accidential_stop_rx.clone(),
     hit_rx,
     progress_rx_vec,
     progress_handler.clone(),
     tries,
     total_workers,
-  )));
+  ));
 
   let mut handles_to_abort = Vec::with_capacity(workers + 2);
-
-  // create temporary lock to get inner
-  let render_guard = render.read().await;
-
-  let inner = render_guard.inner.clone();
-
-  drop(render_guard);
 
   let mut ui_join_set = JoinSet::new();
 
   // hit handler
   handles_to_abort.push(ui_join_set.spawn_on(
-    async move {
-      inner.wait_for_hit().await;
+    {
+      let render = render.clone();
+
+      async move {
+        render.wait_for_hit().await;
+      }
     },
     runtime_handle,
   ));
@@ -206,8 +202,6 @@ pub async fn run_par(
       let render = render.clone();
 
       async move {
-        let mut render = render.write().await;
-
         render
           .start_render_progress(progress_interval)
           .await
@@ -339,13 +333,14 @@ pub async fn run_par(
 
   // cleanup
   runtime.shutdown_background();
+
   {
     let progress_handler = progress_handler.lock().unwrap();
 
     progress_handler.after_finish()
   }?;
 
-  let hits = render.read().await.hits();
+  let hits = render.hits().await;
   let hits_total = hits.iter().map(|c| c.hits).sum::<usize>();
 
   Ok(WakuchinResult {

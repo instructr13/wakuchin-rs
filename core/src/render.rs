@@ -10,7 +10,7 @@ use flume::{
   TryRecvError,
 };
 use itertools::Itertools;
-use tokio::sync::watch;
+use tokio::sync::{watch, RwLock};
 use tokio::time::{sleep, Duration};
 
 use crate::handlers::ProgressHandler;
@@ -18,14 +18,7 @@ use crate::progress::{DoneDetail, ProcessingDetail, Progress, ProgressKind};
 use crate::result::{Hit, HitCounter};
 use crate::utils::DiffStore;
 
-pub(crate) struct ThreadRenderInner {
-  hit_rx: Receiver<Hit>,
-  internal_hit_tx: Sender<Hit>,
-  stop_tx: Sender<bool>,
-}
-
-pub(crate) struct ThreadRender {
-  pub(crate) inner: Arc<ThreadRenderInner>,
+struct ThreadRenderInner {
   accidential_stop_rx: watch::Receiver<bool>,
   hit_counter: DashMap<String, HitCounter>,
   internal_hit_rx: Receiver<Hit>,
@@ -37,65 +30,7 @@ pub(crate) struct ThreadRender {
 }
 
 impl ThreadRenderInner {
-  pub(crate) async fn wait_for_hit(&self) {
-    loop {
-      let hit = self.hit_rx.try_recv();
-
-      match hit {
-        Ok(hit) => {
-          self
-            .internal_hit_tx
-            .send_async(hit)
-            .await
-            .expect("internal hit channel sending failed");
-        }
-        Err(TryRecvError::Disconnected) => {
-          self
-            .stop_tx
-            .send_async(true)
-            .await
-            .expect("stop channel sending failed");
-
-          break;
-        }
-        Err(TryRecvError::Empty) => {
-          sleep(Duration::from_millis(5)).await;
-        }
-      }
-    }
-  }
-}
-
-impl ThreadRender {
-  pub(crate) fn new(
-    accidential_stop_rx: watch::Receiver<bool>,
-    hit_rx: Receiver<Hit>,
-    progress_channels: Vec<watch::Receiver<Progress>>,
-    progress_handler: Arc<Mutex<Box<dyn ProgressHandler>>>,
-    total: usize,
-    total_workers: usize,
-  ) -> Self {
-    let (internal_hit_tx, internal_hit_rx) = channel_unbounded();
-    let (stop_tx, stop_rx) = channel(1);
-
-    Self {
-      accidential_stop_rx,
-      hit_counter: DashMap::new(),
-      inner: Arc::new(ThreadRenderInner {
-        internal_hit_tx,
-        hit_rx,
-        stop_tx,
-      }),
-      internal_hit_rx,
-      progress_channels,
-      progress_handler,
-      stop_rx,
-      total,
-      total_workers,
-    }
-  }
-
-  pub(crate) fn hits(&self) -> Vec<HitCounter> {
+  fn hits(&self) -> Vec<HitCounter> {
     self
       .hit_counter
       .iter()
@@ -103,10 +38,7 @@ impl ThreadRender {
       .collect()
   }
 
-  pub(crate) async fn start_render_progress(
-    &mut self,
-    interval: Duration,
-  ) -> Result<()> {
+  async fn start_render_progress(&mut self, interval: Duration) -> Result<()> {
     let mut start_time = Instant::now();
     let mut current_diff = DiffStore::new(0_usize);
     let mut current_ = 0;
@@ -197,6 +129,86 @@ impl ThreadRender {
     }
 
     Ok(())
+  }
+}
+
+pub(crate) struct ThreadRender {
+  inner: Arc<RwLock<ThreadRenderInner>>,
+  hit_rx: Receiver<Hit>,
+  internal_hit_tx: Sender<Hit>,
+  stop_tx: Sender<bool>,
+}
+
+impl ThreadRender {
+  pub(crate) fn new(
+    accidential_stop_rx: watch::Receiver<bool>,
+    hit_rx: Receiver<Hit>,
+    progress_channels: Vec<watch::Receiver<Progress>>,
+    progress_handler: Arc<Mutex<Box<dyn ProgressHandler>>>,
+    total: usize,
+    total_workers: usize,
+  ) -> Self {
+    let (internal_hit_tx, internal_hit_rx) = channel_unbounded();
+    let (stop_tx, stop_rx) = channel(1);
+
+    Self {
+      inner: Arc::new(RwLock::new(ThreadRenderInner {
+        accidential_stop_rx,
+        hit_counter: DashMap::new(),
+        internal_hit_rx,
+        progress_channels,
+        progress_handler,
+        stop_rx,
+        total,
+        total_workers,
+      })),
+      stop_tx,
+      hit_rx,
+      internal_hit_tx,
+    }
+  }
+
+  pub(crate) async fn hits(&self) -> Vec<HitCounter> {
+    let inner = self.inner.read().await;
+
+    inner.hits()
+  }
+
+  pub(crate) async fn wait_for_hit(&self) {
+    loop {
+      let hit = self.hit_rx.try_recv();
+
+      match hit {
+        Ok(hit) => {
+          self
+            .internal_hit_tx
+            .send_async(hit)
+            .await
+            .expect("internal hit channel sending failed");
+        }
+        Err(TryRecvError::Disconnected) => {
+          self
+            .stop_tx
+            .send_async(true)
+            .await
+            .expect("stop channel sending failed");
+
+          break;
+        }
+        Err(TryRecvError::Empty) => {
+          sleep(Duration::from_millis(5)).await;
+        }
+      }
+    }
+  }
+
+  pub(crate) async fn start_render_progress(
+    &self,
+    interval: Duration,
+  ) -> Result<()> {
+    let mut inner = self.inner.write().await;
+
+    inner.start_render_progress(interval).await
   }
 }
 

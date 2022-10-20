@@ -44,4 +44,4 @@ impl From<anyhow::Error> for AppError {
   }
 }
 
-pub(crate) type Result<'a, T> = anyhow::Result<T, AppError>;
+pub(crate) type Result<T> = anyhow::Result<T, AppError>;
