@@ -97,6 +97,7 @@ pub(crate) struct Config {
   /// Available handlers:
   ///  - "console": Prints progress to stderr with pretty progress bar
   ///  - "msgpack": Prints progress to stdout as raw msgpack-encoded data
+  ///  - "msgpack-base64": Prints progress to stdout as base64-encoded msgpack data
   #[arg(short = 'H', long, value_enum, verbatim_doc_comment)]
   pub(crate) handler: HandlerKind,
 

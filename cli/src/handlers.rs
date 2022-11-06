@@ -36,6 +36,7 @@ const BOLD_END: Attribute = Attribute::Reset;
 pub(crate) enum HandlerKind {
   Console,
   Msgpack,
+  MsgpackBase64,
 }
 
 impl Default for HandlerKind {

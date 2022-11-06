@@ -17,11 +17,11 @@ path = "src/lib.rs"
 simd-accel = ["simd-json"]
 
 [dev-dependencies]
-base64 = "0.13"
 criterion = { version = "0.4", features = ["async_tokio"] }
 
 [dependencies]
 anyhow = "1.0"
+base64 = "0.13"
 ctrlc = { version = "3.2", features = ["termination"] }
 dashmap = "5.3"
 divide_range = "0.1"

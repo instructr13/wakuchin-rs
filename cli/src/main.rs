@@ -13,7 +13,9 @@ use crossterm::{cursor, execute};
 
 use wakuchin::builder::ResearchBuilder;
 use wakuchin::error::WakuchinError;
-use wakuchin::handlers::msgpack::MsgpackProgressHandler;
+use wakuchin::handlers::msgpack::{
+  MsgpackBase64ProgressHandler, MsgpackProgressHandler,
+};
 
 use crate::app::App;
 use crate::handlers::{ConsoleProgressHandler, HandlerKind};
@@ -65,6 +67,12 @@ async fn try_main() -> Result<()> {
       }
       HandlerKind::Msgpack => {
         builder.progress_handler(MsgpackProgressHandler::new(
+          config.tries,
+          Arc::new(Mutex::new(stdout())),
+        ))
+      }
+      HandlerKind::MsgpackBase64 => {
+        builder.progress_handler(MsgpackBase64ProgressHandler::new(
           config.tries,
           Arc::new(Mutex::new(stdout())),
         ))
