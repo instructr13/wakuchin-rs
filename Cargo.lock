@@ -152,9 +152,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.0.18"
+version = "4.0.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "335867764ed2de42325fafe6d18b8af74ba97ee0c590fa016f157535b42ab04b"
+checksum = "426eed9136e68a14d9de937db20cfd79fcc25c09709872e8005897c618a8365e"
 dependencies = [
  "atty",
  "bitflags",
@@ -171,7 +171,7 @@ version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b917611f6596c7e42bd9c039b7202e50375aee5b7aab5817551b6d506aa8a5a8"
 dependencies = [
- "clap 4.0.18",
+ "clap 4.0.20",
  "clap-serde-proc",
  "serde",
 ]
@@ -189,9 +189,9 @@ dependencies = [
 
 [[package]]
 name = "clap_derive"
-version = "4.0.18"
+version = "4.0.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "16a1b0f6422af32d5da0c58e2703320f379216ee70198241c84173a8c5ac28f3"
+checksum = "685fbc59da060ed2cd3d79c86970ee95386b5e5fc69d9cad881912dca0c18807"
 dependencies = [
  "heck",
  "proc-macro-error",
@@ -1675,7 +1675,7 @@ version = "0.3.0"
 dependencies = [
  "anyhow",
  "atty",
- "clap 4.0.18",
+ "clap 4.0.20",
  "clap-serde-derive",
  "console",
  "crossterm",
