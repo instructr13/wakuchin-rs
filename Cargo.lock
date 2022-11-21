@@ -152,9 +152,9 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.0.23"
+version = "4.0.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0eb41c13df48950b20eb4cd0eefa618819469df1bffc49d11e8487c4ba0037e5"
+checksum = "2148adefda54e14492fb9bddcc600b4344c5d1a3123bd666dcb939c6f0e0e57e"
 dependencies = [
  "atty",
  "bitflags",
@@ -171,7 +171,7 @@ version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b917611f6596c7e42bd9c039b7202e50375aee5b7aab5817551b6d506aa8a5a8"
 dependencies = [
- "clap 4.0.23",
+ "clap 4.0.26",
  "clap-serde-proc",
  "serde",
 ]
@@ -1675,7 +1675,7 @@ version = "0.3.0"
 dependencies = [
  "anyhow",
  "atty",
- "clap 4.0.23",
+ "clap 4.0.26",
  "clap-serde-derive",
  "console",
  "crossterm",
