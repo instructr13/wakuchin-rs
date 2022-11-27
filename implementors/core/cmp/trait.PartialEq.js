@@ -1,3 +1,3 @@
-(function() {var implementors = {};
-implementors["wakuchin"] = [{"text":"impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.64.0/core/cmp/trait.PartialEq.html\" title=\"trait core::cmp::PartialEq\">PartialEq</a>&lt;<a class=\"enum\" href=\"wakuchin/result/enum.ResultOutputFormat.html\" title=\"enum wakuchin::result::ResultOutputFormat\">ResultOutputFormat</a>&gt; for <a class=\"enum\" href=\"wakuchin/result/enum.ResultOutputFormat.html\" title=\"enum wakuchin::result::ResultOutputFormat\">ResultOutputFormat</a>","synthetic":false,"types":["wakuchin::result::ResultOutputFormat"]}];
-if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
+(function() {var implementors = {
+"wakuchin":[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.65.0/core/cmp/trait.PartialEq.html\" title=\"trait core::cmp::PartialEq\">PartialEq</a>&lt;<a class=\"enum\" href=\"wakuchin/result/enum.ResultOutputFormat.html\" title=\"enum wakuchin::result::ResultOutputFormat\">ResultOutputFormat</a>&gt; for <a class=\"enum\" href=\"wakuchin/result/enum.ResultOutputFormat.html\" title=\"enum wakuchin::result::ResultOutputFormat\">ResultOutputFormat</a>"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

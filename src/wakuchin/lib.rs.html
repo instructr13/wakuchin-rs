@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `core/src/lib.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../wakuchin/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../wakuchin/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../wakuchin/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `core/src/lib.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../wakuchin/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../wakuchin/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../wakuchin/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -279,286 +279,286 @@
 <span id="279">279</span>
 <span id="280">280</span>
 <span id="281">281</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Core functions of wakuchin tools</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Core functions of wakuchin tools
 
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">builder</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">convert</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">error</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">handlers</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">progress</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">result</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">symbol</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">worker</span>;
+</span><span class="kw">pub mod </span>builder;
+<span class="kw">pub mod </span>convert;
+<span class="kw">pub mod </span>error;
+<span class="kw">pub mod </span>handlers;
+<span class="kw">pub mod </span>progress;
+<span class="kw">pub mod </span>result;
+<span class="kw">pub mod </span>symbol;
+<span class="kw">pub mod </span>worker;
 
-<span class="kw">mod</span> <span class="ident">channel</span>;
-<span class="kw">mod</span> <span class="ident">render</span>;
-<span class="kw">mod</span> <span class="ident">utils</span>;
+<span class="kw">mod </span>channel;
+<span class="kw">mod </span>render;
+<span class="kw">mod </span>utils;
 
-<span class="kw">use</span> <span class="ident">regex::Regex</span>;
+<span class="kw">use </span>regex::Regex;
 
-<span class="doccomment">/// Generate a randomized wakuchin string.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Arguments</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// * `times` - wakuchin times n</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Returns</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// * `String` - randomized wakuchin string</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Examples</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// ```rust</span>
-<span class="doccomment">/// use wakuchin::gen;</span>
-<span class="doccomment">/// use wakuchin::symbol;</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// let wakuchin = gen(3);</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// assert_eq!(wakuchin.len(), 12);</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// let mut wakuchin_w_count: u32 = 0;</span>
-<span class="doccomment">/// let mut wakuchin_k_count: u32 = 0;</span>
-<span class="doccomment">/// let mut wakuchin_c_count: u32 = 0;</span>
-<span class="doccomment">/// let mut wakuchin_n_count: u32 = 0;</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// for c in wakuchin.chars() {</span>
-<span class="doccomment">///   match c {</span>
-<span class="doccomment">///     symbol::WAKUCHIN_W =&gt; wakuchin_w_count += 1,</span>
-<span class="doccomment">///     symbol::WAKUCHIN_K =&gt; wakuchin_k_count += 1,</span>
-<span class="doccomment">///     symbol::WAKUCHIN_C =&gt; wakuchin_c_count += 1,</span>
-<span class="doccomment">///     symbol::WAKUCHIN_N =&gt; wakuchin_n_count += 1,</span>
-<span class="doccomment">///     _ =&gt; panic!(&quot;Unexpected character: {}&quot;, c),</span>
-<span class="doccomment">///   }</span>
-<span class="doccomment">/// }</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// assert_eq!(wakuchin_w_count, 3);</span>
-<span class="doccomment">/// assert_eq!(wakuchin_k_count, 3);</span>
-<span class="doccomment">/// assert_eq!(wakuchin_c_count, 3);</span>
-<span class="doccomment">/// assert_eq!(wakuchin_n_count, 3);</span>
-<span class="doccomment">/// ```</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">gen</span>(<span class="ident">times</span>: <span class="ident">usize</span>) -&gt; <span class="ident">String</span> {
-  <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wakuchin</span> <span class="op">=</span> <span class="ident">symbol::WAKUCHIN</span>.<span class="ident">repeat</span>(<span class="ident">times</span>);
+<span class="doccomment">/// Generate a randomized wakuchin string.
+///
+/// # Arguments
+///
+/// * `times` - wakuchin times n
+///
+/// # Returns
+///
+/// * `String` - randomized wakuchin string
+///
+/// # Examples
+///
+/// ```rust
+/// use wakuchin::gen;
+/// use wakuchin::symbol;
+///
+/// let wakuchin = gen(3);
+///
+/// assert_eq!(wakuchin.len(), 12);
+///
+/// let mut wakuchin_w_count: u32 = 0;
+/// let mut wakuchin_k_count: u32 = 0;
+/// let mut wakuchin_c_count: u32 = 0;
+/// let mut wakuchin_n_count: u32 = 0;
+///
+/// for c in wakuchin.chars() {
+///   match c {
+///     symbol::WAKUCHIN_W =&gt; wakuchin_w_count += 1,
+///     symbol::WAKUCHIN_K =&gt; wakuchin_k_count += 1,
+///     symbol::WAKUCHIN_C =&gt; wakuchin_c_count += 1,
+///     symbol::WAKUCHIN_N =&gt; wakuchin_n_count += 1,
+///     _ =&gt; panic!(&quot;Unexpected character: {}&quot;, c),
+///   }
+/// }
+///
+/// assert_eq!(wakuchin_w_count, 3);
+/// assert_eq!(wakuchin_k_count, 3);
+/// assert_eq!(wakuchin_c_count, 3);
+/// assert_eq!(wakuchin_n_count, 3);
+/// ```
+</span><span class="kw">pub fn </span>gen(times: usize) -&gt; String {
+  <span class="kw">let </span><span class="kw-2">mut </span>wakuchin = symbol::WAKUCHIN.repeat(times);
 
-  <span class="ident">fastrand::shuffle</span>(<span class="kw-2">&amp;mut</span> <span class="ident">wakuchin</span>);
+  fastrand::shuffle(<span class="kw-2">&amp;mut </span>wakuchin);
 
-  <span class="ident">wakuchin</span>.<span class="ident">iter</span>().<span class="ident">collect</span>()
+  wakuchin.iter().collect()
 }
 
-<span class="doccomment">/// Generate a vector of randomized wakuchin string.</span>
-<span class="doccomment">/// This function is useful when you want to generate multiple wakuchin strings.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Arguments</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// * `len` - length of vector to generate</span>
-<span class="doccomment">/// * `times` - wakuchin times n</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Returns</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// * `Vec&lt;String&gt;` - vector of randomized wakuchin string</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Examples</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// ```rust</span>
-<span class="doccomment">/// use wakuchin::gen_vec;</span>
-<span class="doccomment">/// use wakuchin::symbol;</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// let wakuchin_vec = gen_vec(3, 3);</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// assert_eq!(wakuchin_vec.len(), 3);</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// let mut wakuchin_w_count: u32 = 0;</span>
-<span class="doccomment">/// let mut wakuchin_k_count: u32 = 0;</span>
-<span class="doccomment">/// let mut wakuchin_c_count: u32 = 0;</span>
-<span class="doccomment">/// let mut wakuchin_n_count: u32 = 0;</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// for wakuchin in wakuchin_vec {</span>
-<span class="doccomment">///   assert_eq!(wakuchin.len(), 12);</span>
-<span class="doccomment">///</span>
-<span class="doccomment">///   for c in wakuchin.chars() {</span>
-<span class="doccomment">///     match c {</span>
-<span class="doccomment">///       symbol::WAKUCHIN_W =&gt; wakuchin_w_count += 1,</span>
-<span class="doccomment">///       symbol::WAKUCHIN_K =&gt; wakuchin_k_count += 1,</span>
-<span class="doccomment">///       symbol::WAKUCHIN_C =&gt; wakuchin_c_count += 1,</span>
-<span class="doccomment">///       symbol::WAKUCHIN_N =&gt; wakuchin_n_count += 1,</span>
-<span class="doccomment">///       _ =&gt; panic!(&quot;Unexpected character: {}&quot;, c),</span>
-<span class="doccomment">///     }</span>
-<span class="doccomment">///   }</span>
-<span class="doccomment">/// }</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// assert_eq!(wakuchin_w_count, 9);</span>
-<span class="doccomment">/// assert_eq!(wakuchin_k_count, 9);</span>
-<span class="doccomment">/// assert_eq!(wakuchin_c_count, 9);</span>
-<span class="doccomment">/// assert_eq!(wakuchin_n_count, 9);</span>
-<span class="doccomment">/// ```</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">gen_vec</span>(<span class="ident">len</span>: <span class="ident">usize</span>, <span class="ident">times</span>: <span class="ident">usize</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
-  (<span class="number">0</span>..<span class="ident">len</span>).<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">gen</span>(<span class="ident">times</span>)).<span class="ident">collect</span>()
+<span class="doccomment">/// Generate a vector of randomized wakuchin string.
+/// This function is useful when you want to generate multiple wakuchin strings.
+///
+/// # Arguments
+///
+/// * `len` - length of vector to generate
+/// * `times` - wakuchin times n
+///
+/// # Returns
+///
+/// * `Vec&lt;String&gt;` - vector of randomized wakuchin string
+///
+/// # Examples
+///
+/// ```rust
+/// use wakuchin::gen_vec;
+/// use wakuchin::symbol;
+///
+/// let wakuchin_vec = gen_vec(3, 3);
+///
+/// assert_eq!(wakuchin_vec.len(), 3);
+///
+/// let mut wakuchin_w_count: u32 = 0;
+/// let mut wakuchin_k_count: u32 = 0;
+/// let mut wakuchin_c_count: u32 = 0;
+/// let mut wakuchin_n_count: u32 = 0;
+///
+/// for wakuchin in wakuchin_vec {
+///   assert_eq!(wakuchin.len(), 12);
+///
+///   for c in wakuchin.chars() {
+///     match c {
+///       symbol::WAKUCHIN_W =&gt; wakuchin_w_count += 1,
+///       symbol::WAKUCHIN_K =&gt; wakuchin_k_count += 1,
+///       symbol::WAKUCHIN_C =&gt; wakuchin_c_count += 1,
+///       symbol::WAKUCHIN_N =&gt; wakuchin_n_count += 1,
+///       _ =&gt; panic!(&quot;Unexpected character: {}&quot;, c),
+///     }
+///   }
+/// }
+///
+/// assert_eq!(wakuchin_w_count, 9);
+/// assert_eq!(wakuchin_k_count, 9);
+/// assert_eq!(wakuchin_c_count, 9);
+/// assert_eq!(wakuchin_n_count, 9);
+/// ```
+</span><span class="kw">pub fn </span>gen_vec(len: usize, times: usize) -&gt; Vec&lt;String&gt; {
+  (<span class="number">0</span>..len).map(|<span class="kw">_</span>| gen(times)).collect()
 }
 
-<span class="doccomment">/// Check if a string is a internally used wakuchin string.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Arguments</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// * `wakuchin` - internal wakuchin string to check</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Returns</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// * `bool` - true if internal wakuchin string is valid</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Examples</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// ```rust</span>
-<span class="doccomment">/// use wakuchin::validate;</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// assert!(validate(&quot;WKCN&quot;));</span>
-<span class="doccomment">/// assert!(!validate(&quot;わくちん&quot;));</span>
-<span class="doccomment">/// assert!(!validate(&quot;WKCNX&quot;));</span>
-<span class="doccomment">/// ```</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">validate</span>(<span class="ident">wakuchin</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="ident">bool</span> {
-  <span class="ident">wakuchin</span>.<span class="ident">chars</span>().<span class="ident">all</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">symbol::WAKUCHIN</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">c</span>))
+<span class="doccomment">/// Check if a string is a internally used wakuchin string.
+///
+/// # Arguments
+///
+/// * `wakuchin` - internal wakuchin string to check
+///
+/// # Returns
+///
+/// * `bool` - true if internal wakuchin string is valid
+///
+/// # Examples
+///
+/// ```rust
+/// use wakuchin::validate;
+///
+/// assert!(validate(&quot;WKCN&quot;));
+/// assert!(!validate(&quot;わくちん&quot;));
+/// assert!(!validate(&quot;WKCNX&quot;));
+/// ```
+</span><span class="kw">pub fn </span>validate(wakuchin: <span class="kw-2">&amp;</span>str) -&gt; bool {
+  wakuchin.chars().all(|c| symbol::WAKUCHIN.contains(<span class="kw-2">&amp;</span>c))
 }
 
-<span class="doccomment">/// Check if a string is a wakuchin string.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Arguments</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// * `wakuchin` - wakuchin string to check</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Returns</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// * `bool` - true if wakuchin string is valid</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Examples</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// ```rust</span>
-<span class="doccomment">/// use wakuchin::validate_external;</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// assert!(validate_external(&quot;わくちん&quot;));</span>
-<span class="doccomment">/// assert!(!validate_external(&quot;WKCN&quot;));</span>
-<span class="doccomment">/// assert!(!validate_external(&quot;わくうちん&quot;));</span>
-<span class="doccomment">/// assert!(!validate_external(&quot;WKCNX&quot;));</span>
-<span class="doccomment">/// ```</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">validate_external</span>(<span class="ident">wakuchin</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="ident">bool</span> {
-  <span class="ident">wakuchin</span>
-    .<span class="ident">chars</span>()
-    .<span class="ident">all</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">symbol::WAKUCHIN_EXTERNAL</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">c</span>))
+<span class="doccomment">/// Check if a string is a wakuchin string.
+///
+/// # Arguments
+///
+/// * `wakuchin` - wakuchin string to check
+///
+/// # Returns
+///
+/// * `bool` - true if wakuchin string is valid
+///
+/// # Examples
+///
+/// ```rust
+/// use wakuchin::validate_external;
+///
+/// assert!(validate_external(&quot;わくちん&quot;));
+/// assert!(!validate_external(&quot;WKCN&quot;));
+/// assert!(!validate_external(&quot;わくうちん&quot;));
+/// assert!(!validate_external(&quot;WKCNX&quot;));
+/// ```
+</span><span class="kw">pub fn </span>validate_external(wakuchin: <span class="kw-2">&amp;</span>str) -&gt; bool {
+  wakuchin
+    .chars()
+    .all(|c| symbol::WAKUCHIN_EXTERNAL.contains(<span class="kw-2">&amp;</span>c))
 }
 
-<span class="doccomment">/// Check wakuchin string with specified regular expression.</span>
-<span class="doccomment">/// This function is a wrapper of `Regex::is_match`.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Arguments</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// * `chars` - wakuchin string to check</span>
-<span class="doccomment">/// * `regex` - regular expression to use</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Returns</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// * `bool` - true if wakuchin string is valid</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Examples</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// ```rust</span>
-<span class="doccomment">/// use regex::Regex;</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// use wakuchin::check;</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// assert!(check(&quot;WKCN&quot;, &amp;Regex::new(r&quot;^[WKCN]+$&quot;).unwrap()));</span>
-<span class="doccomment">/// assert!(!check(&quot;わくちん&quot;, &amp;Regex::new(r&quot;^[WKCN]+$&quot;).unwrap()));</span>
-<span class="doccomment">/// assert!(!check(&quot;WKCNX&quot;, &amp;Regex::new(r&quot;^[WKCN]+$&quot;).unwrap()));</span>
-<span class="doccomment">/// ```</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">check</span>(<span class="ident">chars</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">regex</span>: <span class="kw-2">&amp;</span><span class="ident">Regex</span>) -&gt; <span class="ident">bool</span> {
-  <span class="ident">regex</span>.<span class="ident">is_match</span>(<span class="ident">chars</span>)
+<span class="doccomment">/// Check wakuchin string with specified regular expression.
+/// This function is a wrapper of `Regex::is_match`.
+///
+/// # Arguments
+///
+/// * `chars` - wakuchin string to check
+/// * `regex` - regular expression to use
+///
+/// # Returns
+///
+/// * `bool` - true if wakuchin string is valid
+///
+/// # Examples
+///
+/// ```rust
+/// use regex::Regex;
+///
+/// use wakuchin::check;
+///
+/// assert!(check(&quot;WKCN&quot;, &amp;Regex::new(r&quot;^[WKCN]+$&quot;).unwrap()));
+/// assert!(!check(&quot;わくちん&quot;, &amp;Regex::new(r&quot;^[WKCN]+$&quot;).unwrap()));
+/// assert!(!check(&quot;WKCNX&quot;, &amp;Regex::new(r&quot;^[WKCN]+$&quot;).unwrap()));
+/// ```
+</span><span class="kw">pub fn </span>check(chars: <span class="kw-2">&amp;</span>str, regex: <span class="kw-2">&amp;</span>Regex) -&gt; bool {
+  regex.is_match(chars)
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">test</span> {
-  <span class="kw">use</span> <span class="ident">std::error::Error</span>;
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>test {
+  <span class="kw">use </span>std::error::Error;
 
-  <span class="kw">use</span> <span class="ident">regex::Regex</span>;
+  <span class="kw">use </span>regex::Regex;
 
-  <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">check</span>, <span class="ident">gen</span>, <span class="ident">gen_vec</span>, <span class="ident">symbol</span>, <span class="ident">validate</span>, <span class="ident">validate_external</span>};
+  <span class="kw">use crate</span>::{check, gen, gen_vec, symbol, validate, validate_external};
 
-  <span class="attribute">#[<span class="ident">test</span>]</span>
-  <span class="kw">fn</span> <span class="ident">test_gen</span>() {
-    <span class="kw">let</span> <span class="ident">wakuchin</span> <span class="op">=</span> <span class="ident">gen</span>(<span class="number">3</span>);
+  <span class="attribute">#[test]
+  </span><span class="kw">fn </span>test_gen() {
+    <span class="kw">let </span>wakuchin = gen(<span class="number">3</span>);
 
-    <span class="macro">assert_eq!</span>(<span class="ident">wakuchin</span>.<span class="ident">len</span>(), <span class="number">12</span>);
+    <span class="macro">assert_eq!</span>(wakuchin.len(), <span class="number">12</span>);
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wakuchin_w_count</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">0</span>;
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wakuchin_k_count</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">0</span>;
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wakuchin_c_count</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">0</span>;
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wakuchin_n_count</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">0</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>wakuchin_w_count: u32 = <span class="number">0</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>wakuchin_k_count: u32 = <span class="number">0</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>wakuchin_c_count: u32 = <span class="number">0</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>wakuchin_n_count: u32 = <span class="number">0</span>;
 
-    <span class="kw">for</span> <span class="ident">c</span> <span class="kw">in</span> <span class="ident">wakuchin</span>.<span class="ident">chars</span>() {
-      <span class="kw">match</span> <span class="ident">c</span> {
-        <span class="ident">symbol::WAKUCHIN_W</span> =&gt; <span class="ident">wakuchin_w_count</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>,
-        <span class="ident">symbol::WAKUCHIN_K</span> =&gt; <span class="ident">wakuchin_k_count</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>,
-        <span class="ident">symbol::WAKUCHIN_C</span> =&gt; <span class="ident">wakuchin_c_count</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>,
-        <span class="ident">symbol::WAKUCHIN_N</span> =&gt; <span class="ident">wakuchin_n_count</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>,
-        <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Unexpected character: {}&quot;</span>, <span class="ident">c</span>),
+    <span class="kw">for </span>c <span class="kw">in </span>wakuchin.chars() {
+      <span class="kw">match </span>c {
+        symbol::WAKUCHIN_W =&gt; wakuchin_w_count += <span class="number">1</span>,
+        symbol::WAKUCHIN_K =&gt; wakuchin_k_count += <span class="number">1</span>,
+        symbol::WAKUCHIN_C =&gt; wakuchin_c_count += <span class="number">1</span>,
+        symbol::WAKUCHIN_N =&gt; wakuchin_n_count += <span class="number">1</span>,
+        <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;Unexpected character: {}&quot;</span>, c),
       }
     }
 
-    <span class="macro">assert_eq!</span>(<span class="ident">wakuchin_w_count</span>, <span class="number">3</span>);
-    <span class="macro">assert_eq!</span>(<span class="ident">wakuchin_k_count</span>, <span class="number">3</span>);
-    <span class="macro">assert_eq!</span>(<span class="ident">wakuchin_c_count</span>, <span class="number">3</span>);
-    <span class="macro">assert_eq!</span>(<span class="ident">wakuchin_n_count</span>, <span class="number">3</span>);
+    <span class="macro">assert_eq!</span>(wakuchin_w_count, <span class="number">3</span>);
+    <span class="macro">assert_eq!</span>(wakuchin_k_count, <span class="number">3</span>);
+    <span class="macro">assert_eq!</span>(wakuchin_c_count, <span class="number">3</span>);
+    <span class="macro">assert_eq!</span>(wakuchin_n_count, <span class="number">3</span>);
   }
 
-  <span class="attribute">#[<span class="ident">test</span>]</span>
-  <span class="kw">fn</span> <span class="ident">test_gen_vec</span>() {
-    <span class="kw">let</span> <span class="ident">wakuchin_vec</span> <span class="op">=</span> <span class="ident">gen_vec</span>(<span class="number">3</span>, <span class="number">3</span>);
+  <span class="attribute">#[test]
+  </span><span class="kw">fn </span>test_gen_vec() {
+    <span class="kw">let </span>wakuchin_vec = gen_vec(<span class="number">3</span>, <span class="number">3</span>);
 
-    <span class="macro">assert_eq!</span>(<span class="ident">wakuchin_vec</span>.<span class="ident">len</span>(), <span class="number">3</span>);
+    <span class="macro">assert_eq!</span>(wakuchin_vec.len(), <span class="number">3</span>);
 
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wakuchin_w_count</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">0</span>;
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wakuchin_k_count</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">0</span>;
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wakuchin_c_count</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">0</span>;
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wakuchin_n_count</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="number">0</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>wakuchin_w_count: u32 = <span class="number">0</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>wakuchin_k_count: u32 = <span class="number">0</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>wakuchin_c_count: u32 = <span class="number">0</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>wakuchin_n_count: u32 = <span class="number">0</span>;
 
-    <span class="kw">for</span> <span class="ident">wakuchin</span> <span class="kw">in</span> <span class="ident">wakuchin_vec</span> {
-      <span class="macro">assert_eq!</span>(<span class="ident">wakuchin</span>.<span class="ident">len</span>(), <span class="number">12</span>);
+    <span class="kw">for </span>wakuchin <span class="kw">in </span>wakuchin_vec {
+      <span class="macro">assert_eq!</span>(wakuchin.len(), <span class="number">12</span>);
 
-      <span class="kw">for</span> <span class="ident">c</span> <span class="kw">in</span> <span class="ident">wakuchin</span>.<span class="ident">chars</span>() {
-        <span class="kw">match</span> <span class="ident">c</span> {
-          <span class="ident">symbol::WAKUCHIN_W</span> =&gt; <span class="ident">wakuchin_w_count</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>,
-          <span class="ident">symbol::WAKUCHIN_K</span> =&gt; <span class="ident">wakuchin_k_count</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>,
-          <span class="ident">symbol::WAKUCHIN_C</span> =&gt; <span class="ident">wakuchin_c_count</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>,
-          <span class="ident">symbol::WAKUCHIN_N</span> =&gt; <span class="ident">wakuchin_n_count</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>,
-          <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Unexpected character: {}&quot;</span>, <span class="ident">c</span>),
+      <span class="kw">for </span>c <span class="kw">in </span>wakuchin.chars() {
+        <span class="kw">match </span>c {
+          symbol::WAKUCHIN_W =&gt; wakuchin_w_count += <span class="number">1</span>,
+          symbol::WAKUCHIN_K =&gt; wakuchin_k_count += <span class="number">1</span>,
+          symbol::WAKUCHIN_C =&gt; wakuchin_c_count += <span class="number">1</span>,
+          symbol::WAKUCHIN_N =&gt; wakuchin_n_count += <span class="number">1</span>,
+          <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;Unexpected character: {}&quot;</span>, c),
         }
       }
     }
 
-    <span class="macro">assert_eq!</span>(<span class="ident">wakuchin_w_count</span>, <span class="number">9</span>);
-    <span class="macro">assert_eq!</span>(<span class="ident">wakuchin_k_count</span>, <span class="number">9</span>);
-    <span class="macro">assert_eq!</span>(<span class="ident">wakuchin_c_count</span>, <span class="number">9</span>);
-    <span class="macro">assert_eq!</span>(<span class="ident">wakuchin_n_count</span>, <span class="number">9</span>);
+    <span class="macro">assert_eq!</span>(wakuchin_w_count, <span class="number">9</span>);
+    <span class="macro">assert_eq!</span>(wakuchin_k_count, <span class="number">9</span>);
+    <span class="macro">assert_eq!</span>(wakuchin_c_count, <span class="number">9</span>);
+    <span class="macro">assert_eq!</span>(wakuchin_n_count, <span class="number">9</span>);
   }
 
-  <span class="attribute">#[<span class="ident">test</span>]</span>
-  <span class="kw">fn</span> <span class="ident">test_validate</span>() {
-    <span class="macro">assert!</span>(<span class="ident">validate</span>(<span class="string">&quot;WKCN&quot;</span>));
-    <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">validate</span>(<span class="string">&quot;わくちん&quot;</span>));
-    <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">validate</span>(<span class="string">&quot;WKCNX&quot;</span>));
+  <span class="attribute">#[test]
+  </span><span class="kw">fn </span>test_validate() {
+    <span class="macro">assert!</span>(validate(<span class="string">&quot;WKCN&quot;</span>));
+    <span class="macro">assert!</span>(!validate(<span class="string">&quot;わくちん&quot;</span>));
+    <span class="macro">assert!</span>(!validate(<span class="string">&quot;WKCNX&quot;</span>));
   }
 
-  <span class="attribute">#[<span class="ident">test</span>]</span>
-  <span class="kw">fn</span> <span class="ident">test_validate_external</span>() {
-    <span class="macro">assert!</span>(<span class="ident">validate_external</span>(<span class="string">&quot;わくちん&quot;</span>));
-    <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">validate_external</span>(<span class="string">&quot;WKCN&quot;</span>));
-    <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">validate_external</span>(<span class="string">&quot;わくうちん&quot;</span>));
-    <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">validate_external</span>(<span class="string">&quot;WKCNX&quot;</span>));
+  <span class="attribute">#[test]
+  </span><span class="kw">fn </span>test_validate_external() {
+    <span class="macro">assert!</span>(validate_external(<span class="string">&quot;わくちん&quot;</span>));
+    <span class="macro">assert!</span>(!validate_external(<span class="string">&quot;WKCN&quot;</span>));
+    <span class="macro">assert!</span>(!validate_external(<span class="string">&quot;わくうちん&quot;</span>));
+    <span class="macro">assert!</span>(!validate_external(<span class="string">&quot;WKCNX&quot;</span>));
   }
 
-  <span class="attribute">#[<span class="ident">test</span>]</span>
-  <span class="kw">fn</span> <span class="ident">test_check</span>() -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Error</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-    <span class="macro">assert!</span>(<span class="ident">check</span>(<span class="string">&quot;WKCN&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">Regex::new</span>(<span class="string">r&quot;^[WKCN]+$&quot;</span>)<span class="question-mark">?</span>));
-    <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">check</span>(<span class="string">&quot;わくちん&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">Regex::new</span>(<span class="string">r&quot;^[WKCN]+$&quot;</span>)<span class="question-mark">?</span>));
-    <span class="macro">assert!</span>(<span class="op">!</span><span class="ident">check</span>(<span class="string">&quot;WKCNX&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">Regex::new</span>(<span class="string">r&quot;^[WKCN]+$&quot;</span>)<span class="question-mark">?</span>));
+  <span class="attribute">#[test]
+  </span><span class="kw">fn </span>test_check() -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>Error&gt;&gt; {
+    <span class="macro">assert!</span>(check(<span class="string">&quot;WKCN&quot;</span>, <span class="kw-2">&amp;</span>Regex::new(<span class="string">r&quot;^[WKCN]+$&quot;</span>)<span class="question-mark">?</span>));
+    <span class="macro">assert!</span>(!check(<span class="string">&quot;わくちん&quot;</span>, <span class="kw-2">&amp;</span>Regex::new(<span class="string">r&quot;^[WKCN]+$&quot;</span>)<span class="question-mark">?</span>));
+    <span class="macro">assert!</span>(!check(<span class="string">&quot;WKCNX&quot;</span>, <span class="kw-2">&amp;</span>Regex::new(<span class="string">r&quot;^[WKCN]+$&quot;</span>)<span class="question-mark">?</span>));
 
     <span class="prelude-val">Ok</span>(())
   }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="wakuchin" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="wakuchin" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

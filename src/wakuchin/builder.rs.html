@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `core/src/builder.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>builder.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../wakuchin/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../wakuchin/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../wakuchin/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `core/src/builder.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>builder.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../wakuchin/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../wakuchin/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../wakuchin/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -118,125 +118,125 @@
 <span id="118">118</span>
 <span id="119">119</span>
 <span id="120">120</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::sync</span>::{<span class="ident">Arc</span>, <span class="ident">Mutex</span>};
-<span class="kw">use</span> <span class="ident">std::time::Duration</span>;
+</pre><pre class="rust"><code><span class="kw">use </span>std::sync::{Arc, Mutex};
+<span class="kw">use </span>std::time::Duration;
 
-<span class="kw">use</span> <span class="ident">regex::Regex</span>;
+<span class="kw">use </span>regex::Regex;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::WakuchinError</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::handlers::empty::EmptyProgressHandler</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::handlers::ProgressHandler</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::result::WakuchinResult</span>;
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::worker</span>::{<span class="ident">run_par</span>, <span class="ident">run_seq</span>};
+<span class="kw">use </span><span class="kw">crate</span>::error::WakuchinError;
+<span class="kw">use </span><span class="kw">crate</span>::handlers::empty::EmptyProgressHandler;
+<span class="kw">use </span><span class="kw">crate</span>::handlers::ProgressHandler;
+<span class="kw">use </span><span class="kw">crate</span>::result::WakuchinResult;
+<span class="kw">use </span><span class="kw">crate</span>::worker::{run_par, run_seq};
 
-<span class="kw">type</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">std::result::Result</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">WakuchinError</span><span class="op">&gt;</span>;
+<span class="kw">type </span><span class="prelude-ty">Result</span>&lt;T&gt; = std::result::Result&lt;T, WakuchinError&gt;;
 
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ResearchBuilder</span><span class="op">&lt;</span><span class="ident">Tries</span>, <span class="ident">Times</span>, <span class="ident">TRegex</span><span class="op">&gt;</span> {
-  <span class="ident">tries</span>: <span class="ident">Tries</span>,
-  <span class="ident">times</span>: <span class="ident">Times</span>,
-  <span class="ident">regex</span>: <span class="ident">TRegex</span>,
-  <span class="ident">progress_handler</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">ProgressHandler</span><span class="op">&gt;</span>,
-  <span class="ident">progress_interval</span>: <span class="ident">Duration</span>,
-  <span class="ident">workers</span>: <span class="ident">usize</span>,
+<span class="kw">pub struct </span>ResearchBuilder&lt;Tries, Times, TRegex&gt; {
+  tries: Tries,
+  times: Times,
+  regex: TRegex,
+  progress_handler: Box&lt;<span class="kw">dyn </span>ProgressHandler&gt;,
+  progress_interval: Duration,
+  workers: usize,
 }
 
-<span class="kw">impl</span> <span class="ident">ResearchBuilder</span><span class="op">&lt;</span>(), (), ()<span class="op">&gt;</span> {
-  <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
-    <span class="self">Self</span> {
-      <span class="ident">tries</span>: (),
-      <span class="ident">times</span>: (),
-      <span class="ident">regex</span>: (),
-      <span class="ident">progress_handler</span>: <span class="ident">Box::new</span>(<span class="ident">EmptyProgressHandler::new</span>()),
-      <span class="ident">progress_interval</span>: <span class="ident">Duration::from_millis</span>(<span class="number">500</span>),
-      <span class="ident">workers</span>: <span class="number">0</span>,
+<span class="kw">impl </span>ResearchBuilder&lt;(), (), ()&gt; {
+  <span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
+    <span class="self">Self </span>{
+      tries: (),
+      times: (),
+      regex: (),
+      progress_handler: Box::new(EmptyProgressHandler::new()),
+      progress_interval: Duration::from_millis(<span class="number">500</span>),
+      workers: <span class="number">0</span>,
     }
   }
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">ResearchBuilder</span><span class="op">&lt;</span>(), (), ()<span class="op">&gt;</span> {
-  <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-    <span class="ident"><span class="self">Self</span>::new</span>()
+<span class="kw">impl </span>Default <span class="kw">for </span>ResearchBuilder&lt;(), (), ()&gt; {
+  <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+    <span class="self">Self</span>::new()
   }
 }
 
-<span class="kw">impl</span><span class="op">&lt;</span><span class="ident">Tries</span>, <span class="ident">Times</span>, <span class="ident">TRegex</span><span class="op">&gt;</span> <span class="ident">ResearchBuilder</span><span class="op">&lt;</span><span class="ident">Tries</span>, <span class="ident">Times</span>, <span class="ident">TRegex</span><span class="op">&gt;</span> {
-  <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">tries</span>(<span class="self">self</span>, <span class="ident">tries</span>: <span class="ident">usize</span>) -&gt; <span class="ident">ResearchBuilder</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">Times</span>, <span class="ident">TRegex</span><span class="op">&gt;</span> {
-    <span class="ident">ResearchBuilder</span> {
-      <span class="ident">tries</span>,
-      <span class="ident">times</span>: <span class="self">self</span>.<span class="ident">times</span>,
-      <span class="ident">regex</span>: <span class="self">self</span>.<span class="ident">regex</span>,
-      <span class="ident">progress_handler</span>: <span class="self">self</span>.<span class="ident">progress_handler</span>,
-      <span class="ident">progress_interval</span>: <span class="self">self</span>.<span class="ident">progress_interval</span>,
-      <span class="ident">workers</span>: <span class="self">self</span>.<span class="ident">workers</span>,
+<span class="kw">impl</span>&lt;Tries, Times, TRegex&gt; ResearchBuilder&lt;Tries, Times, TRegex&gt; {
+  <span class="kw">pub fn </span>tries(<span class="self">self</span>, tries: usize) -&gt; ResearchBuilder&lt;usize, Times, TRegex&gt; {
+    ResearchBuilder {
+      tries,
+      times: <span class="self">self</span>.times,
+      regex: <span class="self">self</span>.regex,
+      progress_handler: <span class="self">self</span>.progress_handler,
+      progress_interval: <span class="self">self</span>.progress_interval,
+      workers: <span class="self">self</span>.workers,
     }
   }
 
-  <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">times</span>(<span class="self">self</span>, <span class="ident">times</span>: <span class="ident">usize</span>) -&gt; <span class="ident">ResearchBuilder</span><span class="op">&lt;</span><span class="ident">Tries</span>, <span class="ident">usize</span>, <span class="ident">TRegex</span><span class="op">&gt;</span> {
-    <span class="ident">ResearchBuilder</span> {
-      <span class="ident">tries</span>: <span class="self">self</span>.<span class="ident">tries</span>,
-      <span class="ident">times</span>,
-      <span class="ident">regex</span>: <span class="self">self</span>.<span class="ident">regex</span>,
-      <span class="ident">progress_handler</span>: <span class="self">self</span>.<span class="ident">progress_handler</span>,
-      <span class="ident">progress_interval</span>: <span class="self">self</span>.<span class="ident">progress_interval</span>,
-      <span class="ident">workers</span>: <span class="self">self</span>.<span class="ident">workers</span>,
+  <span class="kw">pub fn </span>times(<span class="self">self</span>, times: usize) -&gt; ResearchBuilder&lt;Tries, usize, TRegex&gt; {
+    ResearchBuilder {
+      tries: <span class="self">self</span>.tries,
+      times,
+      regex: <span class="self">self</span>.regex,
+      progress_handler: <span class="self">self</span>.progress_handler,
+      progress_interval: <span class="self">self</span>.progress_interval,
+      workers: <span class="self">self</span>.workers,
     }
   }
 
-  <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">regex</span>(<span class="self">self</span>, <span class="ident">regex</span>: <span class="ident">Regex</span>) -&gt; <span class="ident">ResearchBuilder</span><span class="op">&lt;</span><span class="ident">Tries</span>, <span class="ident">Times</span>, <span class="ident">Regex</span><span class="op">&gt;</span> {
-    <span class="ident">ResearchBuilder</span> {
-      <span class="ident">tries</span>: <span class="self">self</span>.<span class="ident">tries</span>,
-      <span class="ident">times</span>: <span class="self">self</span>.<span class="ident">times</span>,
-      <span class="ident">regex</span>,
-      <span class="ident">progress_handler</span>: <span class="self">self</span>.<span class="ident">progress_handler</span>,
-      <span class="ident">progress_interval</span>: <span class="self">self</span>.<span class="ident">progress_interval</span>,
-      <span class="ident">workers</span>: <span class="self">self</span>.<span class="ident">workers</span>,
+  <span class="kw">pub fn </span>regex(<span class="self">self</span>, regex: Regex) -&gt; ResearchBuilder&lt;Tries, Times, Regex&gt; {
+    ResearchBuilder {
+      tries: <span class="self">self</span>.tries,
+      times: <span class="self">self</span>.times,
+      regex,
+      progress_handler: <span class="self">self</span>.progress_handler,
+      progress_interval: <span class="self">self</span>.progress_interval,
+      workers: <span class="self">self</span>.workers,
     }
   }
 
-  <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">progress_handler</span>(
-    <span class="kw-2">mut</span> <span class="self">self</span>,
-    <span class="ident">progress_handler</span>: <span class="kw">impl</span> <span class="ident">ProgressHandler</span>,
-  ) -&gt; <span class="self">Self</span> {
-    <span class="self">self</span>.<span class="ident">progress_handler</span> <span class="op">=</span> <span class="ident">Box::new</span>(<span class="ident">progress_handler</span>);
+  <span class="kw">pub fn </span>progress_handler(
+    <span class="kw-2">mut </span><span class="self">self</span>,
+    progress_handler: <span class="kw">impl </span>ProgressHandler,
+  ) -&gt; <span class="self">Self </span>{
+    <span class="self">self</span>.progress_handler = Box::new(progress_handler);
 
-    <span class="self">self</span>
-  }
+    <span class="self">self
+  </span>}
 
-  <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">progress_interval</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">progress_interval</span>: <span class="ident">Duration</span>) -&gt; <span class="self">Self</span> {
-    <span class="self">self</span>.<span class="ident">progress_interval</span> <span class="op">=</span> <span class="ident">progress_interval</span>;
+  <span class="kw">pub fn </span>progress_interval(<span class="kw-2">mut </span><span class="self">self</span>, progress_interval: Duration) -&gt; <span class="self">Self </span>{
+    <span class="self">self</span>.progress_interval = progress_interval;
 
-    <span class="self">self</span>
-  }
+    <span class="self">self
+  </span>}
 
-  <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">workers</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">workers</span>: <span class="ident">usize</span>) -&gt; <span class="self">Self</span> {
-    <span class="self">self</span>.<span class="ident">workers</span> <span class="op">=</span> <span class="ident">workers</span>;
+  <span class="kw">pub fn </span>workers(<span class="kw-2">mut </span><span class="self">self</span>, workers: usize) -&gt; <span class="self">Self </span>{
+    <span class="self">self</span>.workers = workers;
 
-    <span class="self">self</span>
-  }
+    <span class="self">self
+  </span>}
 }
 
-<span class="kw">impl</span> <span class="ident">ResearchBuilder</span><span class="op">&lt;</span><span class="ident">usize</span>, <span class="ident">usize</span>, <span class="ident">Regex</span><span class="op">&gt;</span> {
-  <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">run_par</span>(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">WakuchinResult</span><span class="op">&gt;</span> {
-    <span class="ident">run_par</span>(
-      <span class="self">self</span>.<span class="ident">tries</span>,
-      <span class="self">self</span>.<span class="ident">times</span>,
-      <span class="self">self</span>.<span class="ident">regex</span>,
-      <span class="ident">Arc::new</span>(<span class="ident">Mutex::new</span>(<span class="self">self</span>.<span class="ident">progress_handler</span>)),
-      <span class="self">self</span>.<span class="ident">progress_interval</span>,
-      <span class="self">self</span>.<span class="ident">workers</span>,
+<span class="kw">impl </span>ResearchBuilder&lt;usize, usize, Regex&gt; {
+  <span class="kw">pub async fn </span>run_par(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;WakuchinResult&gt; {
+    run_par(
+      <span class="self">self</span>.tries,
+      <span class="self">self</span>.times,
+      <span class="self">self</span>.regex,
+      Arc::new(Mutex::new(<span class="self">self</span>.progress_handler)),
+      <span class="self">self</span>.progress_interval,
+      <span class="self">self</span>.workers,
     )
-    .<span class="kw">await</span>
-  }
+    .<span class="kw">await
+  </span>}
 
-  <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">run_seq</span>(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">WakuchinResult</span><span class="op">&gt;</span> {
-    <span class="ident">run_seq</span>(
-      <span class="self">self</span>.<span class="ident">tries</span>,
-      <span class="self">self</span>.<span class="ident">times</span>,
-      <span class="self">self</span>.<span class="ident">regex</span>,
-      <span class="self">self</span>.<span class="ident">progress_handler</span>.<span class="ident">wrap_in_refcell</span>(),
-      <span class="self">self</span>.<span class="ident">progress_interval</span>,
+  <span class="kw">pub fn </span>run_seq(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;WakuchinResult&gt; {
+    run_seq(
+      <span class="self">self</span>.tries,
+      <span class="self">self</span>.times,
+      <span class="self">self</span>.regex,
+      <span class="self">self</span>.progress_handler.wrap_in_refcell(),
+      <span class="self">self</span>.progress_interval,
     )
   }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="wakuchin" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="wakuchin" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>

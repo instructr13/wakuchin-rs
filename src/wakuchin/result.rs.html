@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `core/src/result.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>result.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../wakuchin/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../wakuchin/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../wakuchin/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `core/src/result.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>result.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" href="../../normalize.css"><link rel="stylesheet" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" href="../../ayu.css" disabled><link rel="stylesheet" href="../../dark.css" disabled><link rel="stylesheet" href="../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../storage.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script><script defer src="../../main.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../wakuchin/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a><h2 class="location"></h2></nav><nav class="sidebar"><a class="sidebar-logo" href="../../wakuchin/index.html"><div class="logo-container"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></div></a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../wakuchin/index.html"><img class="rust-logo" src="../../rust-logo.svg" alt="logo"></a><nav class="sub"><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><button type="button">?</button></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../wheel.svg"></a></div></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">1</span>
 <span id="2">2</span>
 <span id="3">3</span>
 <span id="4">4</span>
@@ -284,291 +284,291 @@
 <span id="284">284</span>
 <span id="285">285</span>
 <span id="286">286</span>
-</pre><pre class="rust"><code><span class="doccomment">//! Functions to manipulate the result of a research</span>
+</pre><pre class="rust"><code><span class="doccomment">//! Functions to manipulate the result of a research
 
-<span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
+</span><span class="kw">use </span>std::str::FromStr;
 
-<span class="kw">use</span> <span class="ident">itertools::Itertools</span>;
-<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
-<span class="kw">use</span> <span class="ident">smooth::Smooth</span>;
+<span class="kw">use </span>itertools::Itertools;
+<span class="kw">use </span>serde::{Deserialize, Serialize};
+<span class="kw">use </span>smooth::Smooth;
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error::WakuchinError</span>;
+<span class="kw">use </span><span class="kw">crate</span>::error::WakuchinError;
 
-<span class="doccomment">/// The output format of the result</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Eq</span>, <span class="ident">PartialOrd</span>, <span class="ident">Ord</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ResultOutputFormat</span> {
-  <span class="doccomment">/// Text output</span>
-  <span class="doccomment">///</span>
-  <span class="doccomment">/// # Example</span>
-  <span class="doccomment">///</span>
-  <span class="doccomment">/// The expected output would be:</span>
-  <span class="doccomment">/// ```txt</span>
-  <span class="doccomment">/// --- Result ---</span>
-  <span class="doccomment">/// Tries: 10</span>
-  <span class="doccomment">/// Hits: 2</span>
-  <span class="doccomment">/// Hits%: 20%</span>
-  <span class="doccomment">/// ```</span>
-  <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;text&quot;</span>)]</span>
-  <span class="ident">Text</span>,
-  <span class="doccomment">/// JSON output</span>
-  <span class="doccomment">///</span>
-  <span class="doccomment">/// # Example</span>
-  <span class="doccomment">///</span>
-  <span class="doccomment">/// The expected output would be:</span>
-  <span class="doccomment">/// ```json</span>
-  <span class="doccomment">/// {</span>
-  <span class="doccomment">///   &quot;tries&quot;: 10,</span>
-  <span class="doccomment">///   &quot;hits_n&quot;: 2,</span>
-  <span class="doccomment">///   &quot;hits_detail&quot;: [</span>
-  <span class="doccomment">///     {</span>
-  <span class="doccomment">///       &quot;hit_on&quot;: 0,</span>
-  <span class="doccomment">///       &quot;chars&quot;: &quot;WKCN&quot;</span>
-  <span class="doccomment">///     },</span>
-  <span class="doccomment">///     {</span>
-  <span class="doccomment">///       &quot;hit_on&quot;: 5,</span>
-  <span class="doccomment">///       &quot;chars&quot;: &quot;WKCN&quot;</span>
-  <span class="doccomment">///     }</span>
-  <span class="doccomment">///   ]</span>
-  <span class="doccomment">/// }</span>
-  <span class="doccomment">/// ```</span>
-  <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;json&quot;</span>)]</span>
-  <span class="ident">Json</span>,
+<span class="doccomment">/// The output format of the result
+</span><span class="attribute">#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Deserialize)]
+</span><span class="kw">pub enum </span>ResultOutputFormat {
+  <span class="doccomment">/// Text output
+  ///
+  /// # Example
+  ///
+  /// The expected output would be:
+  /// ```txt
+  /// --- Result ---
+  /// Tries: 10
+  /// Hits: 2
+  /// Hits%: 20%
+  /// ```
+  </span><span class="attribute">#[serde(rename = <span class="string">&quot;text&quot;</span>)]
+  </span>Text,
+  <span class="doccomment">/// JSON output
+  ///
+  /// # Example
+  ///
+  /// The expected output would be:
+  /// ```json
+  /// {
+  ///   &quot;tries&quot;: 10,
+  ///   &quot;hits_n&quot;: 2,
+  ///   &quot;hits_detail&quot;: [
+  ///     {
+  ///       &quot;hit_on&quot;: 0,
+  ///       &quot;chars&quot;: &quot;WKCN&quot;
+  ///     },
+  ///     {
+  ///       &quot;hit_on&quot;: 5,
+  ///       &quot;chars&quot;: &quot;WKCN&quot;
+  ///     }
+  ///   ]
+  /// }
+  /// ```
+  </span><span class="attribute">#[serde(rename = <span class="string">&quot;json&quot;</span>)]
+  </span>Json,
 }
 
-<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">ResultOutputFormat</span> {
-  <span class="kw">fn</span> <span class="ident">default</span>() -&gt; <span class="self">Self</span> {
-    <span class="ident"><span class="self">Self</span>::Text</span>
+<span class="kw">impl </span>Default <span class="kw">for </span>ResultOutputFormat {
+  <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+    <span class="self">Self</span>::Text
   }
 }
 
-<span class="kw">impl</span> <span class="ident">FromStr</span> <span class="kw">for</span> <span class="ident">ResultOutputFormat</span> {
-  <span class="kw">type</span> <span class="prelude-val">Err</span> <span class="op">=</span> <span class="ident">WakuchinError</span>;
+<span class="kw">impl </span>FromStr <span class="kw">for </span>ResultOutputFormat {
+  <span class="kw">type </span><span class="prelude-val">Err </span>= WakuchinError;
 
-  <span class="kw">fn</span> <span class="ident">from_str</span>(<span class="ident">s</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Err</span><span class="op">&gt;</span> {
-    <span class="kw">match</span> <span class="ident">s</span> {
-      <span class="string">&quot;text&quot;</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident"><span class="self">Self</span>::Text</span>),
-      <span class="string">&quot;json&quot;</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident"><span class="self">Self</span>::Json</span>),
-      <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">WakuchinError::UnknownResultOutputFormat</span>(<span class="ident">s</span>.<span class="ident">into</span>())),
+  <span class="kw">fn </span>from_str(s: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Err&gt; {
+    <span class="kw">match </span>s {
+      <span class="string">&quot;text&quot; </span>=&gt; <span class="prelude-val">Ok</span>(<span class="self">Self</span>::Text),
+      <span class="string">&quot;json&quot; </span>=&gt; <span class="prelude-val">Ok</span>(<span class="self">Self</span>::Json),
+      <span class="kw">_ </span>=&gt; <span class="prelude-val">Err</span>(WakuchinError::UnknownResultOutputFormat(s.into())),
     }
   }
 }
 
-<span class="doccomment">/// Used when the researcher detects a hit</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Hit</span> {
-  <span class="doccomment">/// The index of the hit</span>
-  <span class="kw">pub</span> <span class="ident">hit_on</span>: <span class="ident">usize</span>,
+<span class="doccomment">/// Used when the researcher detects a hit
+</span><span class="attribute">#[derive(Clone, Debug, Serialize)]
+</span><span class="kw">pub struct </span>Hit {
+  <span class="doccomment">/// The index of the hit
+  </span><span class="kw">pub </span>hit_on: usize,
 
-  <span class="doccomment">/// Wakuchin characters that were hit</span>
-  <span class="kw">pub</span> <span class="ident">chars</span>: <span class="ident">String</span>,
+  <span class="doccomment">/// Wakuchin characters that were hit
+  </span><span class="kw">pub </span>chars: String,
 }
 
-<span class="kw">impl</span> <span class="ident">Hit</span> {
-  <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">hit_on</span>: <span class="ident">usize</span>, <span class="ident">chars</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-    <span class="self">Self</span> {
-      <span class="ident">hit_on</span>,
-      <span class="ident">chars</span>: <span class="ident">chars</span>.<span class="ident">into</span>(),
+<span class="kw">impl </span>Hit {
+  <span class="kw">pub fn </span>new(hit_on: usize, chars: <span class="kw">impl </span>Into&lt;String&gt;) -&gt; <span class="self">Self </span>{
+    <span class="self">Self </span>{
+      hit_on,
+      chars: chars.into(),
     }
   }
 }
 
-<span class="doccomment">/// The count of hits that you will use in progress_handler.</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">HitCounter</span> {
-  <span class="doccomment">/// Wakuchin chars that were hit.</span>
-  <span class="kw">pub</span> <span class="ident">chars</span>: <span class="ident">String</span>,
-  <span class="doccomment">/// The count of hits.</span>
-  <span class="kw">pub</span> <span class="ident">hits</span>: <span class="ident">usize</span>,
+<span class="doccomment">/// The count of hits that you will use in progress_handler.
+</span><span class="attribute">#[derive(Clone, Debug, Serialize, Deserialize)]
+</span><span class="kw">pub struct </span>HitCounter {
+  <span class="doccomment">/// Wakuchin chars that were hit.
+  </span><span class="kw">pub </span>chars: String,
+  <span class="doccomment">/// The count of hits.
+  </span><span class="kw">pub </span>hits: usize,
 }
 
-<span class="kw">impl</span> <span class="ident">HitCounter</span> {
-  <span class="doccomment">/// Create new hit counter.</span>
-  <span class="doccomment">///</span>
-  <span class="doccomment">/// # Arguments</span>
-  <span class="doccomment">///</span>
-  <span class="doccomment">/// * `chars` - Wakuchin chars that were hit.</span>
-  <span class="doccomment">/// * `hits` - The count of hits.</span>
-  <span class="doccomment">///</span>
-  <span class="doccomment">/// # Returns</span>
-  <span class="doccomment">///</span>
-  <span class="doccomment">/// * `HitCounter` - New hit counter.</span>
-  <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">chars</span>: <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">hits</span>: <span class="ident">usize</span>) -&gt; <span class="self">Self</span> {
-    <span class="self">Self</span> {
-      <span class="ident">chars</span>: <span class="ident">chars</span>.<span class="ident">into</span>(),
-      <span class="ident">hits</span>,
+<span class="kw">impl </span>HitCounter {
+  <span class="doccomment">/// Create new hit counter.
+  ///
+  /// # Arguments
+  ///
+  /// * `chars` - Wakuchin chars that were hit.
+  /// * `hits` - The count of hits.
+  ///
+  /// # Returns
+  ///
+  /// * `HitCounter` - New hit counter.
+  </span><span class="kw">pub fn </span>new(chars: <span class="kw">impl </span>Into&lt;String&gt;, hits: usize) -&gt; <span class="self">Self </span>{
+    <span class="self">Self </span>{
+      chars: chars.into(),
+      hits,
     }
   }
 }
 
-<span class="doccomment">/// The result of a research</span>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">WakuchinResult</span> {
-  <span class="doccomment">/// The number of tries</span>
-  <span class="kw">pub</span> <span class="ident">tries</span>: <span class="ident">usize</span>,
+<span class="doccomment">/// The result of a research
+</span><span class="attribute">#[derive(Debug, Serialize)]
+</span><span class="kw">pub struct </span>WakuchinResult {
+  <span class="doccomment">/// The number of tries
+  </span><span class="kw">pub </span>tries: usize,
 
-  <span class="doccomment">/// Total number of hits</span>
-  <span class="kw">pub</span> <span class="ident">hits_total</span>: <span class="ident">usize</span>,
+  <span class="doccomment">/// Total number of hits
+  </span><span class="kw">pub </span>hits_total: usize,
 
-  <span class="doccomment">/// The count of each hits</span>
-  <span class="kw">pub</span> <span class="ident">hits</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">HitCounter</span><span class="op">&gt;</span>,
+  <span class="doccomment">/// The count of each hits
+  </span><span class="kw">pub </span>hits: Vec&lt;HitCounter&gt;,
 
-  <span class="doccomment">/// A vector of `Hit`</span>
-  <span class="kw">pub</span> <span class="ident">hits_detail</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Hit</span><span class="op">&gt;</span>,
+  <span class="doccomment">/// A vector of `Hit`
+  </span><span class="kw">pub </span>hits_detail: Vec&lt;Hit&gt;,
 }
 
-<span class="kw">impl</span> <span class="ident">WakuchinResult</span> {
-  <span class="doccomment">/// Return string of the result with specific output format.</span>
-  <span class="doccomment">/// This function is a wrapper of `out`.</span>
-  <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">out</span>(
+<span class="kw">impl </span>WakuchinResult {
+  <span class="doccomment">/// Return string of the result with specific output format.
+  /// This function is a wrapper of `out`.
+  </span><span class="kw">pub fn </span>out(
     <span class="kw-2">&amp;</span><span class="self">self</span>,
-    <span class="ident">format</span>: <span class="ident">ResultOutputFormat</span>,
-  ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">WakuchinError</span><span class="op">&gt;</span> {
-    <span class="ident">out</span>(<span class="ident">format</span>, <span class="self">self</span>)
+    format: ResultOutputFormat,
+  ) -&gt; <span class="prelude-ty">Result</span>&lt;String, WakuchinError&gt; {
+    out(format, <span class="self">self</span>)
   }
 }
 
-<span class="doccomment">/// Return string of the result with specific output format.</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Arguments</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// * `format` - the output format of the result</span>
-<span class="doccomment">/// * `result` - the result to format</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Returns</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// * `String` - the formatted result</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// # Examples</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// ```rust</span>
-<span class="doccomment">/// use wakuchin::result::{out, Hit, HitCounter, ResultOutputFormat, WakuchinResult};</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// let result = WakuchinResult {</span>
-<span class="doccomment">///   tries: 10,</span>
-<span class="doccomment">///   hits_total: 3,</span>
-<span class="doccomment">///   hits: vec![</span>
-<span class="doccomment">///     HitCounter::new(&quot;WKCN&quot;, 2),</span>
-<span class="doccomment">///     HitCounter::new(&quot;WKNC&quot;, 1),</span>
-<span class="doccomment">///   ],</span>
-<span class="doccomment">///   hits_detail: vec![</span>
-<span class="doccomment">///     Hit {</span>
-<span class="doccomment">///       hit_on: 0,</span>
-<span class="doccomment">///       chars: &quot;WKCN&quot;.to_string(),</span>
-<span class="doccomment">///     },</span>
-<span class="doccomment">///     Hit {</span>
-<span class="doccomment">///       hit_on: 1,</span>
-<span class="doccomment">///       chars: &quot;WKNC&quot;.to_string(),</span>
-<span class="doccomment">///     },</span>
-<span class="doccomment">///     Hit {</span>
-<span class="doccomment">///       hit_on: 2,</span>
-<span class="doccomment">///       chars: &quot;WKCN&quot;.to_string(),</span>
-<span class="doccomment">///     },</span>
-<span class="doccomment">///   ],</span>
-<span class="doccomment">/// };</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// assert_eq!(</span>
-<span class="doccomment">///   out(ResultOutputFormat::Text, &amp;result)?,</span>
-<span class="doccomment">///   &quot;--- Result ---</span>
-<span class="doccomment">/// Tries: 10</span>
-<span class="doccomment">/// WKCN hits: 2 (20%)</span>
-<span class="doccomment">/// WKNC hits: 1 (10%)</span>
-<span class="doccomment">/// Total hits: 3 (30%)&quot;</span>
-<span class="doccomment">/// );</span>
-<span class="doccomment">///</span>
-<span class="doccomment">/// assert_eq!(</span>
-<span class="doccomment">///   out(ResultOutputFormat::Json, &amp;result)?,</span>
-<span class="doccomment">///   r#&quot;{&quot;tries&quot;:10,&quot;hits_total&quot;:3,&quot;hits&quot;:[{&quot;chars&quot;:&quot;WKCN&quot;,&quot;hits&quot;:2},{&quot;chars&quot;:&quot;WKNC&quot;,&quot;hits&quot;:1}],&quot;hits_detail&quot;:[{&quot;hit_on&quot;:0,&quot;chars&quot;:&quot;WKCN&quot;},{&quot;hit_on&quot;:1,&quot;chars&quot;:&quot;WKNC&quot;},{&quot;hit_on&quot;:2,&quot;chars&quot;:&quot;WKCN&quot;}]}&quot;#</span>
-<span class="doccomment">/// );</span>
-<span class="doccomment">/// #</span>
-<span class="doccomment">/// # Ok::&lt;(), Box&lt;dyn std::error::Error&gt;&gt;(())</span>
-<span class="doccomment">/// ```</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">out</span>(
-  <span class="ident">format</span>: <span class="ident">ResultOutputFormat</span>,
-  <span class="ident">result</span>: <span class="kw-2">&amp;</span><span class="ident">WakuchinResult</span>,
-) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">WakuchinError</span><span class="op">&gt;</span> {
-  <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">itoa_buf</span> <span class="op">=</span> <span class="ident">itoa::Buffer::new</span>();
+<span class="doccomment">/// Return string of the result with specific output format.
+///
+/// # Arguments
+///
+/// * `format` - the output format of the result
+/// * `result` - the result to format
+///
+/// # Returns
+///
+/// * `String` - the formatted result
+///
+/// # Examples
+///
+/// ```rust
+/// use wakuchin::result::{out, Hit, HitCounter, ResultOutputFormat, WakuchinResult};
+///
+/// let result = WakuchinResult {
+///   tries: 10,
+///   hits_total: 3,
+///   hits: vec![
+///     HitCounter::new(&quot;WKCN&quot;, 2),
+///     HitCounter::new(&quot;WKNC&quot;, 1),
+///   ],
+///   hits_detail: vec![
+///     Hit {
+///       hit_on: 0,
+///       chars: &quot;WKCN&quot;.to_string(),
+///     },
+///     Hit {
+///       hit_on: 1,
+///       chars: &quot;WKNC&quot;.to_string(),
+///     },
+///     Hit {
+///       hit_on: 2,
+///       chars: &quot;WKCN&quot;.to_string(),
+///     },
+///   ],
+/// };
+///
+/// assert_eq!(
+///   out(ResultOutputFormat::Text, &amp;result)?,
+///   &quot;--- Result ---
+/// Tries: 10
+/// WKCN hits: 2 (20%)
+/// WKNC hits: 1 (10%)
+/// Total hits: 3 (30%)&quot;
+/// );
+///
+/// assert_eq!(
+///   out(ResultOutputFormat::Json, &amp;result)?,
+///   r#&quot;{&quot;tries&quot;:10,&quot;hits_total&quot;:3,&quot;hits&quot;:[{&quot;chars&quot;:&quot;WKCN&quot;,&quot;hits&quot;:2},{&quot;chars&quot;:&quot;WKNC&quot;,&quot;hits&quot;:1}],&quot;hits_detail&quot;:[{&quot;hit_on&quot;:0,&quot;chars&quot;:&quot;WKCN&quot;},{&quot;hit_on&quot;:1,&quot;chars&quot;:&quot;WKNC&quot;},{&quot;hit_on&quot;:2,&quot;chars&quot;:&quot;WKCN&quot;}]}&quot;#
+/// );
+/// #
+/// # Ok::&lt;(), Box&lt;dyn std::error::Error&gt;&gt;(())
+/// ```
+</span><span class="kw">pub fn </span>out(
+  format: ResultOutputFormat,
+  result: <span class="kw-2">&amp;</span>WakuchinResult,
+) -&gt; <span class="prelude-ty">Result</span>&lt;String, WakuchinError&gt; {
+  <span class="kw">let </span><span class="kw-2">mut </span>itoa_buf = itoa::Buffer::new();
 
-  <span class="kw">match</span> <span class="ident">format</span> {
-    <span class="ident">ResultOutputFormat::Text</span> =&gt; <span class="prelude-val">Ok</span>(<span class="macro">format!</span>(
+  <span class="kw">match </span>format {
+    ResultOutputFormat::Text =&gt; <span class="prelude-val">Ok</span>(<span class="macro">format!</span>(
       <span class="string">&quot;--- Result ---
 Tries: {}
 {}
 Total hits: {} ({}%)&quot;</span>,
-      <span class="ident">result</span>.<span class="ident">tries</span>,
-      <span class="ident">result</span>
-        .<span class="ident">hits</span>
-        .<span class="ident">iter</span>()
-        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">h</span><span class="op">|</span> <span class="macro">format!</span>(
+      result.tries,
+      result
+        .hits
+        .iter()
+        .map(|h| <span class="macro">format!</span>(
           <span class="string">&quot;{} hits: {} ({}%)&quot;</span>,
-          <span class="ident">h</span>.<span class="ident">chars</span>,
-          <span class="ident">itoa_buf</span>.<span class="ident">format</span>(<span class="ident">h</span>.<span class="ident">hits</span>),
-          (<span class="ident">h</span>.<span class="ident">hits</span> <span class="kw">as</span> <span class="ident">f64</span> <span class="op">/</span> <span class="ident">result</span>.<span class="ident">tries</span> <span class="kw">as</span> <span class="ident">f64</span> <span class="op">*</span> <span class="number">100.0</span>).<span class="ident">smooth_str</span>()
+          h.chars,
+          itoa_buf.format(h.hits),
+          (h.hits <span class="kw">as </span>f64 / result.tries <span class="kw">as </span>f64 * <span class="number">100.0</span>).smooth_str()
         ))
-        .<span class="ident">join</span>(<span class="string">&quot;\n&quot;</span>),
-      <span class="ident">itoa_buf</span>.<span class="ident">format</span>(<span class="ident">result</span>.<span class="ident">hits_total</span>),
-      (<span class="ident">result</span>.<span class="ident">hits_total</span> <span class="kw">as</span> <span class="ident">f64</span> <span class="op">/</span> <span class="ident">result</span>.<span class="ident">tries</span> <span class="kw">as</span> <span class="ident">f64</span> <span class="op">*</span> <span class="number">100.0</span>).<span class="ident">smooth_str</span>()
+        .join(<span class="string">&quot;\n&quot;</span>),
+      itoa_buf.format(result.hits_total),
+      (result.hits_total <span class="kw">as </span>f64 / result.tries <span class="kw">as </span>f64 * <span class="number">100.0</span>).smooth_str()
     )),
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;simd-accel&quot;</span>)]</span>
-    <span class="ident">ResultOutputFormat::Json</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">simd_json::to_string</span>(<span class="ident">result</span>)<span class="question-mark">?</span>),
-    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">feature</span> <span class="op">=</span> <span class="string">&quot;simd-accel&quot;</span>))]</span>
-    <span class="ident">ResultOutputFormat::Json</span> =&gt; <span class="prelude-val">Ok</span>(
-      <span class="ident">serde_json::to_string</span>(<span class="ident">result</span>)
-        .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">WakuchinError::SerializeError</span>(<span class="ident">e</span>.<span class="ident">into</span>()))<span class="question-mark">?</span>,
+    <span class="attribute">#[cfg(feature = <span class="string">&quot;simd-accel&quot;</span>)]
+    </span>ResultOutputFormat::Json =&gt; <span class="prelude-val">Ok</span>(simd_json::to_string(result)<span class="question-mark">?</span>),
+    <span class="attribute">#[cfg(not(feature = <span class="string">&quot;simd-accel&quot;</span>))]
+    </span>ResultOutputFormat::Json =&gt; <span class="prelude-val">Ok</span>(
+      serde_json::to_string(result)
+        .map_err(|e| WakuchinError::SerializeError(e.into()))<span class="question-mark">?</span>,
     ),
   }
 }
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="kw">mod</span> <span class="ident">test</span> {
-  <span class="kw">use</span> <span class="ident">std::error::Error</span>;
+<span class="attribute">#[cfg(test)]
+</span><span class="kw">mod </span>test {
+  <span class="kw">use </span>std::error::Error;
 
-  <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::result</span>::{
-    <span class="ident">out</span>, <span class="ident">Hit</span>, <span class="ident">HitCounter</span>, <span class="ident">ResultOutputFormat</span>, <span class="ident">WakuchinResult</span>,
+  <span class="kw">use </span><span class="kw">crate</span>::result::{
+    out, Hit, HitCounter, ResultOutputFormat, WakuchinResult,
   };
 
-  <span class="attribute">#[<span class="ident">test</span>]</span>
-  <span class="kw">fn</span> <span class="ident">test_out</span>() -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Error</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="ident">result</span> <span class="op">=</span> <span class="ident">WakuchinResult</span> {
-      <span class="ident">tries</span>: <span class="number">10</span>,
-      <span class="ident">hits_total</span>: <span class="number">3</span>,
-      <span class="ident">hits</span>: <span class="macro">vec!</span>[
-        <span class="ident">HitCounter::new</span>(<span class="string">&quot;a&quot;</span>.<span class="ident">to_string</span>(), <span class="number">1</span>),
-        <span class="ident">HitCounter::new</span>(<span class="string">&quot;b&quot;</span>.<span class="ident">to_string</span>(), <span class="number">1</span>),
-        <span class="ident">HitCounter::new</span>(<span class="string">&quot;c&quot;</span>.<span class="ident">to_string</span>(), <span class="number">1</span>),
+  <span class="attribute">#[test]
+  </span><span class="kw">fn </span>test_out() -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>Error&gt;&gt; {
+    <span class="kw">let </span>result = WakuchinResult {
+      tries: <span class="number">10</span>,
+      hits_total: <span class="number">3</span>,
+      hits: <span class="macro">vec!</span>[
+        HitCounter::new(<span class="string">&quot;a&quot;</span>.to_string(), <span class="number">1</span>),
+        HitCounter::new(<span class="string">&quot;b&quot;</span>.to_string(), <span class="number">1</span>),
+        HitCounter::new(<span class="string">&quot;c&quot;</span>.to_string(), <span class="number">1</span>),
       ],
-      <span class="ident">hits_detail</span>: <span class="macro">vec!</span>[
-        <span class="ident">Hit</span> {
-          <span class="ident">hit_on</span>: <span class="number">0</span>,
-          <span class="ident">chars</span>: <span class="string">&quot;a&quot;</span>.<span class="ident">to_string</span>(),
+      hits_detail: <span class="macro">vec!</span>[
+        Hit {
+          hit_on: <span class="number">0</span>,
+          chars: <span class="string">&quot;a&quot;</span>.to_string(),
         },
-        <span class="ident">Hit</span> {
-          <span class="ident">hit_on</span>: <span class="number">1</span>,
-          <span class="ident">chars</span>: <span class="string">&quot;b&quot;</span>.<span class="ident">to_string</span>(),
+        Hit {
+          hit_on: <span class="number">1</span>,
+          chars: <span class="string">&quot;b&quot;</span>.to_string(),
         },
-        <span class="ident">Hit</span> {
-          <span class="ident">hit_on</span>: <span class="number">2</span>,
-          <span class="ident">chars</span>: <span class="string">&quot;c&quot;</span>.<span class="ident">to_string</span>(),
+        Hit {
+          hit_on: <span class="number">2</span>,
+          chars: <span class="string">&quot;c&quot;</span>.to_string(),
         },
       ],
     };
 
     <span class="macro">assert_eq!</span>(
-      <span class="ident">out</span>(<span class="ident">ResultOutputFormat::Text</span>, <span class="kw-2">&amp;</span><span class="ident">result</span>)<span class="question-mark">?</span>,
+      out(ResultOutputFormat::Text, <span class="kw-2">&amp;</span>result)<span class="question-mark">?</span>,
       <span class="string">&quot;--- Result ---
 Tries: 10
 a hits: 1 (10%)
 b hits: 1 (10%)
 c hits: 1 (10%)
-Total hits: 3 (30%)&quot;</span>
-    );
+Total hits: 3 (30%)&quot;
+    </span>);
 
     <span class="macro">assert_eq!</span>(
-      <span class="ident">out</span>(<span class="ident">ResultOutputFormat::Json</span>, <span class="kw-2">&amp;</span><span class="ident">result</span>)<span class="question-mark">?</span>,
-      <span class="string">r#&quot;{&quot;tries&quot;:10,&quot;hits_total&quot;:3,&quot;hits&quot;:[{&quot;chars&quot;:&quot;a&quot;,&quot;hits&quot;:1},{&quot;chars&quot;:&quot;b&quot;,&quot;hits&quot;:1},{&quot;chars&quot;:&quot;c&quot;,&quot;hits&quot;:1}],&quot;hits_detail&quot;:[{&quot;hit_on&quot;:0,&quot;chars&quot;:&quot;a&quot;},{&quot;hit_on&quot;:1,&quot;chars&quot;:&quot;b&quot;},{&quot;hit_on&quot;:2,&quot;chars&quot;:&quot;c&quot;}]}&quot;#</span>
-    );
+      out(ResultOutputFormat::Json, <span class="kw-2">&amp;</span>result)<span class="question-mark">?</span>,
+      <span class="string">r#&quot;{&quot;tries&quot;:10,&quot;hits_total&quot;:3,&quot;hits&quot;:[{&quot;chars&quot;:&quot;a&quot;,&quot;hits&quot;:1},{&quot;chars&quot;:&quot;b&quot;,&quot;hits&quot;:1},{&quot;chars&quot;:&quot;c&quot;,&quot;hits&quot;:1}],&quot;hits_detail&quot;:[{&quot;hit_on&quot;:0,&quot;chars&quot;:&quot;a&quot;},{&quot;hit_on&quot;:1,&quot;chars&quot;:&quot;b&quot;},{&quot;hit_on&quot;:2,&quot;chars&quot;:&quot;c&quot;}]}&quot;#
+    </span>);
 
     <span class="prelude-val">Ok</span>(())
   }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="wakuchin" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.64.0 (a55dd71d5 2022-09-19)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="wakuchin" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.65.0 (897e37553 2022-11-02)" ></div></body></html>
