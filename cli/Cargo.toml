@@ -21,7 +21,7 @@ sequential = []
 simd-accel = ["wakuchin/simd-accel"]
 
 [build-dependencies]
-shadow-rs = "0.17"
+shadow-rs = "0.18"
 
 [dependencies]
 wakuchin = { version = "0.3.0", path = "../core" }
@@ -44,7 +44,7 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 serde_regex = "1.1"
 serde_yaml = "=0.8"
-shadow-rs = "0.17"
+shadow-rs = "0.18"
 thiserror = "1.0"
 tokio = { version = "=1.21", features = [
   "fs",
