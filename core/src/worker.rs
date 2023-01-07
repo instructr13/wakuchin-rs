@@ -192,10 +192,11 @@ pub async fn run_par(
 
   let mut handles_to_abort = Vec::with_capacity(workers + 2);
 
+  let mut hit_join_set = JoinSet::new();
   let mut ui_join_set = JoinSet::new();
 
   // hit handler
-  counter.run(&mut ui_join_set, runtime_handle);
+  handles_to_abort.push(counter.run(&mut hit_join_set, runtime_handle));
 
   // progress reporter
   handles_to_abort.push(ui_join_set.spawn_on(
@@ -238,20 +239,6 @@ pub async fn run_par(
           let mut hits = Vec::new();
 
           for (i, wakuchin) in wakuchins.map(|_| gen(times)).enumerate() {
-            progress_tx
-              .send(Progress(ProgressKind::Processing(ProcessingDetail::new(
-                id + 1,
-                wakuchin.clone(),
-                i,
-                total,
-                total_workers,
-              ))))
-              .expect("progress channel is unavailable");
-
-            if *accidential_stop_rx.borrow() {
-              break;
-            }
-
             if check(&wakuchin, &regex) {
               let hit = Hit::new(i, &wakuchin);
 
@@ -261,6 +248,20 @@ pub async fn run_par(
                 .expect("hit channel is unavailable");
 
               hits.push(hit);
+            }
+
+            progress_tx
+              .send(Progress(ProgressKind::Processing(ProcessingDetail::new(
+                id + 1,
+                wakuchin,
+                i,
+                total,
+                total_workers,
+              ))))
+              .expect("progress channel is unavailable");
+
+            if *accidential_stop_rx.borrow() {
+              break;
             }
           }
 
@@ -312,6 +313,18 @@ pub async fn run_par(
 
         return Err(e.into());
       }
+    }
+  }
+
+  while let Some(result) = hit_join_set.join_next().await {
+    if let Err(e) = result {
+      runtime.shutdown_background();
+
+      if e.is_cancelled() {
+        return Err(WakuchinError::Cancelled);
+      }
+
+      return Err(e.into());
     }
   }
 
