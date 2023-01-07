@@ -282,8 +282,6 @@
 <span id="282">282</span>
 <span id="283">283</span>
 <span id="284">284</span>
-<span id="285">285</span>
-<span id="286">286</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Functions to manipulate the result of a research
 
 </span><span class="kw">use </span>std::str::FromStr;
@@ -374,14 +372,14 @@
 
 <span class="doccomment">/// The count of hits that you will use in progress_handler.
 </span><span class="attribute">#[derive(Clone, Debug, Serialize, Deserialize)]
-</span><span class="kw">pub struct </span>HitCounter {
+</span><span class="kw">pub struct </span>HitCount {
   <span class="doccomment">/// Wakuchin chars that were hit.
   </span><span class="kw">pub </span>chars: String,
   <span class="doccomment">/// The count of hits.
   </span><span class="kw">pub </span>hits: usize,
 }
 
-<span class="kw">impl </span>HitCounter {
+<span class="kw">impl </span>HitCount {
   <span class="doccomment">/// Create new hit counter.
   ///
   /// # Arguments
@@ -391,7 +389,7 @@
   ///
   /// # Returns
   ///
-  /// * `HitCounter` - New hit counter.
+  /// * `HitCount` - New hit counter.
   </span><span class="kw">pub fn </span>new(chars: <span class="kw">impl </span>Into&lt;String&gt;, hits: usize) -&gt; <span class="self">Self </span>{
     <span class="self">Self </span>{
       chars: chars.into(),
@@ -410,7 +408,7 @@
   </span><span class="kw">pub </span>hits_total: usize,
 
   <span class="doccomment">/// The count of each hits
-  </span><span class="kw">pub </span>hits: Vec&lt;HitCounter&gt;,
+  </span><span class="kw">pub </span>hits: Vec&lt;HitCount&gt;,
 
   <span class="doccomment">/// A vector of `Hit`
   </span><span class="kw">pub </span>hits_detail: Vec&lt;Hit&gt;,
@@ -441,14 +439,14 @@
 /// # Examples
 ///
 /// ```rust
-/// use wakuchin::result::{out, Hit, HitCounter, ResultOutputFormat, WakuchinResult};
+/// use wakuchin::result::{out, Hit, HitCount, ResultOutputFormat, WakuchinResult};
 ///
 /// let result = WakuchinResult {
 ///   tries: 10,
 ///   hits_total: 3,
 ///   hits: vec![
-///     HitCounter::new(&quot;WKCN&quot;, 2),
-///     HitCounter::new(&quot;WKNC&quot;, 1),
+///     HitCount::new(&quot;WKCN&quot;, 2),
+///     HitCount::new(&quot;WKNC&quot;, 1),
 ///   ],
 ///   hits_detail: vec![
 ///     Hit {
@@ -522,9 +520,7 @@ Total hits: {} ({}%)&quot;</span>,
 </span><span class="kw">mod </span>test {
   <span class="kw">use </span>std::error::Error;
 
-  <span class="kw">use </span><span class="kw">crate</span>::result::{
-    out, Hit, HitCounter, ResultOutputFormat, WakuchinResult,
-  };
+  <span class="kw">use </span><span class="kw">crate</span>::result::{out, Hit, HitCount, ResultOutputFormat, WakuchinResult};
 
   <span class="attribute">#[test]
   </span><span class="kw">fn </span>test_out() -&gt; <span class="prelude-ty">Result</span>&lt;(), Box&lt;<span class="kw">dyn </span>Error&gt;&gt; {
@@ -532,9 +528,9 @@ Total hits: {} ({}%)&quot;</span>,
       tries: <span class="number">10</span>,
       hits_total: <span class="number">3</span>,
       hits: <span class="macro">vec!</span>[
-        HitCounter::new(<span class="string">&quot;a&quot;</span>.to_string(), <span class="number">1</span>),
-        HitCounter::new(<span class="string">&quot;b&quot;</span>.to_string(), <span class="number">1</span>),
-        HitCounter::new(<span class="string">&quot;c&quot;</span>.to_string(), <span class="number">1</span>),
+        HitCount::new(<span class="string">&quot;a&quot;</span>.to_string(), <span class="number">1</span>),
+        HitCount::new(<span class="string">&quot;b&quot;</span>.to_string(), <span class="number">1</span>),
+        HitCount::new(<span class="string">&quot;c&quot;</span>.to_string(), <span class="number">1</span>),
       ],
       hits_detail: <span class="macro">vec!</span>[
         Hit {

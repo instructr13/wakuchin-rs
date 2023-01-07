@@ -279,14 +279,14 @@
 <span class="kw">use </span>serde::Serialize;
 
 <span class="kw">use </span><span class="kw">crate</span>::progress::{DoneDetail, ProcessingDetail, Progress, ProgressKind};
-<span class="kw">use </span><span class="kw">crate</span>::result::HitCounter;
+<span class="kw">use </span><span class="kw">crate</span>::result::HitCount;
 
 <span class="kw">use </span><span class="kw">super</span>::ProgressHandler;
 
 <span class="attribute">#[derive(Clone, Debug, Serialize)]
 </span><span class="kw">struct </span>MsgpackProgress&lt;<span class="lifetime">&#39;a</span>&gt; {
   progresses: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[Progress],
-  hit_counters: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[HitCounter],
+  hit_counters: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[HitCount],
   current_rate: f32,
   remaining_time: f32,
   tries: usize,
@@ -308,7 +308,7 @@
   <span class="kw">fn </span>handle(
     <span class="kw-2">&amp;mut </span><span class="self">self</span>,
     progresses: <span class="kw-2">&amp;</span>[Progress],
-    counters: <span class="kw-2">&amp;</span>[HitCounter],
+    counters: <span class="kw-2">&amp;</span>[HitCount],
     elapsed_time: Duration,
     current_diff: usize,
     all_done: bool,
@@ -379,7 +379,7 @@
   <span class="kw">fn </span>handle(
     <span class="kw-2">&amp;mut </span><span class="self">self</span>,
     progresses: <span class="kw-2">&amp;</span>[Progress],
-    counters: <span class="kw-2">&amp;</span>[HitCounter],
+    counters: <span class="kw-2">&amp;</span>[HitCount],
     elapsed_time: Duration,
     current_diff: usize,
     all_done: bool,
@@ -439,7 +439,7 @@
 
   <span class="kw">use </span><span class="kw">crate</span>::handlers::ProgressHandler;
   <span class="kw">use </span><span class="kw">crate</span>::progress::{ProcessingDetail, Progress, ProgressKind};
-  <span class="kw">use </span><span class="kw">crate</span>::result::HitCounter;
+  <span class="kw">use </span><span class="kw">crate</span>::result::HitCount;
 
   <span class="kw">use </span><span class="kw">super</span>::MsgpackBase64ProgressHandler;
   <span class="kw">use </span><span class="kw">super</span>::MsgpackProgressHandler;
@@ -459,7 +459,7 @@
         total_workers: <span class="number">1</span>,
       }))];
 
-    <span class="kw">let </span>counters = <span class="macro">vec!</span>[HitCounter {
+    <span class="kw">let </span>counters = <span class="macro">vec!</span>[HitCount {
       chars: <span class="string">&quot;あ&quot;</span>.to_string(),
       hits: <span class="number">0</span>,
     }];
@@ -510,7 +510,7 @@
         total_workers: <span class="number">1</span>,
       }))];
 
-    <span class="kw">let </span>counters = <span class="macro">vec!</span>[HitCounter {
+    <span class="kw">let </span>counters = <span class="macro">vec!</span>[HitCount {
       chars: <span class="string">&quot;あ&quot;</span>.to_string(),
       hits: <span class="number">0</span>,
     }];

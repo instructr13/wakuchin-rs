@@ -9,14 +9,14 @@
 <li><code>String</code> - the formatted result</li>
 </ul>
 <h2 id="examples"><a href="#examples">Examples</a></h2>
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>wakuchin::result::{out, Hit, HitCounter, ResultOutputFormat, WakuchinResult};
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>wakuchin::result::{out, Hit, HitCount, ResultOutputFormat, WakuchinResult};
 
 <span class="kw">let </span>result = WakuchinResult {
   tries: <span class="number">10</span>,
   hits_total: <span class="number">3</span>,
   hits: <span class="macro">vec!</span>[
-    HitCounter::new(<span class="string">&quot;WKCN&quot;</span>, <span class="number">2</span>),
-    HitCounter::new(<span class="string">&quot;WKNC&quot;</span>, <span class="number">1</span>),
+    HitCount::new(<span class="string">&quot;WKCN&quot;</span>, <span class="number">2</span>),
+    HitCount::new(<span class="string">&quot;WKNC&quot;</span>, <span class="number">1</span>),
   ],
   hits_detail: <span class="macro">vec!</span>[
     Hit {

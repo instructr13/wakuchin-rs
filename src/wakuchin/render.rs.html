@@ -289,26 +289,6 @@
 <span id="289">289</span>
 <span id="290">290</span>
 <span id="291">291</span>
-<span id="292">292</span>
-<span id="293">293</span>
-<span id="294">294</span>
-<span id="295">295</span>
-<span id="296">296</span>
-<span id="297">297</span>
-<span id="298">298</span>
-<span id="299">299</span>
-<span id="300">300</span>
-<span id="301">301</span>
-<span id="302">302</span>
-<span id="303">303</span>
-<span id="304">304</span>
-<span id="305">305</span>
-<span id="306">306</span>
-<span id="307">307</span>
-<span id="308">308</span>
-<span id="309">309</span>
-<span id="310">310</span>
-<span id="311">311</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::cell::RefCell;
 <span class="kw">use </span>std::rc::Rc;
 <span class="kw">use </span>std::sync::{Arc, Mutex};
@@ -326,12 +306,22 @@
 
 <span class="kw">use </span><span class="kw">crate</span>::handlers::ProgressHandler;
 <span class="kw">use </span><span class="kw">crate</span>::progress::{DoneDetail, ProcessingDetail, Progress, ProgressKind};
-<span class="kw">use </span><span class="kw">crate</span>::result::{Hit, HitCounter};
+<span class="kw">use </span><span class="kw">crate</span>::result::{Hit, HitCount};
 <span class="kw">use </span><span class="kw">crate</span>::utils::DiffStore;
+
+<span class="kw">fn </span>hit_map_to_count(map: <span class="kw-2">&amp;</span>DashMap&lt;String, usize&gt;) -&gt; Vec&lt;HitCount&gt; {
+  map
+    .iter()
+    .map(|ref_| HitCount {
+      chars: ref_.key().clone(),
+      hits: <span class="kw-2">*</span>ref_.value(),
+    })
+    .collect()
+}
 
 <span class="kw">struct </span>ThreadRenderInner {
   accidential_stop_rx: watch::Receiver&lt;bool&gt;,
-  hit_counter: DashMap&lt;String, HitCounter&gt;,
+  hit_counter: DashMap&lt;String, usize&gt;,
   internal_hit_rx: Receiver&lt;Hit&gt;,
   progress_channels: Vec&lt;watch::Receiver&lt;Progress&gt;&gt;,
   progress_handler: Arc&lt;Mutex&lt;Box&lt;<span class="kw">dyn </span>ProgressHandler&gt;&gt;&gt;,
@@ -341,12 +331,8 @@
 }
 
 <span class="kw">impl </span>ThreadRenderInner {
-  <span class="kw">fn </span>hits(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;HitCounter&gt; {
-    <span class="self">self
-      </span>.hit_counter
-      .iter()
-      .map(|ref_| ref_.value().clone())
-      .collect()
+  <span class="kw">fn </span>hits(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;HitCount&gt; {
+    hit_map_to_count(<span class="kw-2">&amp;</span><span class="self">self</span>.hit_counter)
   }
 
   <span class="kw">async fn </span>start_render_progress(<span class="kw-2">&amp;mut </span><span class="self">self</span>, interval: Duration) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
@@ -385,14 +371,7 @@
 
       <span class="kw">if </span>!<span class="self">self</span>.internal_hit_rx.is_empty() {
         <span class="kw">while let </span><span class="prelude-val">Ok</span>(hit) = <span class="self">self</span>.internal_hit_rx.try_recv() {
-          <span class="self">self
-            </span>.hit_counter
-            .entry(hit.chars.clone())
-            .or_insert(HitCounter {
-              chars: hit.chars,
-              hits: <span class="number">0</span>,
-            })
-            .hits += <span class="number">1</span>;
+          <span class="kw-2">*</span><span class="self">self</span>.hit_counter.entry(hit.chars.clone()).or_insert(<span class="number">0</span>) += <span class="number">1</span>;
         }
       }
 
@@ -404,9 +383,9 @@
         </span>.progress_channels
         .iter()
         .map(|rx| {
-          <span class="kw">let </span>progress = rx.borrow().clone();
+          <span class="kw">let </span>progress = rx.borrow();
 
-          <span class="kw">match </span>progress {
+          <span class="kw">match </span><span class="kw-2">*</span>progress {
             Progress(ProgressKind::Processing(ProcessingDetail {
               current,
               ..
@@ -419,17 +398,13 @@
             <span class="kw">_ </span>=&gt; {}
           }
 
-          progress
+          progress.clone()
         })
         .collect_vec();
 
       progress_handler.handle(
         progressses,
-        <span class="kw-2">&amp;</span><span class="self">self
-          </span>.hit_counter
-          .iter()
-          .map(|ref_| ref_.value().clone())
-          .collect_vec(),
+        <span class="kw-2">&amp;</span><span class="self">self</span>.hits(),
         interval,
         current_diff.update(current_),
         <span class="bool-val">false</span>,
@@ -479,7 +454,7 @@
     }
   }
 
-  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>hits(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;HitCounter&gt; {
+  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>hits(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;HitCount&gt; {
     <span class="kw">let </span>inner = <span class="self">self</span>.inner.read().<span class="kw">await</span>;
 
     inner.hits()
@@ -525,7 +500,7 @@
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>Render {
   current_diff: DiffStore&lt;usize&gt;,
-  hit_counter: DashMap&lt;String, HitCounter&gt;,
+  hit_counter: DashMap&lt;String, usize&gt;,
   progress_handler: Rc&lt;RefCell&lt;<span class="kw">dyn </span>ProgressHandler&gt;&gt;,
   start_time: Instant,
 }
@@ -542,23 +517,13 @@
     }
   }
 
-  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>hits(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;HitCounter&gt; {
-    <span class="self">self
-      </span>.hit_counter
-      .iter()
-      .map(|ref_| ref_.value().clone())
-      .collect()
+  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>hits(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;HitCount&gt; {
+    hit_map_to_count(<span class="kw-2">&amp;</span><span class="self">self</span>.hit_counter)
   }
 
   <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>handle_hit(<span class="kw-2">&amp;</span><span class="self">self</span>, hit: <span class="kw-2">&amp;</span>Hit) {
-    <span class="self">self
-      </span>.hit_counter
-      .entry(hit.chars.clone())
-      .or_insert(HitCounter {
-        chars: hit.chars.clone(),
-        hits: <span class="number">0</span>,
-      })
-      .hits += <span class="number">1</span>;
+    <span class="comment">// Insert hit to hit counter with specific char entry
+    </span><span class="kw-2">*</span><span class="self">self</span>.hit_counter.entry(hit.chars.clone()).or_insert(<span class="number">0</span>) += <span class="number">1</span>;
   }
 
   <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>render_progress(
@@ -572,11 +537,7 @@
 
       progress_handler.handle(
         <span class="kw-2">&amp;</span>[progress],
-        <span class="kw-2">&amp;</span><span class="self">self
-          </span>.hit_counter
-          .iter()
-          .map(|ref_| ref_.value().clone())
-          .collect_vec(),
+        <span class="kw-2">&amp;</span><span class="self">self</span>.hits(),
         interval,
         <span class="number">0</span>,
         all_done,
@@ -595,23 +556,22 @@
 
     <span class="kw">let </span><span class="kw-2">mut </span>progress_handler = <span class="self">self</span>.progress_handler.borrow_mut();
 
-    progress_handler.handle(
-      <span class="kw-2">&amp;</span>[progress.clone()],
-      <span class="kw-2">&amp;</span><span class="self">self
-        </span>.hit_counter
-        .iter()
-        .map(|ref_| ref_.value().clone())
-        .collect_vec(),
-      interval,
+    <span class="kw">let </span>current_diff =
       <span class="kw">if let </span>Progress(ProgressKind::Processing(ProcessingDetail {
         current,
         ..
-      })) = progress
+      })) = <span class="kw-2">&amp;</span>progress
       {
-        <span class="self">self</span>.current_diff.update(current)
+        <span class="self">self</span>.current_diff.update(<span class="kw-2">*</span>current)
       } <span class="kw">else </span>{
         <span class="number">0
-      </span>},
+      </span>};
+
+    progress_handler.handle(
+      <span class="kw-2">&amp;</span>[progress],
+      <span class="kw-2">&amp;</span><span class="self">self</span>.hits(),
+      interval,
+      current_diff,
       all_done,
     )<span class="question-mark">?</span>;
 

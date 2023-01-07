@@ -518,6 +518,13 @@
 <span id="518">518</span>
 <span id="519">519</span>
 <span id="520">520</span>
+<span id="521">521</span>
+<span id="522">522</span>
+<span id="523">523</span>
+<span id="524">524</span>
+<span id="525">525</span>
+<span id="526">526</span>
+<span id="527">527</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Wakuchin researcher main functions
 
 </span><span class="kw">use </span>std::cell::RefCell;
@@ -530,7 +537,7 @@
 <span class="kw">use </span>divide_range::RangeDivisions;
 <span class="kw">use </span>itertools::Itertools;
 <span class="kw">use </span>regex::Regex;
-<span class="kw">use </span>tokio::runtime::Builder;
+<span class="kw">use </span>tokio::runtime::{Builder, Runtime};
 <span class="kw">use </span>tokio::signal;
 <span class="kw">use </span>tokio::task::JoinSet;
 
@@ -545,6 +552,36 @@
 <span class="kw">use crate</span>::{check, gen};
 
 <span class="kw">type </span><span class="prelude-ty">Result</span>&lt;T&gt; = std::result::Result&lt;T, WakuchinError&gt;;
+
+<span class="kw">fn </span>get_total_workers(workers: usize, min_workers: usize) -&gt; usize {
+  <span class="kw">let </span>total_workers = <span class="kw">if </span>workers == <span class="number">0 </span>{
+    num_cpus::get()
+  } <span class="kw">else </span>{
+    workers
+  };
+
+  <span class="kw">if </span>min_workers &lt; total_workers {
+    min_workers
+  } <span class="kw">else </span>{
+    total_workers
+  }
+}
+
+<span class="kw">fn </span>create_runtime(workers: usize) -&gt; <span class="prelude-ty">Result</span>&lt;Runtime&gt; {
+  Builder::new_multi_thread()
+    .worker_threads(workers + <span class="number">2</span>)
+    .thread_name_fn(|| {
+      <span class="kw">static </span>ATOMIC_ID: AtomicUsize = AtomicUsize::new(<span class="number">0</span>);
+
+      <span class="kw">let </span>id = ATOMIC_ID.fetch_add(<span class="number">1</span>, Ordering::SeqCst);
+
+      <span class="macro">format!</span>(<span class="string">&quot;wakuchin-worker-{}&quot;</span>, id)
+    })
+    .thread_stack_size(<span class="number">4 </span>* <span class="number">1024 </span>* <span class="number">1024</span>)
+    .enable_time()
+    .build()
+    .map_err(|e| e.into())
+}
 
 <span class="doccomment">/// Research wakuchin with parallelism.
 ///
@@ -649,32 +686,9 @@
     progress_handler.before_start()
   }<span class="question-mark">?</span>;
 
-  <span class="kw">let </span>total_workers = {
-    <span class="kw">let </span>total_workers = <span class="kw">if </span>workers == <span class="number">0 </span>{
-      num_cpus::get()
-    } <span class="kw">else </span>{
-      workers
-    };
+  <span class="kw">let </span>total_workers = get_total_workers(workers, tries);
 
-    <span class="kw">if </span>tries &lt; total_workers {
-      tries
-    } <span class="kw">else </span>{
-      total_workers
-    }
-  };
-
-  <span class="kw">let </span>runtime = Builder::new_multi_thread()
-    .worker_threads(total_workers + <span class="number">2</span>)
-    .thread_name_fn(|| {
-      <span class="kw">static </span>ATOMIC_ID: AtomicUsize = AtomicUsize::new(<span class="number">0</span>);
-
-      <span class="kw">let </span>id = ATOMIC_ID.fetch_add(<span class="number">1</span>, Ordering::SeqCst);
-
-      <span class="macro">format!</span>(<span class="string">&quot;wakuchin-worker-{}&quot;</span>, id)
-    })
-    .thread_stack_size(<span class="number">4 </span>* <span class="number">1024 </span>* <span class="number">1024</span>)
-    .enable_time()
-    .build()<span class="question-mark">?</span>;
+  <span class="kw">let </span>runtime = create_runtime(total_workers)<span class="question-mark">?</span>;
 
   <span class="kw">let </span>runtime_handle = runtime.handle();
 

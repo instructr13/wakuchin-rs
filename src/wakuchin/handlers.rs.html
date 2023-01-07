@@ -47,7 +47,7 @@
 
 <span class="kw">use </span>anyhow::Result;
 
-<span class="kw">use crate</span>::{progress::Progress, result::HitCounter};
+<span class="kw">use crate</span>::{progress::Progress, result::HitCount};
 
 <span class="kw">pub mod </span>empty;
 <span class="kw">pub mod </span>msgpack;
@@ -60,7 +60,7 @@
   <span class="kw">fn </span>handle(
     <span class="kw-2">&amp;mut </span><span class="self">self</span>,
     progresses: <span class="kw-2">&amp;</span>[Progress],
-    counters: <span class="kw-2">&amp;</span>[HitCounter],
+    counters: <span class="kw-2">&amp;</span>[HitCount],
     elapsed_time: Duration,
     current_diff: usize,
     all_done: bool,
