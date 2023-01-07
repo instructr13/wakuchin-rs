@@ -5,14 +5,14 @@ use std::time::Duration;
 use serde::Serialize;
 
 use crate::progress::{DoneDetail, ProcessingDetail, Progress, ProgressKind};
-use crate::result::HitCounter;
+use crate::result::HitCount;
 
 use super::ProgressHandler;
 
 #[derive(Clone, Debug, Serialize)]
 struct MsgpackProgress<'a> {
   progresses: &'a [Progress],
-  hit_counters: &'a [HitCounter],
+  hit_counters: &'a [HitCount],
   current_rate: f32,
   remaining_time: f32,
   tries: usize,
@@ -34,7 +34,7 @@ impl ProgressHandler for MsgpackBase64ProgressHandler {
   fn handle(
     &mut self,
     progresses: &[Progress],
-    counters: &[HitCounter],
+    counters: &[HitCount],
     elapsed_time: Duration,
     current_diff: usize,
     all_done: bool,
@@ -105,7 +105,7 @@ impl ProgressHandler for MsgpackProgressHandler {
   fn handle(
     &mut self,
     progresses: &[Progress],
-    counters: &[HitCounter],
+    counters: &[HitCount],
     elapsed_time: Duration,
     current_diff: usize,
     all_done: bool,
@@ -165,7 +165,7 @@ mod test {
 
   use crate::handlers::ProgressHandler;
   use crate::progress::{ProcessingDetail, Progress, ProgressKind};
-  use crate::result::HitCounter;
+  use crate::result::HitCount;
 
   use super::MsgpackBase64ProgressHandler;
   use super::MsgpackProgressHandler;
@@ -185,7 +185,7 @@ mod test {
         total_workers: 1,
       }))];
 
-    let counters = vec![HitCounter {
+    let counters = vec![HitCount {
       chars: "あ".to_string(),
       hits: 0,
     }];
@@ -236,7 +236,7 @@ mod test {
         total_workers: 1,
       }))];
 
-    let counters = vec![HitCounter {
+    let counters = vec![HitCount {
       chars: "あ".to_string(),
       hits: 0,
     }];

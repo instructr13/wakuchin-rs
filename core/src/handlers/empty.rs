@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use anyhow::Result;
 
-use crate::{progress::Progress, result::HitCounter};
+use crate::{progress::Progress, result::HitCount};
 
 use super::ProgressHandler;
 
@@ -24,7 +24,7 @@ impl ProgressHandler for EmptyProgressHandler {
   fn handle(
     &mut self,
     _: &[Progress],
-    _: &[HitCounter],
+    _: &[HitCount],
     _: Duration,
     _: usize,
     _: bool,

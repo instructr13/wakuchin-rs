@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use anyhow::Result;
 
-use crate::{progress::Progress, result::HitCounter};
+use crate::{progress::Progress, result::HitCount};
 
 pub mod empty;
 pub mod msgpack;
@@ -17,7 +17,7 @@ pub trait ProgressHandler: RefCellWrapper + Sync + Send + 'static {
   fn handle(
     &mut self,
     progresses: &[Progress],
-    counters: &[HitCounter],
+    counters: &[HitCount],
     elapsed_time: Duration,
     current_diff: usize,
     all_done: bool,

@@ -88,14 +88,14 @@ impl Hit {
 
 /// The count of hits that you will use in progress_handler.
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct HitCounter {
+pub struct HitCount {
   /// Wakuchin chars that were hit.
   pub chars: String,
   /// The count of hits.
   pub hits: usize,
 }
 
-impl HitCounter {
+impl HitCount {
   /// Create new hit counter.
   ///
   /// # Arguments
@@ -105,7 +105,7 @@ impl HitCounter {
   ///
   /// # Returns
   ///
-  /// * `HitCounter` - New hit counter.
+  /// * `HitCount` - New hit counter.
   pub fn new(chars: impl Into<String>, hits: usize) -> Self {
     Self {
       chars: chars.into(),
@@ -124,7 +124,7 @@ pub struct WakuchinResult {
   pub hits_total: usize,
 
   /// The count of each hits
-  pub hits: Vec<HitCounter>,
+  pub hits: Vec<HitCount>,
 
   /// A vector of `Hit`
   pub hits_detail: Vec<Hit>,
@@ -155,14 +155,14 @@ impl WakuchinResult {
 /// # Examples
 ///
 /// ```rust
-/// use wakuchin::result::{out, Hit, HitCounter, ResultOutputFormat, WakuchinResult};
+/// use wakuchin::result::{out, Hit, HitCount, ResultOutputFormat, WakuchinResult};
 ///
 /// let result = WakuchinResult {
 ///   tries: 10,
 ///   hits_total: 3,
 ///   hits: vec![
-///     HitCounter::new("WKCN", 2),
-///     HitCounter::new("WKNC", 1),
+///     HitCount::new("WKCN", 2),
+///     HitCount::new("WKNC", 1),
 ///   ],
 ///   hits_detail: vec![
 ///     Hit {
@@ -236,9 +236,7 @@ Total hits: {} ({}%)",
 mod test {
   use std::error::Error;
 
-  use crate::result::{
-    out, Hit, HitCounter, ResultOutputFormat, WakuchinResult,
-  };
+  use crate::result::{out, Hit, HitCount, ResultOutputFormat, WakuchinResult};
 
   #[test]
   fn test_out() -> Result<(), Box<dyn Error>> {
@@ -246,9 +244,9 @@ mod test {
       tries: 10,
       hits_total: 3,
       hits: vec![
-        HitCounter::new("a".to_string(), 1),
-        HitCounter::new("b".to_string(), 1),
-        HitCounter::new("c".to_string(), 1),
+        HitCount::new("a".to_string(), 1),
+        HitCount::new("b".to_string(), 1),
+        HitCount::new("c".to_string(), 1),
       ],
       hits_detail: vec![
         Hit {

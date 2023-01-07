@@ -13,7 +13,7 @@ use wakuchin::handlers::ProgressHandler;
 use wakuchin::progress::{
   DoneDetail, IdleDetail, ProcessingDetail, Progress, ProgressKind,
 };
-use wakuchin::result::HitCounter;
+use wakuchin::result::HitCount;
 
 type Result<T> = anyhow::Result<T>;
 
@@ -67,7 +67,7 @@ impl ConsoleProgressHandler {
   fn render_hit_counters(
     &self,
     buf: &mut itoa::Buffer,
-    counters: &[HitCounter],
+    counters: &[HitCount],
   ) -> usize {
     let mut current_hit_total = 0;
 
@@ -272,7 +272,7 @@ impl ProgressHandler for ConsoleProgressHandler {
   fn handle(
     &mut self,
     progresses: &[Progress],
-    counters: &[HitCounter],
+    counters: &[HitCount],
     elapsed_time: Duration,
     current_diff: usize,
     all_done: bool,

@@ -10,7 +10,7 @@ use anyhow::anyhow;
 use divide_range::RangeDivisions;
 use itertools::Itertools;
 use regex::Regex;
-use tokio::runtime::Builder;
+use tokio::runtime::{Builder, Runtime};
 use tokio::signal;
 use tokio::task::JoinSet;
 
@@ -25,6 +25,36 @@ use crate::result::{Hit, WakuchinResult};
 use crate::{check, gen};
 
 type Result<T> = std::result::Result<T, WakuchinError>;
+
+fn get_total_workers(workers: usize, min_workers: usize) -> usize {
+  let total_workers = if workers == 0 {
+    num_cpus::get()
+  } else {
+    workers
+  };
+
+  if min_workers < total_workers {
+    min_workers
+  } else {
+    total_workers
+  }
+}
+
+fn create_runtime(workers: usize) -> Result<Runtime> {
+  Builder::new_multi_thread()
+    .worker_threads(workers + 2)
+    .thread_name_fn(|| {
+      static ATOMIC_ID: AtomicUsize = AtomicUsize::new(0);
+
+      let id = ATOMIC_ID.fetch_add(1, Ordering::SeqCst);
+
+      format!("wakuchin-worker-{}", id)
+    })
+    .thread_stack_size(4 * 1024 * 1024)
+    .enable_time()
+    .build()
+    .map_err(|e| e.into())
+}
 
 /// Research wakuchin with parallelism.
 ///
@@ -129,32 +159,9 @@ pub async fn run_par(
     progress_handler.before_start()
   }?;
 
-  let total_workers = {
-    let total_workers = if workers == 0 {
-      num_cpus::get()
-    } else {
-      workers
-    };
+  let total_workers = get_total_workers(workers, tries);
 
-    if tries < total_workers {
-      tries
-    } else {
-      total_workers
-    }
-  };
-
-  let runtime = Builder::new_multi_thread()
-    .worker_threads(total_workers + 2)
-    .thread_name_fn(|| {
-      static ATOMIC_ID: AtomicUsize = AtomicUsize::new(0);
-
-      let id = ATOMIC_ID.fetch_add(1, Ordering::SeqCst);
-
-      format!("wakuchin-worker-{}", id)
-    })
-    .thread_stack_size(4 * 1024 * 1024)
-    .enable_time()
-    .build()?;
+  let runtime = create_runtime(total_workers)?;
 
   let runtime_handle = runtime.handle();
 

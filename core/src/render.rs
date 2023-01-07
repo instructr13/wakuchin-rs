@@ -15,12 +15,22 @@ use tokio::time::{sleep, Duration};
 
 use crate::handlers::ProgressHandler;
 use crate::progress::{DoneDetail, ProcessingDetail, Progress, ProgressKind};
-use crate::result::{Hit, HitCounter};
+use crate::result::{Hit, HitCount};
 use crate::utils::DiffStore;
+
+fn hit_map_to_count(map: &DashMap<String, usize>) -> Vec<HitCount> {
+  map
+    .iter()
+    .map(|ref_| HitCount {
+      chars: ref_.key().clone(),
+      hits: *ref_.value(),
+    })
+    .collect()
+}
 
 struct ThreadRenderInner {
   accidential_stop_rx: watch::Receiver<bool>,
-  hit_counter: DashMap<String, HitCounter>,
+  hit_counter: DashMap<String, usize>,
   internal_hit_rx: Receiver<Hit>,
   progress_channels: Vec<watch::Receiver<Progress>>,
   progress_handler: Arc<Mutex<Box<dyn ProgressHandler>>>,
@@ -30,12 +40,8 @@ struct ThreadRenderInner {
 }
 
 impl ThreadRenderInner {
-  fn hits(&self) -> Vec<HitCounter> {
-    self
-      .hit_counter
-      .iter()
-      .map(|ref_| ref_.value().clone())
-      .collect()
+  fn hits(&self) -> Vec<HitCount> {
+    hit_map_to_count(&self.hit_counter)
   }
 
   async fn start_render_progress(&mut self, interval: Duration) -> Result<()> {
@@ -74,14 +80,7 @@ impl ThreadRenderInner {
 
       if !self.internal_hit_rx.is_empty() {
         while let Ok(hit) = self.internal_hit_rx.try_recv() {
-          self
-            .hit_counter
-            .entry(hit.chars.clone())
-            .or_insert(HitCounter {
-              chars: hit.chars,
-              hits: 0,
-            })
-            .hits += 1;
+          *self.hit_counter.entry(hit.chars.clone()).or_insert(0) += 1;
         }
       }
 
@@ -93,9 +92,9 @@ impl ThreadRenderInner {
         .progress_channels
         .iter()
         .map(|rx| {
-          let progress = rx.borrow().clone();
+          let progress = rx.borrow();
 
-          match progress {
+          match *progress {
             Progress(ProgressKind::Processing(ProcessingDetail {
               current,
               ..
@@ -108,17 +107,13 @@ impl ThreadRenderInner {
             _ => {}
           }
 
-          progress
+          progress.clone()
         })
         .collect_vec();
 
       progress_handler.handle(
         progressses,
-        &self
-          .hit_counter
-          .iter()
-          .map(|ref_| ref_.value().clone())
-          .collect_vec(),
+        &self.hits(),
         interval,
         current_diff.update(current_),
         false,
@@ -168,7 +163,7 @@ impl ThreadRender {
     }
   }
 
-  pub(crate) async fn hits(&self) -> Vec<HitCounter> {
+  pub(crate) async fn hits(&self) -> Vec<HitCount> {
     let inner = self.inner.read().await;
 
     inner.hits()
@@ -214,7 +209,7 @@ impl ThreadRender {
 
 pub(crate) struct Render {
   current_diff: DiffStore<usize>,
-  hit_counter: DashMap<String, HitCounter>,
+  hit_counter: DashMap<String, usize>,
   progress_handler: Rc<RefCell<dyn ProgressHandler>>,
   start_time: Instant,
 }
@@ -231,23 +226,13 @@ impl Render {
     }
   }
 
-  pub(crate) fn hits(&self) -> Vec<HitCounter> {
-    self
-      .hit_counter
-      .iter()
-      .map(|ref_| ref_.value().clone())
-      .collect()
+  pub(crate) fn hits(&self) -> Vec<HitCount> {
+    hit_map_to_count(&self.hit_counter)
   }
 
   pub(crate) fn handle_hit(&self, hit: &Hit) {
-    self
-      .hit_counter
-      .entry(hit.chars.clone())
-      .or_insert(HitCounter {
-        chars: hit.chars.clone(),
-        hits: 0,
-      })
-      .hits += 1;
+    // Insert hit to hit counter with specific char entry
+    *self.hit_counter.entry(hit.chars.clone()).or_insert(0) += 1;
   }
 
   pub(crate) fn render_progress(
@@ -261,11 +246,7 @@ impl Render {
 
       progress_handler.handle(
         &[progress],
-        &self
-          .hit_counter
-          .iter()
-          .map(|ref_| ref_.value().clone())
-          .collect_vec(),
+        &self.hits(),
         interval,
         0,
         all_done,
@@ -284,23 +265,22 @@ impl Render {
 
     let mut progress_handler = self.progress_handler.borrow_mut();
 
-    progress_handler.handle(
-      &[progress.clone()],
-      &self
-        .hit_counter
-        .iter()
-        .map(|ref_| ref_.value().clone())
-        .collect_vec(),
-      interval,
+    let current_diff =
       if let Progress(ProgressKind::Processing(ProcessingDetail {
         current,
         ..
-      })) = progress
+      })) = &progress
       {
-        self.current_diff.update(current)
+        self.current_diff.update(*current)
       } else {
         0
-      },
+      };
+
+    progress_handler.handle(
+      &[progress],
+      &self.hits(),
+      interval,
+      current_diff,
       all_done,
     )?;
 
