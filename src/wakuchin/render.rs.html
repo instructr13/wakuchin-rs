@@ -209,9 +209,6 @@
 <span id="209">209</span>
 <span id="210">210</span>
 <span id="211">211</span>
-<span id="212">212</span>
-<span id="213">213</span>
-<span id="214">214</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::borrow::Cow;
 <span class="kw">use </span>std::cell::RefCell;
 <span class="kw">use </span>std::rc::Rc;
@@ -225,14 +222,14 @@
 <span class="kw">use </span>tokio::sync::watch;
 
 <span class="kw">use </span><span class="kw">crate</span>::handlers::ProgressHandler;
-<span class="kw">use </span><span class="kw">crate</span>::hit::counter::{HitCounter, SyncHitCounter};
+<span class="kw">use </span><span class="kw">crate</span>::hit::counter::{HitCounter, ThreadHitCounter};
 <span class="kw">use </span><span class="kw">crate</span>::progress::{DoneDetail, ProcessingDetail, Progress, ProgressKind};
 <span class="kw">use </span><span class="kw">crate</span>::result::HitCount;
 <span class="kw">use </span><span class="kw">crate</span>::utils::DiffStore;
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>ThreadRender {
   accidential_stop_rx: watch::Receiver&lt;bool&gt;,
-  counter: HitCounter,
+  counter: ThreadHitCounter,
   progress_channels: Vec&lt;watch::Receiver&lt;Progress&gt;&gt;,
   progress_handler: Arc&lt;Mutex&lt;Box&lt;<span class="kw">dyn </span>ProgressHandler&gt;&gt;&gt;,
   total: usize,
@@ -242,7 +239,7 @@
 <span class="kw">impl </span>ThreadRender {
   <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
     accidential_stop_rx: watch::Receiver&lt;bool&gt;,
-    counter: HitCounter,
+    counter: ThreadHitCounter,
     progress_channels: Vec&lt;watch::Receiver&lt;Progress&gt;&gt;,
     progress_handler: Arc&lt;Mutex&lt;Box&lt;<span class="kw">dyn </span>ProgressHandler&gt;&gt;&gt;,
     total: usize,
@@ -262,10 +259,7 @@
     <span class="self">self</span>.counter.get_all().into_hit_counts()
   }
 
-  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>start_render_progress(
-    <span class="kw-2">&amp;</span><span class="self">self</span>,
-    interval: Duration,
-  ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>run(<span class="kw-2">&amp;</span><span class="self">self</span>, interval: Duration) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="kw">let </span><span class="kw-2">mut </span>start_time = Instant::now();
     <span class="kw">let </span><span class="kw-2">mut </span>current_diff = DiffStore::new(<span class="number">0_usize</span>);
     <span class="kw">let </span><span class="kw-2">mut </span>current_ = <span class="number">0</span>;
@@ -344,7 +338,7 @@
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>Render {
   current_diff: DiffStore&lt;usize&gt;,
-  counter: SyncHitCounter,
+  counter: HitCounter,
   progress_handler: Rc&lt;RefCell&lt;<span class="kw">dyn </span>ProgressHandler&gt;&gt;,
   start_time: Instant,
 }
@@ -355,7 +349,7 @@
   ) -&gt; <span class="self">Self </span>{
     <span class="self">Self </span>{
       current_diff: DiffStore::new(<span class="number">0</span>),
-      counter: SyncHitCounter::new(),
+      counter: HitCounter::new(),
       progress_handler,
       start_time: Instant::now(),
     }
