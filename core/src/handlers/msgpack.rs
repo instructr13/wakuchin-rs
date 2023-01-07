@@ -12,7 +12,7 @@ use super::ProgressHandler;
 #[derive(Clone, Debug, Serialize)]
 struct MsgpackProgress<'a> {
   progresses: &'a [Progress],
-  hit_counters: &'a [HitCount],
+  hit_counts: &'a [HitCount],
   current_rate: f32,
   remaining_time: f32,
   tries: usize,
@@ -34,7 +34,7 @@ impl ProgressHandler for MsgpackBase64ProgressHandler {
   fn handle(
     &mut self,
     progresses: &[Progress],
-    counters: &[HitCount],
+    hit_counts: &[HitCount],
     elapsed_time: Duration,
     current_diff: usize,
     all_done: bool,
@@ -69,7 +69,7 @@ impl ProgressHandler for MsgpackBase64ProgressHandler {
 
     let progress = MsgpackProgress {
       progresses,
-      hit_counters: counters,
+      hit_counts,
       current_rate,
       remaining_time,
       tries: self.tries,
@@ -105,7 +105,7 @@ impl ProgressHandler for MsgpackProgressHandler {
   fn handle(
     &mut self,
     progresses: &[Progress],
-    counters: &[HitCount],
+    hit_counts: &[HitCount],
     elapsed_time: Duration,
     current_diff: usize,
     all_done: bool,
@@ -140,7 +140,7 @@ impl ProgressHandler for MsgpackProgressHandler {
 
     let progress = MsgpackProgress {
       progresses,
-      hit_counters: counters,
+      hit_counts,
       current_rate,
       remaining_time,
       tries: self.tries,
@@ -185,8 +185,8 @@ mod test {
         total_workers: 1,
       }))];
 
-    let counters = vec![HitCount {
-      chars: "あ".to_string(),
+    let hit_counts = vec![HitCount {
+      chars: "あ".into(),
       hits: 0,
     }];
 
@@ -196,7 +196,7 @@ mod test {
 
     handler.handle(
       &progresses,
-      &counters,
+      &hit_counts,
       elapsed_time,
       current_diff,
       all_done,
@@ -236,8 +236,8 @@ mod test {
         total_workers: 1,
       }))];
 
-    let counters = vec![HitCount {
-      chars: "あ".to_string(),
+    let hit_counts = vec![HitCount {
+      chars: "あ".into(),
       hits: 0,
     }];
 
@@ -247,7 +247,7 @@ mod test {
 
     handler.handle(
       &progresses,
-      &counters,
+      &hit_counts,
       elapsed_time,
       current_diff,
       all_done,

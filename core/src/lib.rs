@@ -10,6 +10,7 @@ pub mod symbol;
 pub mod worker;
 
 mod channel;
+mod hit;
 mod render;
 mod utils;
 

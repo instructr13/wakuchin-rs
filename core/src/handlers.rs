@@ -17,7 +17,7 @@ pub trait ProgressHandler: RefCellWrapper + Sync + Send + 'static {
   fn handle(
     &mut self,
     progresses: &[Progress],
-    counters: &[HitCount],
+    hit_counts: &[HitCount],
     elapsed_time: Duration,
     current_diff: usize,
     all_done: bool,

@@ -64,18 +64,18 @@ impl ConsoleProgressHandler {
     }
   }
 
-  fn render_hit_counters(
+  fn render_hit_counts(
     &self,
     buf: &mut itoa::Buffer,
-    counters: &[HitCount],
+    hit_counts: &[HitCount],
   ) -> usize {
     let mut current_hit_total = 0;
 
     let tries_width = self.tries_string.len();
 
-    for counter in counters {
-      let chars = chars_to_wakuchin(&counter.chars).dim();
-      let count = counter.hits;
+    for hit_count in hit_counts {
+      let chars = chars_to_wakuchin(&hit_count.chars).dim();
+      let count = hit_count.hits;
 
       current_hit_total += count;
 
@@ -277,7 +277,7 @@ impl ProgressHandler for ConsoleProgressHandler {
   fn handle(
     &mut self,
     progresses: &[Progress],
-    counters: &[HitCount],
+    hit_counts: &[HitCount],
     elapsed_time: Duration,
     current_diff: usize,
     all_done: bool,
@@ -287,7 +287,7 @@ impl ProgressHandler for ConsoleProgressHandler {
     }
 
     if self.handler_height == 0 {
-      self.handler_height = progresses.len() + counters.len() + 1;
+      self.handler_height = progresses.len() + hit_counts.len() + 1;
     } else {
       execute!(
         stderr(),
@@ -298,7 +298,7 @@ impl ProgressHandler for ConsoleProgressHandler {
 
     let mut itoa_buf = itoa::Buffer::new();
 
-    self.render_hit_counters(&mut itoa_buf, counters);
+    self.render_hit_counts(&mut itoa_buf, hit_counts);
 
     let current_total = self.render_workers(&mut itoa_buf, progresses);
 

@@ -17,6 +17,7 @@ use tokio::task::JoinSet;
 use crate::channel::{channel, oneshot, watch};
 use crate::error::WakuchinError;
 use crate::handlers::ProgressHandler;
+use crate::hit::counter::HitCounter;
 use crate::progress::{
   DoneDetail, IdleDetail, ProcessingDetail, Progress, ProgressKind,
 };
@@ -178,36 +179,27 @@ pub async fn run_par(
 
   let (accidential_stop_tx, accidential_stop_rx) = watch(false);
 
-  let render = Arc::new(ThreadRender::new(
+  let counter = HitCounter::new(hit_rx);
+
+  let render = ThreadRender::new(
     accidential_stop_rx.clone(),
-    hit_rx,
+    counter.clone(),
     progress_rx_vec,
     progress_handler.clone(),
     tries,
     total_workers,
-  ));
+  );
 
   let mut handles_to_abort = Vec::with_capacity(workers + 2);
 
   let mut ui_join_set = JoinSet::new();
 
   // hit handler
-  handles_to_abort.push(ui_join_set.spawn_on(
-    {
-      let render = render.clone();
-
-      async move {
-        render.wait_for_hit().await;
-      }
-    },
-    runtime_handle,
-  ));
+  counter.run(&mut ui_join_set, runtime_handle);
 
   // progress reporter
   handles_to_abort.push(ui_join_set.spawn_on(
     {
-      let render = render.clone();
-
       async move {
         render
           .start_render_progress(progress_interval)
@@ -349,7 +341,7 @@ pub async fn run_par(
     progress_handler.after_finish()
   }?;
 
-  let hits = render.hits().await;
+  let hits = counter.get_all().into_hit_counts();
   let hits_total = hits.iter().map(|c| c.hits).sum::<usize>();
 
   Ok(WakuchinResult {
