@@ -4,6 +4,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
+use std::thread::available_parallelism;
 use std::time::Duration;
 
 use anyhow::anyhow;
@@ -27,18 +28,14 @@ use crate::{check, gen};
 
 type Result<T> = std::result::Result<T, WakuchinError>;
 
-fn get_total_workers(workers: usize, min_workers: usize) -> usize {
-  let total_workers = if workers == 0 {
-    num_cpus::get()
-  } else {
-    workers
-  };
-
-  if min_workers < total_workers {
-    min_workers
-  } else {
-    total_workers
+fn get_total_workers(workers: usize) -> Result<usize> {
+  if workers != 0 {
+    return Ok(workers);
   }
+
+  available_parallelism()
+    .map(|num| num.into())
+    .map_err(|e| e.into())
 }
 
 fn create_runtime(workers: usize) -> Result<Runtime> {
@@ -160,7 +157,7 @@ pub async fn run_par(
     progress_handler.before_start()
   }?;
 
-  let total_workers = get_total_workers(workers, tries);
+  let total_workers = get_total_workers(workers)?;
 
   let runtime = create_runtime(total_workers)?;
 

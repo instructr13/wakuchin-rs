@@ -1773,7 +1773,6 @@ dependencies = [
  "instant",
  "itertools",
  "itoa",
- "num_cpus",
  "regex",
  "rmp-serde",
  "serde",
