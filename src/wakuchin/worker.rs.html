@@ -687,7 +687,7 @@
   }
 
   {
-    <span class="kw">let </span>progress_handler = progress_handler.lock().unwrap();
+    <span class="kw">let </span><span class="kw-2">mut </span>progress_handler = progress_handler.lock().unwrap();
 
     progress_handler.before_start()
   }<span class="question-mark">?</span>;
@@ -880,7 +880,7 @@
   </span>runtime.shutdown_background();
 
   {
-    <span class="kw">let </span>progress_handler = progress_handler.lock().unwrap();
+    <span class="kw">let </span><span class="kw-2">mut </span>progress_handler = progress_handler.lock().unwrap();
 
     progress_handler.after_finish()
   }<span class="question-mark">?</span>;
@@ -983,7 +983,7 @@
   }
 
   {
-    <span class="kw">let </span>progress_handler = progress_handler.borrow();
+    <span class="kw">let </span><span class="kw-2">mut </span>progress_handler = progress_handler.borrow_mut();
 
     progress_handler.before_start()
   }<span class="question-mark">?</span>;
@@ -1024,7 +1024,7 @@
       )<span class="question-mark">?</span>;
 
       <span class="kw">if </span>accidential_stop_rx.try_recv().is_ok() {
-        progress_handler.borrow().after_finish()<span class="question-mark">?</span>;
+        progress_handler.borrow_mut().after_finish()<span class="question-mark">?</span>;
 
         <span class="kw">return </span><span class="prelude-val">Err</span>(WakuchinError::Cancelled);
       }
@@ -1053,7 +1053,7 @@
   )<span class="question-mark">?</span>;
 
   {
-    <span class="kw">let </span>progress_handler = progress_handler.borrow();
+    <span class="kw">let </span><span class="kw-2">mut </span>progress_handler = progress_handler.borrow_mut();
 
     progress_handler.after_finish()
   }<span class="question-mark">?</span>;
