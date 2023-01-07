@@ -18,7 +18,7 @@ use tokio::task::JoinSet;
 use crate::channel::{channel, oneshot, watch};
 use crate::error::WakuchinError;
 use crate::handlers::ProgressHandler;
-use crate::hit::counter::HitCounter;
+use crate::hit::counter::ThreadHitCounter;
 use crate::progress::{
   DoneDetail, IdleDetail, ProcessingDetail, Progress, ProgressKind,
 };
@@ -176,7 +176,7 @@ pub async fn run_par(
 
   let (accidential_stop_tx, accidential_stop_rx) = watch(false);
 
-  let counter = HitCounter::new(hit_rx);
+  let counter = ThreadHitCounter::new(hit_rx);
 
   let render = ThreadRender::new(
     accidential_stop_rx.clone(),
@@ -199,10 +199,7 @@ pub async fn run_par(
   handles_to_abort.push(ui_join_set.spawn_on(
     {
       async move {
-        render
-          .start_render_progress(progress_interval)
-          .await
-          .unwrap();
+        render.run(progress_interval).await.unwrap();
       }
     },
     runtime_handle,

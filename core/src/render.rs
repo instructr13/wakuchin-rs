@@ -11,14 +11,14 @@ use itertools::Itertools;
 use tokio::sync::watch;
 
 use crate::handlers::ProgressHandler;
-use crate::hit::counter::{HitCounter, SyncHitCounter};
+use crate::hit::counter::{HitCounter, ThreadHitCounter};
 use crate::progress::{DoneDetail, ProcessingDetail, Progress, ProgressKind};
 use crate::result::HitCount;
 use crate::utils::DiffStore;
 
 pub(crate) struct ThreadRender {
   accidential_stop_rx: watch::Receiver<bool>,
-  counter: HitCounter,
+  counter: ThreadHitCounter,
   progress_channels: Vec<watch::Receiver<Progress>>,
   progress_handler: Arc<Mutex<Box<dyn ProgressHandler>>>,
   total: usize,
@@ -28,7 +28,7 @@ pub(crate) struct ThreadRender {
 impl ThreadRender {
   pub(crate) fn new(
     accidential_stop_rx: watch::Receiver<bool>,
-    counter: HitCounter,
+    counter: ThreadHitCounter,
     progress_channels: Vec<watch::Receiver<Progress>>,
     progress_handler: Arc<Mutex<Box<dyn ProgressHandler>>>,
     total: usize,
@@ -48,10 +48,7 @@ impl ThreadRender {
     self.counter.get_all().into_hit_counts()
   }
 
-  pub(crate) async fn start_render_progress(
-    &self,
-    interval: Duration,
-  ) -> Result<()> {
+  pub(crate) async fn run(&self, interval: Duration) -> Result<()> {
     let mut start_time = Instant::now();
     let mut current_diff = DiffStore::new(0_usize);
     let mut current_ = 0;
@@ -130,7 +127,7 @@ impl ThreadRender {
 
 pub(crate) struct Render {
   current_diff: DiffStore<usize>,
-  counter: SyncHitCounter,
+  counter: HitCounter,
   progress_handler: Rc<RefCell<dyn ProgressHandler>>,
   start_time: Instant,
 }
@@ -141,7 +138,7 @@ impl Render {
   ) -> Self {
     Self {
       current_diff: DiffStore::new(0),
-      counter: SyncHitCounter::new(),
+      counter: HitCounter::new(),
       progress_handler,
       start_time: Instant::now(),
     }

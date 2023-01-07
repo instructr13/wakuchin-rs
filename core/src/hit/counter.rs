@@ -33,13 +33,13 @@ impl HitCounterEntry {
 }
 
 #[derive(Clone)]
-pub(crate) struct HitCounter {
+pub(crate) struct ThreadHitCounter {
   pub(crate) count_stopped: Arc<AtomicBool>,
   store: HitStore,
   hit_rx: Receiver<Hit>,
 }
 
-impl HitCounter {
+impl ThreadHitCounter {
   pub(crate) fn new(hit_rx: Receiver<Hit>) -> Self {
     Self {
       count_stopped: Arc::new(AtomicBool::new(false)),
@@ -81,16 +81,17 @@ impl HitCounter {
     )
   }
 
+  #[inline]
   pub(crate) fn get_all(&self) -> HitCounterEntry {
     HitCounterEntry::new(self.store.get_all())
   }
 }
 
-pub(crate) struct SyncHitCounter {
+pub(crate) struct HitCounter {
   store: SyncHitStore,
 }
 
-impl SyncHitCounter {
+impl HitCounter {
   #[inline]
   pub(crate) fn new() -> Self {
     Self {
