@@ -279,6 +279,8 @@
 <span id="279">279</span>
 <span id="280">280</span>
 <span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Core functions of wakuchin tools
 
 </span><span class="kw">pub mod </span>builder;
@@ -336,6 +338,7 @@
 /// assert_eq!(wakuchin_c_count, 3);
 /// assert_eq!(wakuchin_n_count, 3);
 /// ```
+</span><span class="attribute">#[inline]
 </span><span class="kw">pub fn </span>gen(times: usize) -&gt; String {
   <span class="kw">let </span><span class="kw-2">mut </span>wakuchin = symbol::WAKUCHIN.repeat(times);
 
@@ -417,7 +420,7 @@
   wakuchin.chars().all(|c| symbol::WAKUCHIN.contains(<span class="kw-2">&amp;</span>c))
 }
 
-<span class="doccomment">/// Check if a string is a wakuchin string.
+<span class="doccomment">/// Check whether the string is a valid wakuchin characters.
 ///
 /// # Arguments
 ///
@@ -466,6 +469,7 @@
 /// assert!(!check(&quot;わくちん&quot;, &amp;Regex::new(r&quot;^[WKCN]+$&quot;).unwrap()));
 /// assert!(!check(&quot;WKCNX&quot;, &amp;Regex::new(r&quot;^[WKCN]+$&quot;).unwrap()));
 /// ```
+</span><span class="attribute">#[inline]
 </span><span class="kw">pub fn </span>check(chars: <span class="kw-2">&amp;</span>str, regex: <span class="kw-2">&amp;</span>Regex) -&gt; bool {
   regex.is_match(chars)
 }
