@@ -250,30 +250,32 @@ pub async fn run_par(
               hits.push(hit);
             }
 
-            progress_tx
-              .send(Progress(ProgressKind::Processing(ProcessingDetail::new(
+            let progress_tx_result = progress_tx.send(Progress(
+              ProgressKind::Processing(ProcessingDetail::new(
                 id + 1,
                 wakuchin,
                 i,
                 total,
                 total_workers,
-              ))))
-              .expect("progress channel is unavailable");
+              )),
+            ));
 
-            if *accidential_stop_rx.borrow() {
+            if *accidential_stop_rx.borrow() && progress_tx_result.is_err() {
               break;
             }
           }
 
           drop(hit_tx);
 
-          progress_tx
-            .send(Progress(ProgressKind::Done(DoneDetail {
-              id: id + 1,
-              total,
-              total_workers,
-            })))
-            .expect("progress channel is unavailable");
+          if !progress_tx.is_closed() {
+            progress_tx
+              .send(Progress(ProgressKind::Done(DoneDetail {
+                id: id + 1,
+                total,
+                total_workers,
+              })))
+              .unwrap();
+          }
 
           hits
         },
