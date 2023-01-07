@@ -219,8 +219,10 @@ pub async fn run_par(
   ));
 
   // set SIGINT/SIGTERM handler
+  #[cfg(not(target_arch = "wasm32"))]
   let mut signal_join_set = JoinSet::new();
 
+  #[cfg(not(target_arch = "wasm32"))]
   signal_join_set.spawn(async move {
     signal::ctrl_c().await.unwrap();
 
@@ -450,8 +452,9 @@ pub fn run_seq(
     progress_handler.before_start()
   }?;
 
-  let (accidential_stop_tx, accidential_stop_rx) = oneshot();
+  let (accidential_stop_tx, accidential_stop_rx) = oneshot::<()>();
 
+  #[cfg(not(target_arch = "wasm32"))]
   ctrlc::set_handler(move || {
     accidential_stop_tx.send(()).unwrap();
   })

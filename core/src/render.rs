@@ -1,7 +1,6 @@
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
-use std::time::Instant;
 
 use anyhow::Result;
 use dashmap::DashMap;
@@ -9,6 +8,7 @@ use flume::{
   bounded as channel, unbounded as channel_unbounded, Receiver, Sender,
   TryRecvError,
 };
+use instant::Instant;
 use itertools::Itertools;
 use tokio::sync::{watch, RwLock};
 use tokio::time::{sleep, Duration};

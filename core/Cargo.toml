@@ -15,6 +15,8 @@ path = "src/lib.rs"
 
 [features]
 simd-accel = ["simd-json"]
+stdweb = ["instant/stdweb"]
+wasm-bindgen = ["instant/wasm-bindgen"]
 
 [dev-dependencies]
 criterion = { version = "0.4", features = ["async_tokio"] }
@@ -22,11 +24,11 @@ criterion = { version = "0.4", features = ["async_tokio"] }
 [dependencies]
 anyhow = "1.0"
 base64 = "0.13"
-ctrlc = { version = "3.2", features = ["termination"] }
 dashmap = "5.3"
 divide_range = "0.1"
 fastrand = "1.8"
 flume = "0.10"
+instant = "0.1"
 itoa = "1.0"
 itertools = "0.10"
 num_cpus = "1.15"
@@ -43,6 +45,9 @@ tokio = { version = "=1.23", features = [
   "sync",
   "time",
 ] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+ctrlc = { version = "3.2", features = ["termination"] }
 
 [[bench]]
 name = "bench_core"
