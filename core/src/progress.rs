@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use serde::{Deserialize, Serialize};
 
 /// Kind of progress data.
@@ -29,7 +31,7 @@ pub struct ProcessingDetail {
   pub id: usize,
 
   /// Current processing wakuchin chars.
-  pub wakuchin: String,
+  pub wakuchin: Cow<'static, str>,
 
   /// Current processing index.
   pub current: usize,
@@ -44,7 +46,7 @@ pub struct ProcessingDetail {
 impl ProcessingDetail {
   pub(crate) fn new(
     id: usize,
-    wakuchin: impl Into<String>,
+    wakuchin: impl Into<Cow<'static, str>>,
     current: usize,
     total: usize,
     total_workers: usize,

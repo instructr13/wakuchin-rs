@@ -249,7 +249,7 @@ pub async fn run_par(
             progress_tx
               .send(Progress(ProgressKind::Processing(ProcessingDetail::new(
                 id + 1,
-                &wakuchin,
+                wakuchin.clone(),
                 i,
                 total,
                 total_workers,
@@ -478,7 +478,11 @@ pub fn run_seq(
       render.render_progress(
         progress_interval,
         Progress(ProgressKind::Processing(ProcessingDetail::new(
-          0, &wakuchin, i, tries, 1,
+          0,
+          wakuchin.clone(),
+          i,
+          tries,
+          1,
         ))),
         false,
       )?;
@@ -492,7 +496,7 @@ pub fn run_seq(
       if check(&wakuchin, &regex) {
         let hit = Hit::new(i, &wakuchin);
 
-        render.handle_hit(&hit);
+        render.handle_hit(wakuchin);
 
         Ok(Some(hit))
       } else {

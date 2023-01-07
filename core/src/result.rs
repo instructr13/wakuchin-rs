@@ -1,6 +1,6 @@
 //! Functions to manipulate the result of a research
 
-use std::str::FromStr;
+use std::{borrow::Cow, str::FromStr};
 
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -90,7 +90,7 @@ impl Hit {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct HitCount {
   /// Wakuchin chars that were hit.
-  pub chars: String,
+  pub chars: Cow<'static, str>,
   /// The count of hits.
   pub hits: usize,
 }
@@ -106,7 +106,7 @@ impl HitCount {
   /// # Returns
   ///
   /// * `HitCount` - New hit counter.
-  pub fn new(chars: impl Into<String>, hits: usize) -> Self {
+  pub fn new(chars: impl Into<Cow<'static, str>>, hits: usize) -> Self {
     Self {
       chars: chars.into(),
       hits,

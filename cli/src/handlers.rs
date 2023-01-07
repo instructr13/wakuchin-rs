@@ -106,6 +106,7 @@ impl ConsoleProgressHandler {
     let mut current_total = 0;
 
     let tries_width = self.tries_string.len();
+    let mut id_width: usize = 0;
 
     for progress in progresses {
       match progress {
@@ -116,7 +117,9 @@ impl ConsoleProgressHandler {
           eprintln!("{}", "Idle".yellow());
         }
         Progress(ProgressKind::Idle(IdleDetail { id, total_workers })) => {
-          let id_width = total_workers.to_string().len();
+          if id_width == 0 {
+            id_width = total_workers.to_string().len();
+          }
 
           eprintln!(
             "{BOLD_START}#{id:<id_width$}{BOLD_END} {}",
@@ -182,7 +185,9 @@ impl ConsoleProgressHandler {
         })) => {
           current_total += total;
 
-          let id_width = total_workers.to_string().len();
+          if id_width == 0 {
+            id_width = total_workers.to_string().len();
+          }
 
           eprintln!(
             "{BOLD_START}#{id:<id_width$}{BOLD_END} {} {}",
