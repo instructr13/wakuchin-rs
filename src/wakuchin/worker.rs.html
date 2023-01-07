@@ -524,7 +524,6 @@
 <span id="524">524</span>
 <span id="525">525</span>
 <span id="526">526</span>
-<span id="527">527</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Wakuchin researcher main functions
 
 </span><span class="kw">use </span>std::cell::RefCell;
@@ -544,6 +543,7 @@
 <span class="kw">use </span><span class="kw">crate</span>::channel::{channel, oneshot, watch};
 <span class="kw">use </span><span class="kw">crate</span>::error::WakuchinError;
 <span class="kw">use </span><span class="kw">crate</span>::handlers::ProgressHandler;
+<span class="kw">use </span><span class="kw">crate</span>::hit::counter::HitCounter;
 <span class="kw">use </span><span class="kw">crate</span>::progress::{
   DoneDetail, IdleDetail, ProcessingDetail, Progress, ProgressKind,
 };
@@ -705,36 +705,27 @@
 
   <span class="kw">let </span>(accidential_stop_tx, accidential_stop_rx) = watch(<span class="bool-val">false</span>);
 
-  <span class="kw">let </span>render = Arc::new(ThreadRender::new(
+  <span class="kw">let </span>counter = HitCounter::new(hit_rx);
+
+  <span class="kw">let </span>render = ThreadRender::new(
     accidential_stop_rx.clone(),
-    hit_rx,
+    counter.clone(),
     progress_rx_vec,
     progress_handler.clone(),
     tries,
     total_workers,
-  ));
+  );
 
   <span class="kw">let </span><span class="kw-2">mut </span>handles_to_abort = Vec::with_capacity(workers + <span class="number">2</span>);
 
   <span class="kw">let </span><span class="kw-2">mut </span>ui_join_set = JoinSet::new();
 
   <span class="comment">// hit handler
-  </span>handles_to_abort.push(ui_join_set.spawn_on(
-    {
-      <span class="kw">let </span>render = render.clone();
-
-      <span class="kw">async move </span>{
-        render.wait_for_hit().<span class="kw">await</span>;
-      }
-    },
-    runtime_handle,
-  ));
+  </span>counter.run(<span class="kw-2">&amp;mut </span>ui_join_set, runtime_handle);
 
   <span class="comment">// progress reporter
   </span>handles_to_abort.push(ui_join_set.spawn_on(
     {
-      <span class="kw">let </span>render = render.clone();
-
       <span class="kw">async move </span>{
         render
           .start_render_progress(progress_interval)
@@ -746,9 +737,11 @@
   ));
 
   <span class="comment">// set SIGINT/SIGTERM handler
+  </span><span class="attribute">#[cfg(not(target_arch = <span class="string">&quot;wasm32&quot;</span>))]
   </span><span class="kw">let </span><span class="kw-2">mut </span>signal_join_set = JoinSet::new();
 
-  signal_join_set.spawn(<span class="kw">async move </span>{
+  <span class="attribute">#[cfg(not(target_arch = <span class="string">&quot;wasm32&quot;</span>))]
+  </span>signal_join_set.spawn(<span class="kw">async move </span>{
     signal::ctrl_c().<span class="kw">await</span>.unwrap();
 
     accidential_stop_tx.send(<span class="bool-val">true</span>).unwrap();
@@ -774,7 +767,7 @@
             progress_tx
               .send(Progress(ProgressKind::Processing(ProcessingDetail::new(
                 id + <span class="number">1</span>,
-                <span class="kw-2">&amp;</span>wakuchin,
+                wakuchin.clone(),
                 i,
                 total,
                 total_workers,
@@ -874,7 +867,7 @@
     progress_handler.after_finish()
   }<span class="question-mark">?</span>;
 
-  <span class="kw">let </span>hits = render.hits().<span class="kw">await</span>;
+  <span class="kw">let </span>hits = counter.get_all().into_hit_counts();
   <span class="kw">let </span>hits_total = hits.iter().map(|c| c.hits).sum::&lt;usize&gt;();
 
   <span class="prelude-val">Ok</span>(WakuchinResult {
@@ -977,9 +970,10 @@
     progress_handler.before_start()
   }<span class="question-mark">?</span>;
 
-  <span class="kw">let </span>(accidential_stop_tx, accidential_stop_rx) = oneshot();
+  <span class="kw">let </span>(accidential_stop_tx, accidential_stop_rx) = oneshot::&lt;()&gt;();
 
-  ctrlc::set_handler(<span class="kw">move </span>|| {
+  <span class="attribute">#[cfg(not(target_arch = <span class="string">&quot;wasm32&quot;</span>))]
+  </span>ctrlc::set_handler(<span class="kw">move </span>|| {
     accidential_stop_tx.send(()).unwrap();
   })
   .map_err(|e| <span class="macro">anyhow!</span>(e))<span class="question-mark">?</span>;
@@ -1002,7 +996,11 @@
       render.render_progress(
         progress_interval,
         Progress(ProgressKind::Processing(ProcessingDetail::new(
-          <span class="number">0</span>, <span class="kw-2">&amp;</span>wakuchin, i, tries, <span class="number">1</span>,
+          <span class="number">0</span>,
+          wakuchin.clone(),
+          i,
+          tries,
+          <span class="number">1</span>,
         ))),
         <span class="bool-val">false</span>,
       )<span class="question-mark">?</span>;
@@ -1016,7 +1014,7 @@
       <span class="kw">if </span>check(<span class="kw-2">&amp;</span>wakuchin, <span class="kw-2">&amp;</span>regex) {
         <span class="kw">let </span>hit = Hit::new(i, <span class="kw-2">&amp;</span>wakuchin);
 
-        render.handle_hit(<span class="kw-2">&amp;</span>hit);
+        render.handle_hit(wakuchin);
 
         <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(hit))
       } <span class="kw">else </span>{

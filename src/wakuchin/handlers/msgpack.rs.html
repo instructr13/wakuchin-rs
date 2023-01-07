@@ -286,7 +286,7 @@
 <span class="attribute">#[derive(Clone, Debug, Serialize)]
 </span><span class="kw">struct </span>MsgpackProgress&lt;<span class="lifetime">&#39;a</span>&gt; {
   progresses: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[Progress],
-  hit_counters: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[HitCount],
+  hit_counts: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[HitCount],
   current_rate: f32,
   remaining_time: f32,
   tries: usize,
@@ -308,7 +308,7 @@
   <span class="kw">fn </span>handle(
     <span class="kw-2">&amp;mut </span><span class="self">self</span>,
     progresses: <span class="kw-2">&amp;</span>[Progress],
-    counters: <span class="kw-2">&amp;</span>[HitCount],
+    hit_counts: <span class="kw-2">&amp;</span>[HitCount],
     elapsed_time: Duration,
     current_diff: usize,
     all_done: bool,
@@ -343,7 +343,7 @@
 
     <span class="kw">let </span>progress = MsgpackProgress {
       progresses,
-      hit_counters: counters,
+      hit_counts,
       current_rate,
       remaining_time,
       tries: <span class="self">self</span>.tries,
@@ -379,7 +379,7 @@
   <span class="kw">fn </span>handle(
     <span class="kw-2">&amp;mut </span><span class="self">self</span>,
     progresses: <span class="kw-2">&amp;</span>[Progress],
-    counters: <span class="kw-2">&amp;</span>[HitCount],
+    hit_counts: <span class="kw-2">&amp;</span>[HitCount],
     elapsed_time: Duration,
     current_diff: usize,
     all_done: bool,
@@ -414,7 +414,7 @@
 
     <span class="kw">let </span>progress = MsgpackProgress {
       progresses,
-      hit_counters: counters,
+      hit_counts,
       current_rate,
       remaining_time,
       tries: <span class="self">self</span>.tries,
@@ -459,8 +459,8 @@
         total_workers: <span class="number">1</span>,
       }))];
 
-    <span class="kw">let </span>counters = <span class="macro">vec!</span>[HitCount {
-      chars: <span class="string">&quot;あ&quot;</span>.to_string(),
+    <span class="kw">let </span>hit_counts = <span class="macro">vec!</span>[HitCount {
+      chars: <span class="string">&quot;あ&quot;</span>.into(),
       hits: <span class="number">0</span>,
     }];
 
@@ -470,7 +470,7 @@
 
     handler.handle(
       <span class="kw-2">&amp;</span>progresses,
-      <span class="kw-2">&amp;</span>counters,
+      <span class="kw-2">&amp;</span>hit_counts,
       elapsed_time,
       current_diff,
       all_done,
@@ -510,8 +510,8 @@
         total_workers: <span class="number">1</span>,
       }))];
 
-    <span class="kw">let </span>counters = <span class="macro">vec!</span>[HitCount {
-      chars: <span class="string">&quot;あ&quot;</span>.to_string(),
+    <span class="kw">let </span>hit_counts = <span class="macro">vec!</span>[HitCount {
+      chars: <span class="string">&quot;あ&quot;</span>.into(),
       hits: <span class="number">0</span>,
     }];
 
@@ -521,7 +521,7 @@
 
     handler.handle(
       <span class="kw-2">&amp;</span>progresses,
-      <span class="kw-2">&amp;</span>counters,
+      <span class="kw-2">&amp;</span>hit_counts,
       elapsed_time,
       current_diff,
       all_done,

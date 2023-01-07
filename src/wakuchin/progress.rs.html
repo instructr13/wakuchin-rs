@@ -75,7 +75,11 @@
 <span id="75">75</span>
 <span id="76">76</span>
 <span id="77">77</span>
-</pre><pre class="rust"><code><span class="kw">use </span>serde::{Deserialize, Serialize};
+<span id="78">78</span>
+<span id="79">79</span>
+</pre><pre class="rust"><code><span class="kw">use </span>std::borrow::Cow;
+
+<span class="kw">use </span>serde::{Deserialize, Serialize};
 
 <span class="doccomment">/// Kind of progress data.
 </span><span class="attribute">#[derive(Clone, Debug, Serialize, Deserialize)]
@@ -106,7 +110,7 @@
   </span><span class="kw">pub </span>id: usize,
 
   <span class="doccomment">/// Current processing wakuchin chars.
-  </span><span class="kw">pub </span>wakuchin: String,
+  </span><span class="kw">pub </span>wakuchin: Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;,
 
   <span class="doccomment">/// Current processing index.
   </span><span class="kw">pub </span>current: usize,
@@ -121,7 +125,7 @@
 <span class="kw">impl </span>ProcessingDetail {
   <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
     id: usize,
-    wakuchin: <span class="kw">impl </span>Into&lt;String&gt;,
+    wakuchin: <span class="kw">impl </span>Into&lt;Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;&gt;,
     current: usize,
     total: usize,
     total_workers: usize,

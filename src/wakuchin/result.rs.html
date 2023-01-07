@@ -284,7 +284,7 @@
 <span id="284">284</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Functions to manipulate the result of a research
 
-</span><span class="kw">use </span>std::str::FromStr;
+</span><span class="kw">use </span>std::{borrow::Cow, str::FromStr};
 
 <span class="kw">use </span>itertools::Itertools;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
@@ -374,7 +374,7 @@
 </span><span class="attribute">#[derive(Clone, Debug, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>HitCount {
   <span class="doccomment">/// Wakuchin chars that were hit.
-  </span><span class="kw">pub </span>chars: String,
+  </span><span class="kw">pub </span>chars: Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;,
   <span class="doccomment">/// The count of hits.
   </span><span class="kw">pub </span>hits: usize,
 }
@@ -390,7 +390,7 @@
   /// # Returns
   ///
   /// * `HitCount` - New hit counter.
-  </span><span class="kw">pub fn </span>new(chars: <span class="kw">impl </span>Into&lt;String&gt;, hits: usize) -&gt; <span class="self">Self </span>{
+  </span><span class="kw">pub fn </span>new(chars: <span class="kw">impl </span>Into&lt;Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;&gt;, hits: usize) -&gt; <span class="self">Self </span>{
     <span class="self">Self </span>{
       chars: chars.into(),
       hits,

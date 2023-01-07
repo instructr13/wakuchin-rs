@@ -212,130 +212,60 @@
 <span id="212">212</span>
 <span id="213">213</span>
 <span id="214">214</span>
-<span id="215">215</span>
-<span id="216">216</span>
-<span id="217">217</span>
-<span id="218">218</span>
-<span id="219">219</span>
-<span id="220">220</span>
-<span id="221">221</span>
-<span id="222">222</span>
-<span id="223">223</span>
-<span id="224">224</span>
-<span id="225">225</span>
-<span id="226">226</span>
-<span id="227">227</span>
-<span id="228">228</span>
-<span id="229">229</span>
-<span id="230">230</span>
-<span id="231">231</span>
-<span id="232">232</span>
-<span id="233">233</span>
-<span id="234">234</span>
-<span id="235">235</span>
-<span id="236">236</span>
-<span id="237">237</span>
-<span id="238">238</span>
-<span id="239">239</span>
-<span id="240">240</span>
-<span id="241">241</span>
-<span id="242">242</span>
-<span id="243">243</span>
-<span id="244">244</span>
-<span id="245">245</span>
-<span id="246">246</span>
-<span id="247">247</span>
-<span id="248">248</span>
-<span id="249">249</span>
-<span id="250">250</span>
-<span id="251">251</span>
-<span id="252">252</span>
-<span id="253">253</span>
-<span id="254">254</span>
-<span id="255">255</span>
-<span id="256">256</span>
-<span id="257">257</span>
-<span id="258">258</span>
-<span id="259">259</span>
-<span id="260">260</span>
-<span id="261">261</span>
-<span id="262">262</span>
-<span id="263">263</span>
-<span id="264">264</span>
-<span id="265">265</span>
-<span id="266">266</span>
-<span id="267">267</span>
-<span id="268">268</span>
-<span id="269">269</span>
-<span id="270">270</span>
-<span id="271">271</span>
-<span id="272">272</span>
-<span id="273">273</span>
-<span id="274">274</span>
-<span id="275">275</span>
-<span id="276">276</span>
-<span id="277">277</span>
-<span id="278">278</span>
-<span id="279">279</span>
-<span id="280">280</span>
-<span id="281">281</span>
-<span id="282">282</span>
-<span id="283">283</span>
-<span id="284">284</span>
-<span id="285">285</span>
-<span id="286">286</span>
-<span id="287">287</span>
-<span id="288">288</span>
-<span id="289">289</span>
-<span id="290">290</span>
-<span id="291">291</span>
-</pre><pre class="rust"><code><span class="kw">use </span>std::cell::RefCell;
+</pre><pre class="rust"><code><span class="kw">use </span>std::borrow::Cow;
+<span class="kw">use </span>std::cell::RefCell;
 <span class="kw">use </span>std::rc::Rc;
+<span class="kw">use </span>std::sync::atomic::Ordering;
 <span class="kw">use </span>std::sync::{Arc, Mutex};
-<span class="kw">use </span>std::time::Instant;
+<span class="kw">use </span>std::time::Duration;
 
 <span class="kw">use </span>anyhow::Result;
-<span class="kw">use </span>dashmap::DashMap;
-<span class="kw">use </span>flume::{
-  bounded <span class="kw">as </span>channel, unbounded <span class="kw">as </span>channel_unbounded, Receiver, Sender,
-  TryRecvError,
-};
+<span class="kw">use </span>instant::Instant;
 <span class="kw">use </span>itertools::Itertools;
-<span class="kw">use </span>tokio::sync::{watch, RwLock};
-<span class="kw">use </span>tokio::time::{sleep, Duration};
+<span class="kw">use </span>tokio::sync::watch;
 
 <span class="kw">use </span><span class="kw">crate</span>::handlers::ProgressHandler;
+<span class="kw">use </span><span class="kw">crate</span>::hit::counter::{HitCounter, SyncHitCounter};
 <span class="kw">use </span><span class="kw">crate</span>::progress::{DoneDetail, ProcessingDetail, Progress, ProgressKind};
-<span class="kw">use </span><span class="kw">crate</span>::result::{Hit, HitCount};
+<span class="kw">use </span><span class="kw">crate</span>::result::HitCount;
 <span class="kw">use </span><span class="kw">crate</span>::utils::DiffStore;
 
-<span class="kw">fn </span>hit_map_to_count(map: <span class="kw-2">&amp;</span>DashMap&lt;String, usize&gt;) -&gt; Vec&lt;HitCount&gt; {
-  map
-    .iter()
-    .map(|ref_| HitCount {
-      chars: ref_.key().clone(),
-      hits: <span class="kw-2">*</span>ref_.value(),
-    })
-    .collect()
-}
-
-<span class="kw">struct </span>ThreadRenderInner {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>ThreadRender {
   accidential_stop_rx: watch::Receiver&lt;bool&gt;,
-  hit_counter: DashMap&lt;String, usize&gt;,
-  internal_hit_rx: Receiver&lt;Hit&gt;,
+  counter: HitCounter,
   progress_channels: Vec&lt;watch::Receiver&lt;Progress&gt;&gt;,
   progress_handler: Arc&lt;Mutex&lt;Box&lt;<span class="kw">dyn </span>ProgressHandler&gt;&gt;&gt;,
-  stop_rx: Receiver&lt;bool&gt;,
   total: usize,
   total_workers: usize,
 }
 
-<span class="kw">impl </span>ThreadRenderInner {
-  <span class="kw">fn </span>hits(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;HitCount&gt; {
-    hit_map_to_count(<span class="kw-2">&amp;</span><span class="self">self</span>.hit_counter)
+<span class="kw">impl </span>ThreadRender {
+  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
+    accidential_stop_rx: watch::Receiver&lt;bool&gt;,
+    counter: HitCounter,
+    progress_channels: Vec&lt;watch::Receiver&lt;Progress&gt;&gt;,
+    progress_handler: Arc&lt;Mutex&lt;Box&lt;<span class="kw">dyn </span>ProgressHandler&gt;&gt;&gt;,
+    total: usize,
+    total_workers: usize,
+  ) -&gt; <span class="self">Self </span>{
+    <span class="self">Self </span>{
+      accidential_stop_rx,
+      counter,
+      progress_channels,
+      progress_handler,
+      total,
+      total_workers,
+    }
   }
 
-  <span class="kw">async fn </span>start_render_progress(<span class="kw-2">&amp;mut </span><span class="self">self</span>, interval: Duration) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+  <span class="kw">fn </span>hits(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;HitCount&gt; {
+    <span class="self">self</span>.counter.get_all().into_hit_counts()
+  }
+
+  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>start_render_progress(
+    <span class="kw-2">&amp;</span><span class="self">self</span>,
+    interval: Duration,
+  ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="kw">let </span><span class="kw-2">mut </span>start_time = Instant::now();
     <span class="kw">let </span><span class="kw-2">mut </span>current_diff = DiffStore::new(<span class="number">0_usize</span>);
     <span class="kw">let </span><span class="kw-2">mut </span>current_ = <span class="number">0</span>;
@@ -349,7 +279,7 @@
         <span class="kw">return </span>progress_handler.on_accidential_stop();
       }
 
-      <span class="kw">if </span><span class="self">self</span>.stop_rx.try_recv().is_ok() {
+      <span class="kw">if </span><span class="self">self</span>.counter.count_stopped.load(Ordering::Acquire) {
         progress_handler.handle(
           <span class="kw-2">&amp;</span>(<span class="number">0</span>..<span class="self">self</span>.progress_channels.len())
             .map(|id| {
@@ -367,12 +297,6 @@
         )<span class="question-mark">?</span>;
 
         <span class="kw">break</span>;
-      }
-
-      <span class="kw">if </span>!<span class="self">self</span>.internal_hit_rx.is_empty() {
-        <span class="kw">while let </span><span class="prelude-val">Ok</span>(hit) = <span class="self">self</span>.internal_hit_rx.try_recv() {
-          <span class="kw-2">*</span><span class="self">self</span>.hit_counter.entry(hit.chars.clone()).or_insert(<span class="number">0</span>) += <span class="number">1</span>;
-        }
       }
 
       <span class="kw">if </span>start_time.elapsed() &lt; interval {
@@ -418,89 +342,9 @@
   }
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>ThreadRender {
-  inner: Arc&lt;RwLock&lt;ThreadRenderInner&gt;&gt;,
-  hit_rx: Receiver&lt;Hit&gt;,
-  internal_hit_tx: Sender&lt;Hit&gt;,
-  stop_tx: Sender&lt;bool&gt;,
-}
-
-<span class="kw">impl </span>ThreadRender {
-  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
-    accidential_stop_rx: watch::Receiver&lt;bool&gt;,
-    hit_rx: Receiver&lt;Hit&gt;,
-    progress_channels: Vec&lt;watch::Receiver&lt;Progress&gt;&gt;,
-    progress_handler: Arc&lt;Mutex&lt;Box&lt;<span class="kw">dyn </span>ProgressHandler&gt;&gt;&gt;,
-    total: usize,
-    total_workers: usize,
-  ) -&gt; <span class="self">Self </span>{
-    <span class="kw">let </span>(internal_hit_tx, internal_hit_rx) = channel_unbounded();
-    <span class="kw">let </span>(stop_tx, stop_rx) = channel(<span class="number">1</span>);
-
-    <span class="self">Self </span>{
-      inner: Arc::new(RwLock::new(ThreadRenderInner {
-        accidential_stop_rx,
-        hit_counter: DashMap::new(),
-        internal_hit_rx,
-        progress_channels,
-        progress_handler,
-        stop_rx,
-        total,
-        total_workers,
-      })),
-      stop_tx,
-      hit_rx,
-      internal_hit_tx,
-    }
-  }
-
-  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>hits(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;HitCount&gt; {
-    <span class="kw">let </span>inner = <span class="self">self</span>.inner.read().<span class="kw">await</span>;
-
-    inner.hits()
-  }
-
-  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>wait_for_hit(<span class="kw-2">&amp;</span><span class="self">self</span>) {
-    <span class="kw">loop </span>{
-      <span class="kw">let </span>hit = <span class="self">self</span>.hit_rx.try_recv();
-
-      <span class="kw">match </span>hit {
-        <span class="prelude-val">Ok</span>(hit) =&gt; {
-          <span class="self">self
-            </span>.internal_hit_tx
-            .send_async(hit)
-            .<span class="kw">await
-            </span>.expect(<span class="string">&quot;internal hit channel sending failed&quot;</span>);
-        }
-        <span class="prelude-val">Err</span>(TryRecvError::Disconnected) =&gt; {
-          <span class="self">self
-            </span>.stop_tx
-            .send_async(<span class="bool-val">true</span>)
-            .<span class="kw">await
-            </span>.expect(<span class="string">&quot;stop channel sending failed&quot;</span>);
-
-          <span class="kw">break</span>;
-        }
-        <span class="prelude-val">Err</span>(TryRecvError::Empty) =&gt; {
-          sleep(Duration::from_millis(<span class="number">5</span>)).<span class="kw">await</span>;
-        }
-      }
-    }
-  }
-
-  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>start_render_progress(
-    <span class="kw-2">&amp;</span><span class="self">self</span>,
-    interval: Duration,
-  ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    <span class="kw">let </span><span class="kw-2">mut </span>inner = <span class="self">self</span>.inner.write().<span class="kw">await</span>;
-
-    inner.start_render_progress(interval).<span class="kw">await
-  </span>}
-}
-
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>Render {
   current_diff: DiffStore&lt;usize&gt;,
-  hit_counter: DashMap&lt;String, usize&gt;,
+  counter: SyncHitCounter,
   progress_handler: Rc&lt;RefCell&lt;<span class="kw">dyn </span>ProgressHandler&gt;&gt;,
   start_time: Instant,
 }
@@ -511,19 +355,21 @@
   ) -&gt; <span class="self">Self </span>{
     <span class="self">Self </span>{
       current_diff: DiffStore::new(<span class="number">0</span>),
-      hit_counter: DashMap::new(),
+      counter: SyncHitCounter::new(),
       progress_handler,
       start_time: Instant::now(),
     }
   }
 
-  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>hits(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;HitCount&gt; {
-    hit_map_to_count(<span class="kw-2">&amp;</span><span class="self">self</span>.hit_counter)
+  <span class="attribute">#[inline]
+  </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>hits(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;HitCount&gt; {
+    <span class="self">self</span>.counter.get_all().into_hit_counts()
   }
 
-  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>handle_hit(<span class="kw-2">&amp;</span><span class="self">self</span>, hit: <span class="kw-2">&amp;</span>Hit) {
+  <span class="attribute">#[inline]
+  </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>handle_hit(<span class="kw-2">&amp;</span><span class="self">self</span>, chars: <span class="kw">impl </span>Into&lt;Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;&gt;) {
     <span class="comment">// Insert hit to hit counter with specific char entry
-    </span><span class="kw-2">*</span><span class="self">self</span>.hit_counter.entry(hit.chars.clone()).or_insert(<span class="number">0</span>) += <span class="number">1</span>;
+    </span><span class="self">self</span>.counter.add(chars);
   }
 
   <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>render_progress(
