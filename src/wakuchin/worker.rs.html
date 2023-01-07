@@ -524,6 +524,19 @@
 <span id="524">524</span>
 <span id="525">525</span>
 <span id="526">526</span>
+<span id="527">527</span>
+<span id="528">528</span>
+<span id="529">529</span>
+<span id="530">530</span>
+<span id="531">531</span>
+<span id="532">532</span>
+<span id="533">533</span>
+<span id="534">534</span>
+<span id="535">535</span>
+<span id="536">536</span>
+<span id="537">537</span>
+<span id="538">538</span>
+<span id="539">539</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Wakuchin researcher main functions
 
 </span><span class="kw">use </span>std::cell::RefCell;
@@ -718,10 +731,11 @@
 
   <span class="kw">let </span><span class="kw-2">mut </span>handles_to_abort = Vec::with_capacity(workers + <span class="number">2</span>);
 
+  <span class="kw">let </span><span class="kw-2">mut </span>hit_join_set = JoinSet::new();
   <span class="kw">let </span><span class="kw-2">mut </span>ui_join_set = JoinSet::new();
 
   <span class="comment">// hit handler
-  </span>counter.run(<span class="kw-2">&amp;mut </span>ui_join_set, runtime_handle);
+  </span>handles_to_abort.push(counter.run(<span class="kw-2">&amp;mut </span>hit_join_set, runtime_handle));
 
   <span class="comment">// progress reporter
   </span>handles_to_abort.push(ui_join_set.spawn_on(
@@ -764,20 +778,6 @@
           <span class="kw">let </span><span class="kw-2">mut </span>hits = Vec::new();
 
           <span class="kw">for </span>(i, wakuchin) <span class="kw">in </span>wakuchins.map(|<span class="kw">_</span>| gen(times)).enumerate() {
-            progress_tx
-              .send(Progress(ProgressKind::Processing(ProcessingDetail::new(
-                id + <span class="number">1</span>,
-                wakuchin.clone(),
-                i,
-                total,
-                total_workers,
-              ))))
-              .expect(<span class="string">&quot;progress channel is unavailable&quot;</span>);
-
-            <span class="kw">if </span><span class="kw-2">*</span>accidential_stop_rx.borrow() {
-              <span class="kw">break</span>;
-            }
-
             <span class="kw">if </span>check(<span class="kw-2">&amp;</span>wakuchin, <span class="kw-2">&amp;</span>regex) {
               <span class="kw">let </span>hit = Hit::new(i, <span class="kw-2">&amp;</span>wakuchin);
 
@@ -787,6 +787,20 @@
                 </span>.expect(<span class="string">&quot;hit channel is unavailable&quot;</span>);
 
               hits.push(hit);
+            }
+
+            progress_tx
+              .send(Progress(ProgressKind::Processing(ProcessingDetail::new(
+                id + <span class="number">1</span>,
+                wakuchin,
+                i,
+                total,
+                total_workers,
+              ))))
+              .expect(<span class="string">&quot;progress channel is unavailable&quot;</span>);
+
+            <span class="kw">if </span><span class="kw-2">*</span>accidential_stop_rx.borrow() {
+              <span class="kw">break</span>;
             }
           }
 
@@ -838,6 +852,18 @@
 
         <span class="kw">return </span><span class="prelude-val">Err</span>(e.into());
       }
+    }
+  }
+
+  <span class="kw">while let </span><span class="prelude-val">Some</span>(result) = hit_join_set.join_next().<span class="kw">await </span>{
+    <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = result {
+      runtime.shutdown_background();
+
+      <span class="kw">if </span>e.is_cancelled() {
+        <span class="kw">return </span><span class="prelude-val">Err</span>(WakuchinError::Cancelled);
+      }
+
+      <span class="kw">return </span><span class="prelude-val">Err</span>(e.into());
     }
   }
 
