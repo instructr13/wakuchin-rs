@@ -537,6 +537,8 @@
 <span id="537">537</span>
 <span id="538">538</span>
 <span id="539">539</span>
+<span id="540">540</span>
+<span id="541">541</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Wakuchin researcher main functions
 
 </span><span class="kw">use </span>std::cell::RefCell;
@@ -789,30 +791,32 @@
               hits.push(hit);
             }
 
-            progress_tx
-              .send(Progress(ProgressKind::Processing(ProcessingDetail::new(
+            <span class="kw">let </span>progress_tx_result = progress_tx.send(Progress(
+              ProgressKind::Processing(ProcessingDetail::new(
                 id + <span class="number">1</span>,
                 wakuchin,
                 i,
                 total,
                 total_workers,
-              ))))
-              .expect(<span class="string">&quot;progress channel is unavailable&quot;</span>);
+              )),
+            ));
 
-            <span class="kw">if </span><span class="kw-2">*</span>accidential_stop_rx.borrow() {
+            <span class="kw">if </span><span class="kw-2">*</span>accidential_stop_rx.borrow() &amp;&amp; progress_tx_result.is_err() {
               <span class="kw">break</span>;
             }
           }
 
           drop(hit_tx);
 
-          progress_tx
-            .send(Progress(ProgressKind::Done(DoneDetail {
-              id: id + <span class="number">1</span>,
-              total,
-              total_workers,
-            })))
-            .expect(<span class="string">&quot;progress channel is unavailable&quot;</span>);
+          <span class="kw">if </span>!progress_tx.is_closed() {
+            progress_tx
+              .send(Progress(ProgressKind::Done(DoneDetail {
+                id: id + <span class="number">1</span>,
+                total,
+                total_workers,
+              })))
+              .unwrap();
+          }
 
           hits
         },
