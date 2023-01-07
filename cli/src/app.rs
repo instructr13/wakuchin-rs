@@ -22,7 +22,7 @@ shadow!(build);
 #[command(author, version, about, long_about = "A next generation wakuchin researcher software written in Rust
 P2P-Develop
 
-Wakuchin will generate shuffled \"わくちん\" characters and check if they match a given regex.
+Wakuchin will generate shuffled \"わくちん\" characters and check whether they match a given regex.
 If they do, it will print the result to stdout.", long_version = build::CLAP_LONG_VERSION, after_long_help = "For more information, see GitHub repository: https://github.com/P2P-Develop/wakuchin-rs")]
 struct Args {
   /// Config file path, can be json, yaml, or toml, detected by extension
