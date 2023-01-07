@@ -55,6 +55,7 @@ use regex::Regex;
 /// assert_eq!(wakuchin_c_count, 3);
 /// assert_eq!(wakuchin_n_count, 3);
 /// ```
+#[inline]
 pub fn gen(times: usize) -> String {
   let mut wakuchin = symbol::WAKUCHIN.repeat(times);
 
@@ -136,7 +137,7 @@ pub fn validate(wakuchin: &str) -> bool {
   wakuchin.chars().all(|c| symbol::WAKUCHIN.contains(&c))
 }
 
-/// Check if a string is a wakuchin string.
+/// Check whether the string is a valid wakuchin characters.
 ///
 /// # Arguments
 ///
@@ -185,6 +186,7 @@ pub fn validate_external(wakuchin: &str) -> bool {
 /// assert!(!check("わくちん", &Regex::new(r"^[WKCN]+$").unwrap()));
 /// assert!(!check("WKCNX", &Regex::new(r"^[WKCN]+$").unwrap()));
 /// ```
+#[inline]
 pub fn check(chars: &str, regex: &Regex) -> bool {
   regex.is_match(chars)
 }
