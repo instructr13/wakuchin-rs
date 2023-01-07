@@ -261,7 +261,7 @@ impl ConsoleProgressHandler {
 }
 
 impl ProgressHandler for ConsoleProgressHandler {
-  fn before_start(&self) -> anyhow::Result<()> {
+  fn before_start(&mut self) -> anyhow::Result<()> {
     if !self.no_progress {
       execute!(
         stderr(),
@@ -323,7 +323,7 @@ impl ProgressHandler for ConsoleProgressHandler {
     Ok(())
   }
 
-  fn after_finish(&self) -> anyhow::Result<()> {
+  fn after_finish(&mut self) -> anyhow::Result<()> {
     if !self.no_progress {
       for _ in 0..self.handler_height {
         execute!(

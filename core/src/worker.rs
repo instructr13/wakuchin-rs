@@ -152,7 +152,7 @@ pub async fn run_par(
   }
 
   {
-    let progress_handler = progress_handler.lock().unwrap();
+    let mut progress_handler = progress_handler.lock().unwrap();
 
     progress_handler.before_start()
   }?;
@@ -345,7 +345,7 @@ pub async fn run_par(
   runtime.shutdown_background();
 
   {
-    let progress_handler = progress_handler.lock().unwrap();
+    let mut progress_handler = progress_handler.lock().unwrap();
 
     progress_handler.after_finish()
   }?;
@@ -448,7 +448,7 @@ pub fn run_seq(
   }
 
   {
-    let progress_handler = progress_handler.borrow();
+    let mut progress_handler = progress_handler.borrow_mut();
 
     progress_handler.before_start()
   }?;
@@ -489,7 +489,7 @@ pub fn run_seq(
       )?;
 
       if accidential_stop_rx.try_recv().is_ok() {
-        progress_handler.borrow().after_finish()?;
+        progress_handler.borrow_mut().after_finish()?;
 
         return Err(WakuchinError::Cancelled);
       }
@@ -518,7 +518,7 @@ pub fn run_seq(
   )?;
 
   {
-    let progress_handler = progress_handler.borrow();
+    let mut progress_handler = progress_handler.borrow_mut();
 
     progress_handler.after_finish()
   }?;
