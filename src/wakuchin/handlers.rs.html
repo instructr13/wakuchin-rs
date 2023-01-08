@@ -29,21 +29,7 @@
 <span id="29">29</span>
 <span id="30">30</span>
 <span id="31">31</span>
-<span id="32">32</span>
-<span id="33">33</span>
-<span id="34">34</span>
-<span id="35">35</span>
-<span id="36">36</span>
-<span id="37">37</span>
-<span id="38">38</span>
-<span id="39">39</span>
-<span id="40">40</span>
-<span id="41">41</span>
-<span id="42">42</span>
-<span id="43">43</span>
-</pre><pre class="rust"><code><span class="kw">use </span>std::cell::RefCell;
-<span class="kw">use </span>std::rc::Rc;
-<span class="kw">use </span>std::time::Duration;
+</pre><pre class="rust"><code><span class="kw">use </span>std::time::Duration;
 
 <span class="kw">use </span>anyhow::Result;
 
@@ -52,7 +38,7 @@
 <span class="kw">pub mod </span>empty;
 <span class="kw">pub mod </span>msgpack;
 
-<span class="kw">pub trait </span>ProgressHandler: RefCellWrapper + Sync + Send + <span class="lifetime">&#39;static </span>{
+<span class="kw">pub trait </span>ProgressHandler: Sync + Send + <span class="lifetime">&#39;static </span>{
   <span class="kw">fn </span>before_start(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="prelude-val">Ok</span>(())
   }
@@ -72,16 +58,6 @@
 
   <span class="kw">fn </span>on_accidential_stop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="self">self</span>.after_finish()
-  }
-}
-
-<span class="kw">pub trait </span>RefCellWrapper {
-  <span class="kw">fn </span>wrap_in_refcell(<span class="self">self</span>: Box&lt;<span class="self">Self</span>&gt;) -&gt; Rc&lt;RefCell&lt;<span class="kw">dyn </span>ProgressHandler&gt;&gt;;
-}
-
-<span class="kw">impl</span>&lt;T: ProgressHandler + <span class="lifetime">&#39;static</span>&gt; RefCellWrapper <span class="kw">for </span>T {
-  <span class="kw">fn </span>wrap_in_refcell(<span class="self">self</span>: Box&lt;<span class="self">Self</span>&gt;) -&gt; Rc&lt;RefCell&lt;<span class="kw">dyn </span>ProgressHandler&gt;&gt; {
-    Rc::new(RefCell::new(<span class="kw-2">*</span><span class="self">self</span>))
   }
 }
 </code></pre></div>

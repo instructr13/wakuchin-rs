@@ -533,24 +533,41 @@
 <span id="533">533</span>
 <span id="534">534</span>
 <span id="535">535</span>
+<span id="536">536</span>
+<span id="537">537</span>
+<span id="538">538</span>
+<span id="539">539</span>
+<span id="540">540</span>
+<span id="541">541</span>
+<span id="542">542</span>
+<span id="543">543</span>
+<span id="544">544</span>
+<span id="545">545</span>
+<span id="546">546</span>
+<span id="547">547</span>
+<span id="548">548</span>
+<span id="549">549</span>
+<span id="550">550</span>
+<span id="551">551</span>
+<span id="552">552</span>
+<span id="553">553</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Wakuchin researcher main functions
 
 </span><span class="kw">use </span>std::cell::RefCell;
-<span class="kw">use </span>std::rc::Rc;
-<span class="kw">use </span>std::sync::atomic::{AtomicUsize, Ordering};
-<span class="kw">use </span>std::sync::{Arc, Mutex};
+<span class="kw">use </span>std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+<span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>std::thread::available_parallelism;
 <span class="kw">use </span>std::time::Duration;
 
 <span class="kw">use </span>anyhow::anyhow;
 <span class="kw">use </span>divide_range::RangeDivisions;
-<span class="kw">use </span>itertools::Itertools;
+<span class="kw">use </span>parking_lot::Mutex;
 <span class="kw">use </span>regex::Regex;
 <span class="kw">use </span>tokio::runtime::{Builder, Runtime};
 <span class="kw">use </span>tokio::signal;
-<span class="kw">use </span>tokio::task::JoinSet;
+<span class="kw">use </span>tokio::task::{yield_now, JoinSet};
 
-<span class="kw">use </span><span class="kw">crate</span>::channel::{channel, oneshot, watch};
+<span class="kw">use </span><span class="kw">crate</span>::channel::{channel, watch};
 <span class="kw">use </span><span class="kw">crate</span>::error::WakuchinError;
 <span class="kw">use </span><span class="kw">crate</span>::handlers::ProgressHandler;
 <span class="kw">use </span><span class="kw">crate</span>::hit::counter::ThreadHitCounter;
@@ -609,9 +626,10 @@
 ///
 /// * [`WakuchinError::TimesIsZero`](crate::error::WakuchinError::TimesIsZero) - Returns if you passed a zero to `times`
 ///   ```rust
-///   use std::sync::{Arc, Mutex};
+///   use std::sync::Mutex;
 ///   use std::time::Duration;
 ///
+///   use parking_lot::Mutex as HandlerMutex;
 ///   use regex::Regex;
 ///
 ///   use wakuchin::handlers::ProgressHandler;
@@ -619,7 +637,7 @@
 ///   use wakuchin::worker::run_par;
 ///
 ///   # async fn try_main_async() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
-///   let handler: Arc&lt;Mutex&lt;Box&lt;dyn ProgressHandler&gt;&gt;&gt; = Arc::new(Mutex::new(Box::new(EmptyProgressHandler::new())));
+///   let handler: HandlerMutex&lt;Box&lt;dyn ProgressHandler&gt;&gt; = HandlerMutex::new(Box::new(EmptyProgressHandler::new()));
 ///   let result = run_par(10, 0, Regex::new(r&quot;WKCN&quot;)?, handler, Duration::from_secs(1), 0).await;
 ///
 ///   assert!(result.is_err());
@@ -642,6 +660,7 @@
 /// use std::sync::{Arc, Mutex};
 /// use std::time::Duration;
 ///
+/// use parking_lot::Mutex as HandlerMutex;
 /// use regex::Regex;
 ///
 /// use wakuchin::handlers::ProgressHandler;
@@ -651,8 +670,8 @@
 ///
 /// # async fn try_main_async() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 /// let tries = 10;
-/// let handler: Arc&lt;Mutex&lt;Box&lt;dyn ProgressHandler&gt;&gt;&gt;
-///   = Arc::new(Mutex::new(Box::new(MsgpackProgressHandler::new(tries, Arc::new(Mutex::new(stdout()))))));
+/// let handler: HandlerMutex&lt;Box&lt;dyn ProgressHandler&gt;&gt;
+///   = HandlerMutex::new(Box::new(MsgpackProgressHandler::new(tries, Arc::new(Mutex::new(stdout())))));
 /// let result = run_par(tries, 1, Regex::new(r&quot;WKCN&quot;)?, handler, Duration::from_secs(1), 4).await?;
 ///
 /// println!(&quot;{}&quot;, result.out(ResultOutputFormat::Text)?);
@@ -669,7 +688,7 @@
   tries: usize,
   times: usize,
   regex: Regex,
-  progress_handler: Arc&lt;Mutex&lt;Box&lt;<span class="kw">dyn </span>ProgressHandler&gt;&gt;&gt;,
+  progress_handler: Mutex&lt;Box&lt;<span class="kw">dyn </span>ProgressHandler&gt;&gt;,
   progress_interval: Duration,
   workers: usize,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;WakuchinResult&gt; {
@@ -686,19 +705,11 @@
     <span class="kw">return </span><span class="prelude-val">Err</span>(WakuchinError::TimesIsZero);
   }
 
-  {
-    <span class="kw">let </span><span class="kw-2">mut </span>progress_handler = progress_handler.lock().unwrap();
-
-    progress_handler.before_start()
-  }<span class="question-mark">?</span>;
-
   <span class="kw">let </span>total_workers = get_total_workers(workers)<span class="question-mark">?</span>;
 
-  <span class="kw">let </span>runtime = create_runtime(total_workers)<span class="question-mark">?</span>;
-
-  <span class="kw">let </span>runtime_handle = runtime.handle();
-
+  <span class="kw">let </span>is_stopped_accidentially = Arc::new(AtomicBool::new(<span class="bool-val">false</span>));
   <span class="kw">let </span>(hit_tx, hit_rx) = channel();
+  <span class="kw">let </span>counter = ThreadHitCounter::new(hit_rx);
 
   <span class="kw">let </span>(progress_tx_vec, progress_rx_vec): (Vec&lt;<span class="kw">_</span>&gt;, Vec&lt;<span class="kw">_</span>&gt;) = (<span class="number">0</span>..total_workers)
     .map(|id| {
@@ -709,23 +720,25 @@
     })
     .unzip();
 
-  <span class="kw">let </span>(accidential_stop_tx, accidential_stop_rx) = watch(<span class="bool-val">false</span>);
-
-  <span class="kw">let </span>counter = ThreadHitCounter::new(hit_rx);
-
   <span class="kw">let </span>render = ThreadRender::new(
-    accidential_stop_rx.clone(),
+    is_stopped_accidentially.clone(),
     counter.clone(),
     progress_rx_vec,
-    progress_handler.clone(),
+    progress_handler,
     tries,
     total_workers,
   );
 
+  render.invoke_before_start()<span class="question-mark">?</span>;
+
+  <span class="kw">let </span>runtime = create_runtime(total_workers)<span class="question-mark">?</span>;
+
+  <span class="kw">let </span>runtime_handle = runtime.handle();
+
   <span class="kw">let </span><span class="kw-2">mut </span>handles_to_abort = Vec::with_capacity(workers + <span class="number">2</span>);
 
   <span class="kw">let </span><span class="kw-2">mut </span>hit_join_set = JoinSet::new();
-  <span class="kw">let </span><span class="kw-2">mut </span>ui_join_set = JoinSet::new();
+  <span class="kw">let </span><span class="kw-2">mut </span>ui_join_set: JoinSet&lt;<span class="prelude-ty">Result</span>&lt;()&gt;&gt; = JoinSet::new();
 
   <span class="comment">// hit handler
   </span>handles_to_abort.push(counter.run(<span class="kw-2">&amp;mut </span>hit_join_set, runtime_handle));
@@ -733,8 +746,16 @@
   <span class="comment">// progress reporter
   </span>handles_to_abort.push(ui_join_set.spawn_on(
     {
+      <span class="kw">let </span>is_stopped_accidentially = is_stopped_accidentially.clone();
+
       <span class="kw">async move </span>{
-        render.run(progress_interval).<span class="kw">await</span>.unwrap();
+        render.run(progress_interval).<span class="kw">await</span><span class="question-mark">?</span>;
+
+        <span class="kw">if </span>!is_stopped_accidentially.load(Ordering::Relaxed) {
+          render.invoke_after_finish()<span class="question-mark">?</span>;
+        }
+
+        <span class="prelude-val">Ok</span>(())
       }
     },
     runtime_handle,
@@ -745,10 +766,14 @@
   </span><span class="kw">let </span><span class="kw-2">mut </span>signal_join_set = JoinSet::new();
 
   <span class="attribute">#[cfg(not(target_arch = <span class="string">&quot;wasm32&quot;</span>))]
-  </span>signal_join_set.spawn(<span class="kw">async move </span>{
-    signal::ctrl_c().<span class="kw">await</span>.unwrap();
+  </span>signal_join_set.spawn({
+    <span class="kw">let </span>is_stopped_accidentially = is_stopped_accidentially.clone();
 
-    accidential_stop_tx.send(<span class="bool-val">true</span>).unwrap();
+    <span class="kw">async move </span>{
+      signal::ctrl_c().<span class="kw">await</span>.unwrap();
+
+      is_stopped_accidentially.store(<span class="bool-val">true</span>, Ordering::SeqCst);
+    }
   });
 
   <span class="kw">let </span><span class="kw-2">mut </span>worker_join_set = JoinSet::new();
@@ -758,7 +783,7 @@
     .zip(progress_tx_vec.into_iter())
     .enumerate()
     .for_each(|(id, (wakuchins, progress_tx))| {
-      <span class="kw">let </span>accidential_stop_rx = accidential_stop_rx.clone();
+      <span class="kw">let </span>is_stopped_accidentially = is_stopped_accidentially.clone();
       <span class="kw">let </span>hit_tx = hit_tx.clone();
       <span class="kw">let </span>regex = regex.clone();
       <span class="kw">let </span>total = wakuchins.len();
@@ -789,7 +814,9 @@
               )),
             ));
 
-            <span class="kw">if </span><span class="kw-2">*</span>accidential_stop_rx.borrow() &amp;&amp; progress_tx_result.is_err() {
+            <span class="kw">if </span>is_stopped_accidentially.load(Ordering::SeqCst)
+              &amp;&amp; progress_tx_result.is_err()
+            {
               <span class="kw">break</span>;
             }
           }
@@ -815,12 +842,14 @@
   drop(hit_tx);
 
   signal_join_set.spawn({
-    <span class="kw">let </span><span class="kw-2">mut </span>accidential_stop_rx = accidential_stop_rx.clone();
+    <span class="kw">let </span>is_stopped_accidentially = is_stopped_accidentially.clone();
 
     <span class="kw">async move </span>{
-      accidential_stop_rx.changed().<span class="kw">await</span>.unwrap();
+      <span class="kw">while </span>!is_stopped_accidentially.load(Ordering::SeqCst) {
+        yield_now().<span class="kw">await</span>;
+      } <span class="comment">// spinlock
 
-      <span class="kw">for </span>handle <span class="kw">in </span>handles_to_abort {
+      </span><span class="kw">for </span>handle <span class="kw">in </span>handles_to_abort {
         handle.abort();
       }
     }
@@ -870,7 +899,9 @@
 
       <span class="kw">return </span><span class="prelude-val">Err</span>(e.into());
     }
-  }
+
+    result<span class="question-mark">??</span>; <span class="comment">// JoinError&lt;Error&lt;T&gt;&gt;
+  </span>}
 
   signal_join_set.abort_all();
 
@@ -878,12 +909,6 @@
 
   <span class="comment">// cleanup
   </span>runtime.shutdown_background();
-
-  {
-    <span class="kw">let </span><span class="kw-2">mut </span>progress_handler = progress_handler.lock().unwrap();
-
-    progress_handler.after_finish()
-  }<span class="question-mark">?</span>;
 
   <span class="kw">let </span>hits = counter.get_all().into_hit_counts();
   <span class="kw">let </span>hits_total = hits.iter().map(|c| c.hits).sum::&lt;usize&gt;();
@@ -917,7 +942,6 @@
 /// * [`WakuchinError::TimesIsZero`](crate::error::WakuchinError::TimesIsZero) - Returns if you passed a zero to `times`
 ///   ```rust
 ///   use std::cell::RefCell;
-///   use std::rc::Rc;
 ///   use std::time::Duration;
 ///
 ///   use regex::Regex;
@@ -926,7 +950,7 @@
 ///   use wakuchin::handlers::empty::EmptyProgressHandler;
 ///   use wakuchin::worker::run_seq;
 ///
-///   let handler: Rc&lt;RefCell&lt;dyn ProgressHandler&gt;&gt; = Rc::new(RefCell::new(EmptyProgressHandler::new()));
+///   let handler: RefCell&lt;Box&lt;dyn ProgressHandler&gt;&gt; = RefCell::new(Box::new(EmptyProgressHandler::new()));
 ///   let result = run_seq(10, 0, Regex::new(r&quot;WKCN&quot;)?, handler, Duration::from_secs(1));
 ///
 ///   assert!(result.is_err());
@@ -940,7 +964,6 @@
 /// ```rust
 /// use std::cell::RefCell;
 /// use std::io::stdout;
-/// use std::rc::Rc;
 /// use std::sync::{Arc, Mutex};
 /// use std::time::Duration;
 ///
@@ -953,8 +976,8 @@
 ///
 /// let tries = 10;
 ///
-/// let handler: Rc&lt;RefCell&lt;dyn ProgressHandler&gt;&gt;
-///   = Rc::new(RefCell::new(MsgpackProgressHandler::new(tries, Arc::new(Mutex::new(stdout())))));
+/// let handler: RefCell&lt;Box&lt;dyn ProgressHandler&gt;&gt;
+///   = RefCell::new(Box::new(MsgpackProgressHandler::new(tries, Arc::new(Mutex::new(stdout())))));
 ///
 /// let result = run_seq(tries, 1, Regex::new(r&quot;WKCN&quot;)?, handler, Duration::from_secs(1))?;
 ///
@@ -966,7 +989,7 @@
   tries: usize,
   times: usize,
   regex: Regex,
-  progress_handler: Rc&lt;RefCell&lt;<span class="kw">dyn </span>ProgressHandler&gt;&gt;,
+  progress_handler: RefCell&lt;Box&lt;<span class="kw">dyn </span>ProgressHandler&gt;&gt;,
   progress_interval: Duration,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;WakuchinResult&gt; {
   <span class="kw">if </span>tries == <span class="number">0 </span>{
@@ -982,21 +1005,21 @@
     <span class="kw">return </span><span class="prelude-val">Err</span>(WakuchinError::TimesIsZero);
   }
 
-  {
-    <span class="kw">let </span><span class="kw-2">mut </span>progress_handler = progress_handler.borrow_mut();
+  <span class="kw">let </span><span class="kw-2">mut </span>render = Render::new(progress_handler);
 
-    progress_handler.before_start()
-  }<span class="question-mark">?</span>;
+  render.invoke_before_start()<span class="question-mark">?</span>;
 
-  <span class="kw">let </span>(accidential_stop_tx, accidential_stop_rx) = oneshot::&lt;()&gt;();
+  <span class="kw">let </span>is_accidentially_stopped = Arc::new(AtomicBool::new(<span class="bool-val">false</span>));
 
   <span class="attribute">#[cfg(not(target_arch = <span class="string">&quot;wasm32&quot;</span>))]
-  </span>ctrlc::set_handler(<span class="kw">move </span>|| {
-    accidential_stop_tx.send(()).unwrap();
+  </span>ctrlc::set_handler({
+    <span class="kw">let </span>is_accidentially_stopped = is_accidentially_stopped.clone();
+
+    <span class="kw">move </span>|| {
+      is_accidentially_stopped.store(<span class="bool-val">true</span>, Ordering::SeqCst);
+    }
   })
   .map_err(|e| <span class="macro">anyhow!</span>(e))<span class="question-mark">?</span>;
-
-  <span class="kw">let </span><span class="kw-2">mut </span>render = Render::new(progress_handler.clone());
 
   render.render_progress(
     progress_interval,
@@ -1006,6 +1029,8 @@
     })),
     <span class="bool-val">false</span>,
   )<span class="question-mark">?</span>;
+
+  <span class="kw">let </span><span class="kw-2">mut </span>hits_detail_err = <span class="prelude-val">Ok</span>(());
 
   <span class="kw">let </span>hits_detail = (<span class="number">0</span>..tries)
     .map(|<span class="kw">_</span>| gen(times))
@@ -1023,9 +1048,7 @@
         <span class="bool-val">false</span>,
       )<span class="question-mark">?</span>;
 
-      <span class="kw">if </span>accidential_stop_rx.try_recv().is_ok() {
-        progress_handler.borrow_mut().after_finish()<span class="question-mark">?</span>;
-
+      <span class="kw">if </span>is_accidentially_stopped.load(Ordering::SeqCst) {
         <span class="kw">return </span><span class="prelude-val">Err</span>(WakuchinError::Cancelled);
       }
 
@@ -1039,8 +1062,25 @@
         <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
       }
     })
-    .filter_map_ok(|hit| hit)
-    .collect::&lt;<span class="prelude-ty">Result</span>&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;&gt;()<span class="question-mark">?</span>;
+    .scan(
+      <span class="kw-2">&amp;mut </span>hits_detail_err,
+      |hits_detail_err, result| <span class="kw">match </span>result {
+        <span class="prelude-val">Ok</span>(result) =&gt; <span class="prelude-val">Some</span>(result),
+        <span class="prelude-val">Err</span>(err) =&gt; {
+          <span class="kw-2">**</span>hits_detail_err = <span class="prelude-val">Err</span>(err);
+
+          <span class="prelude-val">None
+        </span>}
+      },
+    )
+    .flatten()
+    .collect();
+
+  <span class="kw">if </span><span class="macro">matches!</span>(hits_detail_err, <span class="prelude-val">Err</span>(WakuchinError::Cancelled)) {
+    render.invoke_on_accidential_stop()<span class="question-mark">?</span>;
+
+    <span class="kw">return </span><span class="prelude-val">Err</span>(WakuchinError::Cancelled);
+  }
 
   render.render_progress(
     Duration::ZERO,
@@ -1052,11 +1092,7 @@
     <span class="bool-val">true</span>,
   )<span class="question-mark">?</span>;
 
-  {
-    <span class="kw">let </span><span class="kw-2">mut </span>progress_handler = progress_handler.borrow_mut();
-
-    progress_handler.after_finish()
-  }<span class="question-mark">?</span>;
+  render.invoke_after_finish()<span class="question-mark">?</span>;
 
   <span class="kw">let </span>hits = render.hits();
   <span class="kw">let </span>hits_total = hits.iter().map(|c| c.hits).sum::&lt;usize&gt;();

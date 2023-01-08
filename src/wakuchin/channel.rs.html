@@ -14,23 +14,11 @@
 <span id="14">14</span>
 <span id="15">15</span>
 <span id="16">16</span>
-<span id="17">17</span>
-<span id="18">18</span>
-<span id="19">19</span>
-<span id="20">20</span>
-<span id="21">21</span>
-<span id="22">22</span>
-</pre><pre class="rust"><code><span class="kw">use </span>flume::{bounded, unbounded};
+</pre><pre class="rust"><code><span class="kw">use </span>flume::unbounded;
 <span class="kw">use </span>tokio::sync::watch;
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>channel&lt;T&gt;() -&gt; (flume::Sender&lt;T&gt;, flume::Receiver&lt;T&gt;) {
   <span class="kw">let </span>(tx, rx) = unbounded();
-
-  (tx, rx)
-}
-
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>oneshot&lt;T&gt;() -&gt; (flume::Sender&lt;T&gt;, flume::Receiver&lt;T&gt;) {
-  <span class="kw">let </span>(tx, rx) = bounded(<span class="number">1</span>);
 
   (tx, rx)
 }
