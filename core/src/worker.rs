@@ -1,21 +1,20 @@
 //! Wakuchin researcher main functions
 
-use std::borrow::Borrow;
 use std::cell::RefCell;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::Arc;
 use std::thread::available_parallelism;
 use std::time::Duration;
 
 use anyhow::anyhow;
 use divide_range::RangeDivisions;
-use itertools::Itertools;
 use parking_lot::Mutex;
 use regex::Regex;
 use tokio::runtime::{Builder, Runtime};
 use tokio::signal;
-use tokio::task::JoinSet;
+use tokio::task::{yield_now, JoinSet};
 
-use crate::channel::{channel, oneshot, watch};
+use crate::channel::{channel, watch};
 use crate::error::WakuchinError;
 use crate::handlers::ProgressHandler;
 use crate::hit::counter::ThreadHitCounter;
@@ -153,7 +152,7 @@ pub async fn run_par(
 
   let total_workers = get_total_workers(workers)?;
 
-  let (accidential_stop_tx, accidential_stop_rx) = watch(false);
+  let is_stopped_accidentially = Arc::new(AtomicBool::new(false));
   let (hit_tx, hit_rx) = channel();
   let counter = ThreadHitCounter::new(hit_rx);
 
@@ -167,7 +166,7 @@ pub async fn run_par(
     .unzip();
 
   let render = ThreadRender::new(
-    accidential_stop_rx.clone(),
+    is_stopped_accidentially.clone(),
     counter.clone(),
     progress_rx_vec,
     progress_handler,
@@ -192,12 +191,12 @@ pub async fn run_par(
   // progress reporter
   handles_to_abort.push(ui_join_set.spawn_on(
     {
-      let accidential_stop_rx = accidential_stop_rx.clone();
+      let is_stopped_accidentially = is_stopped_accidentially.clone();
 
       async move {
         render.run(progress_interval).await?;
 
-        if !*accidential_stop_rx.borrow() {
+        if !is_stopped_accidentially.load(Ordering::Relaxed) {
           render.invoke_after_finish()?;
         }
 
@@ -212,10 +211,14 @@ pub async fn run_par(
   let mut signal_join_set = JoinSet::new();
 
   #[cfg(not(target_arch = "wasm32"))]
-  signal_join_set.spawn(async move {
-    signal::ctrl_c().await.unwrap();
+  signal_join_set.spawn({
+    let is_stopped_accidentially = is_stopped_accidentially.clone();
 
-    accidential_stop_tx.send(true).unwrap();
+    async move {
+      signal::ctrl_c().await.unwrap();
+
+      is_stopped_accidentially.store(true, Ordering::SeqCst);
+    }
   });
 
   let mut worker_join_set = JoinSet::new();
@@ -225,7 +228,7 @@ pub async fn run_par(
     .zip(progress_tx_vec.into_iter())
     .enumerate()
     .for_each(|(id, (wakuchins, progress_tx))| {
-      let accidential_stop_rx = accidential_stop_rx.clone();
+      let is_stopped_accidentially = is_stopped_accidentially.clone();
       let hit_tx = hit_tx.clone();
       let regex = regex.clone();
       let total = wakuchins.len();
@@ -256,7 +259,9 @@ pub async fn run_par(
               )),
             ));
 
-            if *accidential_stop_rx.borrow() && progress_tx_result.is_err() {
+            if is_stopped_accidentially.load(Ordering::SeqCst)
+              && progress_tx_result.is_err()
+            {
               break;
             }
           }
@@ -282,10 +287,12 @@ pub async fn run_par(
   drop(hit_tx);
 
   signal_join_set.spawn({
-    let mut accidential_stop_rx = accidential_stop_rx.clone();
+    let is_stopped_accidentially = is_stopped_accidentially.clone();
 
     async move {
-      accidential_stop_rx.changed().await.unwrap();
+      while !is_stopped_accidentially.load(Ordering::SeqCst) {
+        yield_now().await;
+      } // spinlock
 
       for handle in handles_to_abort {
         handle.abort();
@@ -449,11 +456,15 @@ pub fn run_seq(
 
   render.invoke_before_start()?;
 
-  let (accidential_stop_tx, accidential_stop_rx) = oneshot::<()>();
+  let is_accidentially_stopped = Arc::new(AtomicBool::new(false));
 
   #[cfg(not(target_arch = "wasm32"))]
-  ctrlc::set_handler(move || {
-    accidential_stop_tx.send(()).unwrap();
+  ctrlc::set_handler({
+    let is_accidentially_stopped = is_accidentially_stopped.clone();
+
+    move || {
+      is_accidentially_stopped.store(true, Ordering::SeqCst);
+    }
   })
   .map_err(|e| anyhow!(e))?;
 
@@ -465,6 +476,8 @@ pub fn run_seq(
     })),
     false,
   )?;
+
+  let mut hits_detail_err = Ok(());
 
   let hits_detail = (0..tries)
     .map(|_| gen(times))
@@ -482,9 +495,7 @@ pub fn run_seq(
         false,
       )?;
 
-      if accidential_stop_rx.try_recv().is_ok() {
-        render.invoke_on_accidential_stop()?;
-
+      if is_accidentially_stopped.load(Ordering::SeqCst) {
         return Err(WakuchinError::Cancelled);
       }
 
@@ -498,8 +509,25 @@ pub fn run_seq(
         Ok(None)
       }
     })
-    .filter_map_ok(|hit| hit)
-    .collect::<Result<Vec<_>>>()?;
+    .scan(
+      &mut hits_detail_err,
+      |hits_detail_err, result| match result {
+        Ok(result) => Some(result),
+        Err(err) => {
+          **hits_detail_err = Err(err);
+
+          None
+        }
+      },
+    )
+    .flatten()
+    .collect();
+
+  if matches!(hits_detail_err, Err(WakuchinError::Cancelled)) {
+    render.invoke_on_accidential_stop()?;
+
+    return Err(WakuchinError::Cancelled);
+  }
 
   render.render_progress(
     Duration::ZERO,

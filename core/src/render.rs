@@ -1,6 +1,7 @@
 use std::borrow::Cow;
 use std::cell::RefCell;
-use std::sync::atomic::Ordering;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::Result;
@@ -16,7 +17,7 @@ use crate::result::HitCount;
 use crate::utils::DiffStore;
 
 pub(crate) struct ThreadRender {
-  accidential_stop_rx: watch::Receiver<bool>,
+  is_stopped_accidentially: Arc<AtomicBool>,
   counter: ThreadHitCounter,
   progress_channels: Vec<watch::Receiver<Progress>>,
   progress_handler: Mutex<Box<dyn ProgressHandler>>,
@@ -26,7 +27,7 @@ pub(crate) struct ThreadRender {
 
 impl ThreadRender {
   pub(crate) fn new(
-    accidential_stop_rx: watch::Receiver<bool>,
+    is_stopped_accidentially: Arc<AtomicBool>,
     counter: ThreadHitCounter,
     progress_channels: Vec<watch::Receiver<Progress>>,
     progress_handler: Mutex<Box<dyn ProgressHandler>>,
@@ -34,7 +35,7 @@ impl ThreadRender {
     total_workers: usize,
   ) -> Self {
     Self {
-      accidential_stop_rx,
+      is_stopped_accidentially,
       counter,
       progress_channels,
       progress_handler,
@@ -59,9 +60,7 @@ impl ThreadRender {
     let mut progress_handler = self.progress_handler.lock();
 
     loop {
-      let accidential_stop = self.accidential_stop_rx.borrow();
-
-      if *accidential_stop {
+      if self.is_stopped_accidentially.load(Ordering::SeqCst) {
         drop(progress_handler); // unlock
 
         return self.invoke_on_accidential_stop();
