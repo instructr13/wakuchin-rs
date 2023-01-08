@@ -2,13 +2,13 @@
 
 use std::cell::RefCell;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Mutex;
 use std::thread::available_parallelism;
 use std::time::Duration;
 
 use anyhow::anyhow;
 use divide_range::RangeDivisions;
 use itertools::Itertools;
+use parking_lot::Mutex;
 use regex::Regex;
 use tokio::runtime::{Builder, Runtime};
 use tokio::signal;

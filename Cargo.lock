@@ -1773,6 +1773,7 @@ dependencies = [
  "instant",
  "itertools",
  "itoa",
+ "parking_lot",
  "regex",
  "rmp-serde",
  "serde",

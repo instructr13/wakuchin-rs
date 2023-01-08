@@ -1,12 +1,12 @@
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::sync::atomic::Ordering;
-use std::sync::Mutex;
 use std::time::Duration;
 
 use anyhow::Result;
 use instant::Instant;
 use itertools::Itertools;
+use parking_lot::Mutex;
 use tokio::sync::watch;
 
 use crate::handlers::ProgressHandler;
@@ -48,7 +48,7 @@ impl ThreadRender {
   }
 
   pub(crate) fn invoke_before_start(&self) -> Result<()> {
-    self.progress_handler.lock().unwrap().before_start()
+    self.progress_handler.lock().before_start()
   }
 
   pub(crate) async fn run(&self, interval: Duration) -> Result<()> {
@@ -56,7 +56,7 @@ impl ThreadRender {
     let mut current_diff = DiffStore::new(0_usize);
     let mut current_ = 0;
 
-    let mut progress_handler = self.progress_handler.lock().unwrap();
+    let mut progress_handler = self.progress_handler.lock();
 
     loop {
       let accidential_stop = self.accidential_stop_rx.borrow();
@@ -130,11 +130,11 @@ impl ThreadRender {
   }
 
   pub(crate) fn invoke_on_accidential_stop(&self) -> Result<()> {
-    self.progress_handler.lock().unwrap().on_accidential_stop()
+    self.progress_handler.lock().on_accidential_stop()
   }
 
   pub(crate) fn invoke_after_finish(&self) -> Result<()> {
-    self.progress_handler.lock().unwrap().after_finish()
+    self.progress_handler.lock().after_finish()
   }
 }
 

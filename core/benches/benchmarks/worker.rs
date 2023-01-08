@@ -1,9 +1,9 @@
 use std::cell::RefCell;
-use std::sync::Mutex;
 use std::time::Duration;
 
 use criterion::{criterion_group, Criterion};
 
+use parking_lot::Mutex;
 use regex::Regex;
 
 use wakuchin::handlers::empty::EmptyProgressHandler;

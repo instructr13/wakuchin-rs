@@ -1,7 +1,7 @@
 use std::cell::RefCell;
-use std::sync::Mutex;
 use std::time::Duration;
 
+use parking_lot::Mutex;
 use regex::Regex;
 
 use crate::error::WakuchinError;
