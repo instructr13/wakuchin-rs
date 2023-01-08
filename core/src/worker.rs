@@ -1,5 +1,6 @@
 //! Wakuchin researcher main functions
 
+use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::thread::available_parallelism;
@@ -191,10 +192,14 @@ pub async fn run_par(
   // progress reporter
   handles_to_abort.push(ui_join_set.spawn_on(
     {
+      let accidential_stop_rx = accidential_stop_rx.clone();
+
       async move {
         render.run(progress_interval).await?;
 
-        render.invoke_after_finish()?;
+        if !*accidential_stop_rx.borrow() {
+          render.invoke_after_finish()?;
+        }
 
         Ok(())
       }
