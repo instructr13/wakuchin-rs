@@ -73,9 +73,10 @@ fn create_runtime(workers: usize) -> Result<Runtime> {
 ///
 /// * [`WakuchinError::TimesIsZero`](crate::error::WakuchinError::TimesIsZero) - Returns if you passed a zero to `times`
 ///   ```rust
-///   use std::sync::{Arc, Mutex};
+///   use std::sync::Mutex;
 ///   use std::time::Duration;
 ///
+///   use parking_lot::Mutex as HandlerMutex;
 ///   use regex::Regex;
 ///
 ///   use wakuchin::handlers::ProgressHandler;
@@ -83,7 +84,7 @@ fn create_runtime(workers: usize) -> Result<Runtime> {
 ///   use wakuchin::worker::run_par;
 ///
 ///   # async fn try_main_async() -> Result<(), Box<dyn std::error::Error>> {
-///   let handler: Arc<Mutex<Box<dyn ProgressHandler>>> = Arc::new(Mutex::new(Box::new(EmptyProgressHandler::new())));
+///   let handler: HandlerMutex<Box<dyn ProgressHandler>> = HandlerMutex::new(Box::new(EmptyProgressHandler::new()));
 ///   let result = run_par(10, 0, Regex::new(r"WKCN")?, handler, Duration::from_secs(1), 0).await;
 ///
 ///   assert!(result.is_err());
@@ -106,6 +107,7 @@ fn create_runtime(workers: usize) -> Result<Runtime> {
 /// use std::sync::{Arc, Mutex};
 /// use std::time::Duration;
 ///
+/// use parking_lot::Mutex as HandlerMutex;
 /// use regex::Regex;
 ///
 /// use wakuchin::handlers::ProgressHandler;
@@ -115,8 +117,8 @@ fn create_runtime(workers: usize) -> Result<Runtime> {
 ///
 /// # async fn try_main_async() -> Result<(), Box<dyn std::error::Error>> {
 /// let tries = 10;
-/// let handler: Arc<Mutex<Box<dyn ProgressHandler>>>
-///   = Arc::new(Mutex::new(Box::new(MsgpackProgressHandler::new(tries, Arc::new(Mutex::new(stdout()))))));
+/// let handler: HandlerMutex<Box<dyn ProgressHandler>>
+///   = HandlerMutex::new(Box::new(MsgpackProgressHandler::new(tries, Arc::new(Mutex::new(stdout())))));
 /// let result = run_par(tries, 1, Regex::new(r"WKCN")?, handler, Duration::from_secs(1), 4).await?;
 ///
 /// println!("{}", result.out(ResultOutputFormat::Text)?);
@@ -387,7 +389,6 @@ pub async fn run_par(
 /// * [`WakuchinError::TimesIsZero`](crate::error::WakuchinError::TimesIsZero) - Returns if you passed a zero to `times`
 ///   ```rust
 ///   use std::cell::RefCell;
-///   use std::rc::Rc;
 ///   use std::time::Duration;
 ///
 ///   use regex::Regex;
@@ -396,7 +397,7 @@ pub async fn run_par(
 ///   use wakuchin::handlers::empty::EmptyProgressHandler;
 ///   use wakuchin::worker::run_seq;
 ///
-///   let handler: Rc<RefCell<dyn ProgressHandler>> = Rc::new(RefCell::new(EmptyProgressHandler::new()));
+///   let handler: RefCell<Box<dyn ProgressHandler>> = RefCell::new(Box::new(EmptyProgressHandler::new()));
 ///   let result = run_seq(10, 0, Regex::new(r"WKCN")?, handler, Duration::from_secs(1));
 ///
 ///   assert!(result.is_err());
@@ -410,7 +411,6 @@ pub async fn run_par(
 /// ```rust
 /// use std::cell::RefCell;
 /// use std::io::stdout;
-/// use std::rc::Rc;
 /// use std::sync::{Arc, Mutex};
 /// use std::time::Duration;
 ///
@@ -423,8 +423,8 @@ pub async fn run_par(
 ///
 /// let tries = 10;
 ///
-/// let handler: Rc<RefCell<dyn ProgressHandler>>
-///   = Rc::new(RefCell::new(MsgpackProgressHandler::new(tries, Arc::new(Mutex::new(stdout())))));
+/// let handler: RefCell<Box<dyn ProgressHandler>>
+///   = RefCell::new(Box::new(MsgpackProgressHandler::new(tries, Arc::new(Mutex::new(stdout())))));
 ///
 /// let result = run_seq(tries, 1, Regex::new(r"WKCN")?, handler, Duration::from_secs(1))?;
 ///
