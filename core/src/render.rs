@@ -1,8 +1,7 @@
 use std::borrow::Cow;
 use std::cell::RefCell;
-use std::rc::Rc;
 use std::sync::atomic::Ordering;
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 use std::time::Duration;
 
 use anyhow::Result;
@@ -20,7 +19,7 @@ pub(crate) struct ThreadRender {
   accidential_stop_rx: watch::Receiver<bool>,
   counter: ThreadHitCounter,
   progress_channels: Vec<watch::Receiver<Progress>>,
-  progress_handler: Arc<Mutex<Box<dyn ProgressHandler>>>,
+  progress_handler: Mutex<Box<dyn ProgressHandler>>,
   total: usize,
   total_workers: usize,
 }
@@ -30,7 +29,7 @@ impl ThreadRender {
     accidential_stop_rx: watch::Receiver<bool>,
     counter: ThreadHitCounter,
     progress_channels: Vec<watch::Receiver<Progress>>,
-    progress_handler: Arc<Mutex<Box<dyn ProgressHandler>>>,
+    progress_handler: Mutex<Box<dyn ProgressHandler>>,
     total: usize,
     total_workers: usize,
   ) -> Self {
@@ -46,6 +45,12 @@ impl ThreadRender {
 
   fn hits(&self) -> Vec<HitCount> {
     self.counter.get_all().into_hit_counts()
+  }
+
+  pub(crate) fn invoke_before_start(&self) -> Result<()> {
+    let mut progress_handler = self.progress_handler.lock().unwrap();
+
+    progress_handler.before_start()
   }
 
   pub(crate) async fn run(&self, interval: Duration) -> Result<()> {
@@ -123,18 +128,24 @@ impl ThreadRender {
 
     Ok(())
   }
+
+  pub(crate) fn invoke_after_finish(&self) -> Result<()> {
+    let mut progress_handler = self.progress_handler.lock().unwrap();
+
+    progress_handler.after_finish()
+  }
 }
 
 pub(crate) struct Render {
   current_diff: DiffStore<usize>,
   counter: HitCounter,
-  progress_handler: Rc<RefCell<dyn ProgressHandler>>,
+  progress_handler: RefCell<Box<dyn ProgressHandler>>,
   start_time: Instant,
 }
 
 impl Render {
   pub(crate) fn new(
-    progress_handler: Rc<RefCell<dyn ProgressHandler>>,
+    progress_handler: RefCell<Box<dyn ProgressHandler>>,
   ) -> Self {
     Self {
       current_diff: DiffStore::new(0),
@@ -155,6 +166,10 @@ impl Render {
     self.counter.add(chars);
   }
 
+  pub(crate) fn invoke_before_start(&self) -> Result<()> {
+    self.progress_handler.borrow_mut().before_start()
+  }
+
   pub(crate) fn render_progress(
     &mut self,
     interval: Duration,
@@ -162,9 +177,7 @@ impl Render {
     all_done: bool,
   ) -> Result<()> {
     if interval.is_zero() {
-      let mut progress_handler = self.progress_handler.borrow_mut();
-
-      progress_handler.handle(
+      self.progress_handler.borrow_mut().handle(
         &[progress],
         &self.hits(),
         interval,
@@ -183,8 +196,6 @@ impl Render {
       return Ok(());
     }
 
-    let mut progress_handler = self.progress_handler.borrow_mut();
-
     let current_diff =
       if let Progress(ProgressKind::Processing(ProcessingDetail {
         current,
@@ -196,7 +207,7 @@ impl Render {
         0
       };
 
-    progress_handler.handle(
+    self.progress_handler.borrow_mut().handle(
       &[progress],
       &self.hits(),
       interval,
@@ -207,5 +218,9 @@ impl Render {
     self.start_time = Instant::now();
 
     Ok(())
+  }
+
+  pub(crate) fn invoke_after_finish(&self) -> Result<()> {
+    self.progress_handler.borrow_mut().after_finish()
   }
 }

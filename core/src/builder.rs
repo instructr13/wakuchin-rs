@@ -1,4 +1,5 @@
-use std::sync::{Arc, Mutex};
+use std::cell::RefCell;
+use std::sync::Mutex;
 use std::time::Duration;
 
 use regex::Regex;
@@ -101,7 +102,7 @@ impl ResearchBuilder<usize, usize, Regex> {
       self.tries,
       self.times,
       self.regex,
-      Arc::new(Mutex::new(self.progress_handler)),
+      Mutex::new(self.progress_handler),
       self.progress_interval,
       self.workers,
     )
@@ -113,7 +114,7 @@ impl ResearchBuilder<usize, usize, Regex> {
       self.tries,
       self.times,
       self.regex,
-      self.progress_handler.wrap_in_refcell(),
+      RefCell::new(self.progress_handler),
       self.progress_interval,
     )
   }

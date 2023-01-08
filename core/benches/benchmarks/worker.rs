@@ -1,6 +1,4 @@
 use std::cell::RefCell;
-use std::rc::Rc;
-use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Duration;
 
@@ -21,7 +19,7 @@ fn speed_par(c: &mut Criterion) {
         30000,
         2,
         Regex::new(r"^WKNCWKNC$").unwrap(),
-        Arc::new(Mutex::new(Box::new(EmptyProgressHandler::new()))),
+        Mutex::new(Box::new(EmptyProgressHandler::new())),
         Duration::from_millis(20),
         0,
       )
@@ -37,7 +35,7 @@ fn speed_seq(c: &mut Criterion) {
         30000,
         2,
         Regex::new(r"^WKNCWKNC$").unwrap(),
-        Rc::new(RefCell::new(EmptyProgressHandler::new())),
+        RefCell::new(Box::new(EmptyProgressHandler::new())),
         Duration::from_millis(20),
       )
     });

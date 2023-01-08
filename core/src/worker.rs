@@ -1,9 +1,8 @@
 //! Wakuchin researcher main functions
 
 use std::cell::RefCell;
-use std::rc::Rc;
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 use std::thread::available_parallelism;
 use std::time::Duration;
 
@@ -134,7 +133,7 @@ pub async fn run_par(
   tries: usize,
   times: usize,
   regex: Regex,
-  progress_handler: Arc<Mutex<Box<dyn ProgressHandler>>>,
+  progress_handler: Mutex<Box<dyn ProgressHandler>>,
   progress_interval: Duration,
   workers: usize,
 ) -> Result<WakuchinResult> {
@@ -151,19 +150,11 @@ pub async fn run_par(
     return Err(WakuchinError::TimesIsZero);
   }
 
-  {
-    let mut progress_handler = progress_handler.lock().unwrap();
-
-    progress_handler.before_start()
-  }?;
-
   let total_workers = get_total_workers(workers)?;
 
-  let runtime = create_runtime(total_workers)?;
-
-  let runtime_handle = runtime.handle();
-
+  let (accidential_stop_tx, accidential_stop_rx) = watch(false);
   let (hit_tx, hit_rx) = channel();
+  let counter = ThreadHitCounter::new(hit_rx);
 
   let (progress_tx_vec, progress_rx_vec): (Vec<_>, Vec<_>) = (0..total_workers)
     .map(|id| {
@@ -174,23 +165,25 @@ pub async fn run_par(
     })
     .unzip();
 
-  let (accidential_stop_tx, accidential_stop_rx) = watch(false);
-
-  let counter = ThreadHitCounter::new(hit_rx);
-
   let render = ThreadRender::new(
     accidential_stop_rx.clone(),
     counter.clone(),
     progress_rx_vec,
-    progress_handler.clone(),
+    progress_handler,
     tries,
     total_workers,
   );
 
+  render.invoke_before_start()?;
+
+  let runtime = create_runtime(total_workers)?;
+
+  let runtime_handle = runtime.handle();
+
   let mut handles_to_abort = Vec::with_capacity(workers + 2);
 
   let mut hit_join_set = JoinSet::new();
-  let mut ui_join_set = JoinSet::new();
+  let mut ui_join_set: JoinSet<Result<()>> = JoinSet::new();
 
   // hit handler
   handles_to_abort.push(counter.run(&mut hit_join_set, runtime_handle));
@@ -199,7 +192,11 @@ pub async fn run_par(
   handles_to_abort.push(ui_join_set.spawn_on(
     {
       async move {
-        render.run(progress_interval).await.unwrap();
+        render.run(progress_interval).await?;
+
+        render.invoke_after_finish()?;
+
+        Ok(())
       }
     },
     runtime_handle,
@@ -335,6 +332,8 @@ pub async fn run_par(
 
       return Err(e.into());
     }
+
+    result??; // JoinError<Error<T>>
   }
 
   signal_join_set.abort_all();
@@ -343,12 +342,6 @@ pub async fn run_par(
 
   // cleanup
   runtime.shutdown_background();
-
-  {
-    let mut progress_handler = progress_handler.lock().unwrap();
-
-    progress_handler.after_finish()
-  }?;
 
   let hits = counter.get_all().into_hit_counts();
   let hits_total = hits.iter().map(|c| c.hits).sum::<usize>();
@@ -431,7 +424,7 @@ pub fn run_seq(
   tries: usize,
   times: usize,
   regex: Regex,
-  progress_handler: Rc<RefCell<dyn ProgressHandler>>,
+  progress_handler: RefCell<Box<dyn ProgressHandler>>,
   progress_interval: Duration,
 ) -> Result<WakuchinResult> {
   if tries == 0 {
@@ -447,11 +440,9 @@ pub fn run_seq(
     return Err(WakuchinError::TimesIsZero);
   }
 
-  {
-    let mut progress_handler = progress_handler.borrow_mut();
+  let mut render = Render::new(progress_handler);
 
-    progress_handler.before_start()
-  }?;
+  render.invoke_before_start()?;
 
   let (accidential_stop_tx, accidential_stop_rx) = oneshot::<()>();
 
@@ -460,8 +451,6 @@ pub fn run_seq(
     accidential_stop_tx.send(()).unwrap();
   })
   .map_err(|e| anyhow!(e))?;
-
-  let mut render = Render::new(progress_handler.clone());
 
   render.render_progress(
     progress_interval,
@@ -489,7 +478,7 @@ pub fn run_seq(
       )?;
 
       if accidential_stop_rx.try_recv().is_ok() {
-        progress_handler.borrow_mut().after_finish()?;
+        render.invoke_after_finish()?;
 
         return Err(WakuchinError::Cancelled);
       }
@@ -517,11 +506,7 @@ pub fn run_seq(
     true,
   )?;
 
-  {
-    let mut progress_handler = progress_handler.borrow_mut();
-
-    progress_handler.after_finish()
-  }?;
+  render.invoke_after_finish()?;
 
   let hits = render.hits();
   let hits_total = hits.iter().map(|c| c.hits).sum::<usize>();
