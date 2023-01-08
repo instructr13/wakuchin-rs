@@ -478,7 +478,7 @@ pub fn run_seq(
       )?;
 
       if accidential_stop_rx.try_recv().is_ok() {
-        render.invoke_after_finish()?;
+        render.invoke_on_accidential_stop()?;
 
         return Err(WakuchinError::Cancelled);
       }

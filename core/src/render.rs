@@ -48,9 +48,7 @@ impl ThreadRender {
   }
 
   pub(crate) fn invoke_before_start(&self) -> Result<()> {
-    let mut progress_handler = self.progress_handler.lock().unwrap();
-
-    progress_handler.before_start()
+    self.progress_handler.lock().unwrap().before_start()
   }
 
   pub(crate) async fn run(&self, interval: Duration) -> Result<()> {
@@ -64,7 +62,9 @@ impl ThreadRender {
       let accidential_stop = self.accidential_stop_rx.borrow();
 
       if *accidential_stop {
-        return progress_handler.on_accidential_stop();
+        drop(progress_handler); // unlock
+
+        return self.invoke_on_accidential_stop();
       }
 
       if self.counter.count_stopped.load(Ordering::Acquire) {
@@ -129,10 +129,12 @@ impl ThreadRender {
     Ok(())
   }
 
-  pub(crate) fn invoke_after_finish(&self) -> Result<()> {
-    let mut progress_handler = self.progress_handler.lock().unwrap();
+  pub(crate) fn invoke_on_accidential_stop(&self) -> Result<()> {
+    self.progress_handler.lock().unwrap().on_accidential_stop()
+  }
 
-    progress_handler.after_finish()
+  pub(crate) fn invoke_after_finish(&self) -> Result<()> {
+    self.progress_handler.lock().unwrap().after_finish()
   }
 }
 
@@ -218,6 +220,10 @@ impl Render {
     self.start_time = Instant::now();
 
     Ok(())
+  }
+
+  pub(crate) fn invoke_on_accidential_stop(&self) -> Result<()> {
+    self.progress_handler.borrow_mut().on_accidential_stop()
   }
 
   pub(crate) fn invoke_after_finish(&self) -> Result<()> {
