@@ -161,10 +161,10 @@ pub fn run_par(
     );
 
     // hit handler
-    let hit_handle = s.spawn::<_, Result<()>>({
+    let hit_handle = s.spawn({
       let counter = counter.clone();
 
-      move || counter.run().map_err(|e| anyhow!(e).into())
+      move || counter.run()
     });
 
     // progress reporter
@@ -246,7 +246,7 @@ pub fn run_par(
     drop(hit_tx);
 
     // after all workers have finished, wait for ui and hit threads to finish
-    hit_handle.join().unwrap()?;
+    hit_handle.join().unwrap();
     ui_handle.join().unwrap()?;
 
     Ok(counter.get_all().into_hit_counts())

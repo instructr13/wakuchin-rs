@@ -1,10 +1,8 @@
 use std::borrow::Cow;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use std::thread;
-use std::time::Duration;
 
-use flume::{Receiver, TryRecvError};
+use flume::Receiver;
 
 use crate::result::{Hit, HitCount};
 
@@ -46,22 +44,12 @@ impl ThreadHitCounter {
     }
   }
 
-  pub(crate) fn run(&self) -> Result<(), TryRecvError> {
-    loop {
-      match self.hit_rx.try_recv() {
-        Ok(hit) => {
-          self.store.add(hit.chars);
-        }
-        Err(TryRecvError::Disconnected) => {
-          self.count_stopped.store(true, Ordering::Release);
-
-          return Ok(());
-        }
-        Err(TryRecvError::Empty) => {
-          thread::sleep(Duration::from_millis(5));
-        }
-      }
+  pub(crate) fn run(&self) {
+    for hit in &self.hit_rx {
+      self.store.add(hit.chars);
     }
+
+    self.count_stopped.store(true, Ordering::Release);
   }
 
   #[inline]
