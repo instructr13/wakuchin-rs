@@ -1635,12 +1635,8 @@ checksum = "1d9f76183f91ecfb55e1d7d5602bd1d979e38a3a522fe900241cf195624d67ae"
 dependencies = [
  "autocfg",
  "bytes",
- "libc",
  "memchr",
- "mio",
- "num_cpus",
  "pin-project-lite",
- "signal-hook-registry",
  "tokio-macros",
  "windows-sys 0.42.0",
 ]

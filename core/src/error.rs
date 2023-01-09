@@ -1,7 +1,6 @@
 use std::io;
 
 use thiserror::Error;
-use tokio::task::JoinError;
 
 /// Error type for wakuchin.
 #[derive(Debug, Error)]
@@ -13,8 +12,6 @@ pub enum WakuchinError {
   TimesIsZero,
   #[error("'{0}': unknown result output format")]
   UnknownResultOutputFormat(String),
-  #[error(transparent)]
-  WorkerError(#[from] JoinError),
   #[error("error while serializing result: {0}")]
   SerializeError(#[from] io::Error),
   #[error(transparent)]

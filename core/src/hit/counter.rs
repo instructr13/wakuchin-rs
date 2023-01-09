@@ -1,12 +1,10 @@
 use std::borrow::Cow;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::thread;
 use std::time::Duration;
 
 use flume::{Receiver, TryRecvError};
-use tokio::task::JoinSet;
-use tokio::time::sleep;
-use tokio::{runtime::Handle, task::AbortHandle};
 
 use crate::result::{Hit, HitCount};
 
@@ -48,37 +46,22 @@ impl ThreadHitCounter {
     }
   }
 
-  pub(crate) fn run(
-    &self,
-    set: &mut JoinSet<()>,
-    handle: &Handle,
-  ) -> AbortHandle {
-    set.spawn_on(
-      {
-        let count_stopped = self.count_stopped.clone();
-        let store = self.store.clone();
-        let hit_rx = self.hit_rx.clone();
-
-        async move {
-          loop {
-            match hit_rx.try_recv() {
-              Ok(hit) => {
-                store.add(hit.chars);
-              }
-              Err(TryRecvError::Disconnected) => {
-                count_stopped.store(true, Ordering::Release);
-
-                break;
-              }
-              Err(TryRecvError::Empty) => {
-                sleep(Duration::from_millis(5)).await;
-              }
-            }
-          }
+  pub(crate) fn run(&self) -> Result<(), TryRecvError> {
+    loop {
+      match self.hit_rx.try_recv() {
+        Ok(hit) => {
+          self.store.add(hit.chars);
         }
-      },
-      handle,
-    )
+        Err(TryRecvError::Disconnected) => {
+          self.count_stopped.store(true, Ordering::Release);
+
+          return Ok(());
+        }
+        Err(TryRecvError::Empty) => {
+          thread::sleep(Duration::from_millis(5));
+        }
+      }
+    }
   }
 
   #[inline]

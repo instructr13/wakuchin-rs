@@ -9,10 +9,8 @@ use wakuchin::worker::run_par;
 use wakuchin::worker::run_seq;
 
 fn speed_par(c: &mut Criterion) {
-  let rt = tokio::runtime::Runtime::new().unwrap();
-
   c.bench_function("parallel processing speed", |b| {
-    b.to_async(&rt).iter(|| async {
+    b.iter(|| {
       run_par(
         30000,
         2,
@@ -21,7 +19,6 @@ fn speed_par(c: &mut Criterion) {
         Duration::from_millis(20),
         0,
       )
-      .await
     });
   });
 }

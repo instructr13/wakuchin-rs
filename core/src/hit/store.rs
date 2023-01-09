@@ -1,6 +1,7 @@
 use std::borrow::Cow;
+use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering;
-use std::sync::{atomic::AtomicUsize, Arc};
+use std::sync::Arc;
 
 use dashmap::DashMap;
 

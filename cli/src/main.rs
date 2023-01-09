@@ -3,13 +3,12 @@ mod config;
 mod error;
 mod handlers;
 
-use std::io::{stderr, stdout};
+use std::io::stdout;
 use std::panic;
 use std::sync::{Arc, Mutex};
 
 use anyhow::Result;
-use crossterm::style::{Print, Stylize};
-use crossterm::{cursor, execute};
+use crossterm::style::Stylize;
 
 use wakuchin::builder::ResearchBuilder;
 use wakuchin::error::WakuchinError;
@@ -27,7 +26,7 @@ use tikv_jemallocator::Jemalloc;
 #[global_allocator]
 static GLOBAL: Jemalloc = Jemalloc;
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() {
   if let Err(err) = try_main().await {
     if let Some(WakuchinError::Cancelled) = err.downcast_ref::<WakuchinError>()
@@ -59,54 +58,32 @@ async fn try_main() -> Result<()> {
   let builder = {
     match config.handler {
       HandlerKind::Console => {
-        builder.progress_handler(ConsoleProgressHandler::new(
+        builder.progress_handler(Box::new(ConsoleProgressHandler::new(
           config.no_progress,
           config.tries,
           config.times,
-        ))
+        )))
       }
       HandlerKind::Msgpack => {
-        builder.progress_handler(MsgpackProgressHandler::new(
+        builder.progress_handler(Box::new(MsgpackProgressHandler::new(
           config.tries,
           Arc::new(Mutex::new(stdout())),
-        ))
+        )))
       }
       HandlerKind::MsgpackBase64 => {
-        builder.progress_handler(MsgpackBase64ProgressHandler::new(
+        builder.progress_handler(Box::new(MsgpackBase64ProgressHandler::new(
           config.tries,
           Arc::new(Mutex::new(stdout())),
-        ))
+        )))
       }
     }
   };
 
   #[cfg(not(feature = "sequential"))]
-  let result = builder.workers(config.workers).run_par().await;
+  let result = builder.workers(config.workers).run_par();
 
   #[cfg(feature = "sequential")]
   let result = builder.run_seq();
-
-  if result.is_err() {
-    if let Err(WakuchinError::WorkerError(e)) = result {
-      if !e.is_panic() {
-        return Err(e.into());
-      }
-
-      execute!(
-        stderr(),
-        cursor::Show,
-        Print("\n"),
-        cursor::MoveUp(1),
-        cursor::MoveLeft(u16::MAX),
-        Print("wakuchin has panicked.\n"),
-        Print("Please report this to the author.\n"),
-        Print(format!("{:?}", e)),
-        cursor::MoveLeft(u16::MAX),
-      )?;
-
-      panic::resume_unwind(e.into_panic());
-    }
-  }
 
   let result = result?;
 

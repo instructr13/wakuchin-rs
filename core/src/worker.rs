@@ -1,16 +1,13 @@
 //! Wakuchin researcher main functions
 
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use std::thread::available_parallelism;
+use std::thread::{self, available_parallelism};
 use std::time::Duration;
 
 use anyhow::anyhow;
 use divide_range::RangeDivisions;
 use regex::Regex;
-use tokio::runtime::{Builder, Runtime};
-use tokio::signal;
-use tokio::task::{yield_now, JoinSet};
 
 use crate::channel::{channel, watch};
 use crate::error::WakuchinError;
@@ -20,7 +17,7 @@ use crate::progress::{
   DoneDetail, IdleDetail, ProcessingDetail, Progress, ProgressKind,
 };
 use crate::render::{Render, ThreadRender};
-use crate::result::{Hit, WakuchinResult};
+use crate::result::{Hit, HitCount, WakuchinResult};
 use crate::{check, gen};
 
 type Result<T> = std::result::Result<T, WakuchinError>;
@@ -32,22 +29,6 @@ fn get_total_workers(workers: usize) -> Result<usize> {
 
   available_parallelism()
     .map(|num| num.into())
-    .map_err(|e| e.into())
-}
-
-fn create_runtime(workers: usize) -> Result<Runtime> {
-  Builder::new_multi_thread()
-    .worker_threads(workers + 2)
-    .thread_name_fn(|| {
-      static ATOMIC_ID: AtomicUsize = AtomicUsize::new(0);
-
-      let id = ATOMIC_ID.fetch_add(1, Ordering::SeqCst);
-
-      format!("wakuchin-worker-{}", id)
-    })
-    .thread_stack_size(4 * 1024 * 1024)
-    .enable_time()
-    .build()
     .map_err(|e| e.into())
 }
 
@@ -80,19 +61,14 @@ fn create_runtime(workers: usize) -> Result<Runtime> {
 ///   use wakuchin::handlers::empty::EmptyProgressHandler;
 ///   use wakuchin::worker::run_par;
 ///
-///   # async fn try_main_async() -> Result<(), Box<dyn std::error::Error>> {
+///   # fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///   let handler: Box<dyn ProgressHandler> = Box::new(EmptyProgressHandler::new());
-///   let result = run_par(10, 0, Regex::new(r"WKCN")?, handler, Duration::from_secs(1), 0).await;
+///   let result = run_par(10, 0, Regex::new(r"WKCN")?, handler, Duration::from_secs(1), 0);
 ///
 ///   assert!(result.is_err());
 ///   assert_eq!(result.err().unwrap().to_string(), "times cannot be zero");
 ///   #
 ///   #   Ok(())
-///   # }
-///   #
-///   # #[tokio::main]
-///   # async fn main() {
-///   #   try_main_async().await.unwrap();
 ///   # }
 ///   ```
 /// * [`WakuchinError::WorkerError`](crate::error::WakuchinError::WorkerError) - Returns when any worker raised an error
@@ -111,23 +87,18 @@ fn create_runtime(workers: usize) -> Result<Runtime> {
 /// use wakuchin::result::{out, ResultOutputFormat};
 /// use wakuchin::worker::run_par;
 ///
-/// # async fn try_main_async() -> Result<(), Box<dyn std::error::Error>> {
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let tries = 10;
 /// let handler: Box<dyn ProgressHandler>
 ///   = Box::new(MsgpackProgressHandler::new(tries, Arc::new(Mutex::new(stdout()))));
-/// let result = run_par(tries, 1, Regex::new(r"WKCN")?, handler, Duration::from_secs(1), 4).await?;
+/// let result = run_par(tries, 1, Regex::new(r"WKCN")?, handler, Duration::from_secs(1), 4)?;
 ///
 /// println!("{}", result.out(ResultOutputFormat::Text)?);
 /// #
 /// #   Ok(())
 /// # }
-/// #
-/// # #[tokio::main]
-/// # async fn main() {
-/// #   try_main_async().await.unwrap();
-/// # }
 /// ```
-pub async fn run_par(
+pub fn run_par(
   tries: usize,
   times: usize,
   regex: Regex,
@@ -152,7 +123,6 @@ pub async fn run_par(
 
   let is_stopped_accidentially = Arc::new(AtomicBool::new(false));
   let (hit_tx, hit_rx) = channel();
-  let counter = ThreadHitCounter::new(hit_rx);
 
   let (progress_tx_vec, progress_rx_vec): (Vec<_>, Vec<_>) = (0..total_workers)
     .map(|id| {
@@ -163,76 +133,59 @@ pub async fn run_par(
     })
     .unzip();
 
-  let mut render = ThreadRender::new(
-    is_stopped_accidentially.clone(),
-    counter.clone(),
-    progress_rx_vec,
-    progress_handler,
-    tries,
-    total_workers,
-  );
-
-  render.invoke_before_start()?;
-
-  let runtime = create_runtime(total_workers)?;
-
-  let runtime_handle = runtime.handle();
-
-  let mut handles_to_abort = Vec::with_capacity(workers + 2);
-
-  let mut hit_join_set = JoinSet::new();
-  let mut ui_join_set: JoinSet<Result<()>> = JoinSet::new();
-
-  // hit handler
-  handles_to_abort.push(counter.run(&mut hit_join_set, runtime_handle));
-
-  // progress reporter
-  handles_to_abort.push(ui_join_set.spawn_on(
-    {
-      let is_stopped_accidentially = is_stopped_accidentially.clone();
-
-      async move {
-        render.run(progress_interval)?;
-
-        if !is_stopped_accidentially.load(Ordering::Relaxed) {
-          render.invoke_after_finish()?;
-        }
-
-        Ok(())
-      }
-    },
-    runtime_handle,
-  ));
-
   // set SIGINT/SIGTERM handler
   #[cfg(not(target_arch = "wasm32"))]
-  let mut signal_join_set = JoinSet::new();
-
-  #[cfg(not(target_arch = "wasm32"))]
-  signal_join_set.spawn({
+  ctrlc::set_handler({
     let is_stopped_accidentially = is_stopped_accidentially.clone();
 
-    async move {
-      signal::ctrl_c().await.unwrap();
-
+    move || {
       is_stopped_accidentially.store(true, Ordering::SeqCst);
     }
-  });
+  })
+  .unwrap();
 
-  let mut worker_join_set = JoinSet::new();
+  let mut hits_detail = Vec::new();
 
-  (0..tries)
-    .divide_evenly_into(total_workers)
-    .zip(progress_tx_vec.into_iter())
-    .enumerate()
-    .for_each(|(id, (wakuchins, progress_tx))| {
-      let is_stopped_accidentially = is_stopped_accidentially.clone();
-      let hit_tx = hit_tx.clone();
-      let regex = regex.clone();
-      let total = wakuchins.len();
+  let hits = thread::scope::<_, Result<Vec<HitCount>>>(|s| {
+    let counter = ThreadHitCounter::new(hit_rx);
 
-      handles_to_abort.push(worker_join_set.spawn_on(
-        async move {
+    let mut worker_handles = Vec::with_capacity(workers);
+
+    let mut render = ThreadRender::new(
+      is_stopped_accidentially.clone(),
+      counter.clone(),
+      progress_rx_vec,
+      progress_handler,
+      tries,
+      total_workers,
+    );
+
+    // hit handler
+    let hit_handle = s.spawn::<_, Result<()>>({
+      let counter = counter.clone();
+
+      move || counter.run().map_err(|e| anyhow!(e).into())
+    });
+
+    // progress reporter
+    let ui_handle = s.spawn::<_, Result<()>>(move || {
+      render.run(progress_interval)?;
+
+      Ok(())
+    });
+
+    (0..tries)
+      .divide_evenly_into(total_workers)
+      .zip(progress_tx_vec.into_iter())
+      .enumerate()
+      .for_each(|(id, (wakuchins, progress_tx))| {
+        let is_stopped_accidentially = is_stopped_accidentially.clone();
+        let regex = regex.clone();
+        let hit_tx = hit_tx.clone();
+
+        worker_handles.push(s.spawn(move || {
+          let total = wakuchins.len();
+
           let mut hits = Vec::new();
 
           for (i, wakuchin) in wakuchins.map(|_| gen(times)).enumerate() {
@@ -240,27 +193,26 @@ pub async fn run_par(
               let hit = Hit::new(i, &wakuchin);
 
               hit_tx
-                .send_async(hit.clone())
-                .await
+                .send(hit.clone())
                 .expect("hit channel is unavailable");
 
               hits.push(hit);
             }
 
-            let progress_tx_result = progress_tx.send(Progress(
-              ProgressKind::Processing(ProcessingDetail::new(
+            progress_tx
+              .send(Progress(ProgressKind::Processing(ProcessingDetail::new(
                 id + 1,
                 wakuchin,
                 i,
                 total,
                 total_workers,
-              )),
-            ));
+              ))))
+              .expect("progress channel is unavailable");
 
-            if is_stopped_accidentially.load(Ordering::Relaxed)
-              && progress_tx_result.is_err()
-            {
-              break;
+            if is_stopped_accidentially.load(Ordering::Relaxed) {
+              drop(hit_tx);
+
+              return Err(WakuchinError::Cancelled);
             }
           }
 
@@ -276,84 +228,26 @@ pub async fn run_par(
               .unwrap();
           }
 
-          hits
-        },
-        runtime_handle,
-      ));
-    });
+          Ok(hits)
+        }));
+      });
 
-  drop(hit_tx);
-
-  signal_join_set.spawn({
-    let is_stopped_accidentially = is_stopped_accidentially.clone();
-
-    async move {
-      while !is_stopped_accidentially.load(Ordering::SeqCst) {
-        yield_now().await;
-      } // spinlock
-
-      for handle in handles_to_abort {
-        handle.abort();
+    for worker_handle in worker_handles {
+      for hit in worker_handle.join().unwrap()?.into_iter() {
+        hits_detail.push(hit);
       }
     }
-  });
 
-  let mut hits_detail = Vec::new();
+    // cleanup
+    drop(hit_tx);
 
-  while let Some(hits) = worker_join_set.join_next().await {
-    match hits {
-      Ok(hits) => {
-        for hit in hits.into_iter() {
-          hits_detail.push(hit);
-        }
-      }
-      Err(e) => {
-        runtime.shutdown_background();
+    // after all workers have finished, wait for ui and hit threads to finish
+    hit_handle.join().unwrap()?;
+    ui_handle.join().unwrap()?;
 
-        if e.is_cancelled() {
-          return Err(WakuchinError::Cancelled);
-        }
+    Ok(counter.get_all().into_hit_counts())
+  })?;
 
-        return Err(e.into());
-      }
-    }
-  }
-
-  while let Some(result) = hit_join_set.join_next().await {
-    if let Err(e) = result {
-      runtime.shutdown_background();
-
-      if e.is_cancelled() {
-        return Err(WakuchinError::Cancelled);
-      }
-
-      return Err(e.into());
-    }
-  }
-
-  // after all workers have finished, wait for ui threads to finish
-  while let Some(result) = ui_join_set.join_next().await {
-    if let Err(e) = result {
-      runtime.shutdown_background();
-
-      if e.is_cancelled() {
-        return Err(WakuchinError::Cancelled);
-      }
-
-      return Err(e.into());
-    }
-
-    result??; // JoinError<Error<T>>
-  }
-
-  signal_join_set.abort_all();
-
-  while signal_join_set.join_next().await.is_some() {}
-
-  // cleanup
-  runtime.shutdown_background();
-
-  let hits = counter.get_all().into_hit_counts();
   let hits_total = hits.iter().map(|c| c.hits).sum::<usize>();
 
   Ok(WakuchinResult {

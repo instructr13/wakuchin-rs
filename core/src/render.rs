@@ -51,6 +51,8 @@ impl ThreadRender {
   }
 
   pub(crate) fn run(&mut self, interval: Duration) -> Result<()> {
+    self.invoke_before_start()?;
+
     let mut start_time = Instant::now();
     let mut current_diff = DiffStore::new(0_usize);
     let mut current_ = 0;
@@ -118,6 +120,8 @@ impl ThreadRender {
       current_ = 0;
       start_time = Instant::now();
     }
+
+    self.invoke_after_finish()?;
 
     Ok(())
   }

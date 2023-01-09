@@ -74,9 +74,9 @@ impl<Tries, Times, TRegex> ResearchBuilder<Tries, Times, TRegex> {
 
   pub fn progress_handler(
     mut self,
-    progress_handler: impl ProgressHandler,
+    progress_handler: Box<dyn ProgressHandler>,
   ) -> Self {
-    self.progress_handler = Box::new(progress_handler);
+    self.progress_handler = progress_handler;
 
     self
   }
@@ -95,7 +95,7 @@ impl<Tries, Times, TRegex> ResearchBuilder<Tries, Times, TRegex> {
 }
 
 impl ResearchBuilder<usize, usize, Regex> {
-  pub async fn run_par(self) -> Result<WakuchinResult> {
+  pub fn run_par(self) -> Result<WakuchinResult> {
     run_par(
       self.tries,
       self.times,
@@ -104,7 +104,6 @@ impl ResearchBuilder<usize, usize, Regex> {
       self.progress_interval,
       self.workers,
     )
-    .await
   }
 
   pub fn run_seq(self) -> Result<WakuchinResult> {
