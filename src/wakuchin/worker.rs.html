@@ -545,23 +545,15 @@
 <span id="545">545</span>
 <span id="546">546</span>
 <span id="547">547</span>
-<span id="548">548</span>
-<span id="549">549</span>
-<span id="550">550</span>
-<span id="551">551</span>
-<span id="552">552</span>
-<span id="553">553</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Wakuchin researcher main functions
 
-</span><span class="kw">use </span>std::cell::RefCell;
-<span class="kw">use </span>std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+</span><span class="kw">use </span>std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 <span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>std::thread::available_parallelism;
 <span class="kw">use </span>std::time::Duration;
 
 <span class="kw">use </span>anyhow::anyhow;
 <span class="kw">use </span>divide_range::RangeDivisions;
-<span class="kw">use </span>parking_lot::Mutex;
 <span class="kw">use </span>regex::Regex;
 <span class="kw">use </span>tokio::runtime::{Builder, Runtime};
 <span class="kw">use </span>tokio::signal;
@@ -629,7 +621,6 @@
 ///   use std::sync::Mutex;
 ///   use std::time::Duration;
 ///
-///   use parking_lot::Mutex as HandlerMutex;
 ///   use regex::Regex;
 ///
 ///   use wakuchin::handlers::ProgressHandler;
@@ -637,7 +628,7 @@
 ///   use wakuchin::worker::run_par;
 ///
 ///   # async fn try_main_async() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
-///   let handler: HandlerMutex&lt;Box&lt;dyn ProgressHandler&gt;&gt; = HandlerMutex::new(Box::new(EmptyProgressHandler::new()));
+///   let handler: Box&lt;dyn ProgressHandler&gt; = Box::new(EmptyProgressHandler::new());
 ///   let result = run_par(10, 0, Regex::new(r&quot;WKCN&quot;)?, handler, Duration::from_secs(1), 0).await;
 ///
 ///   assert!(result.is_err());
@@ -660,7 +651,6 @@
 /// use std::sync::{Arc, Mutex};
 /// use std::time::Duration;
 ///
-/// use parking_lot::Mutex as HandlerMutex;
 /// use regex::Regex;
 ///
 /// use wakuchin::handlers::ProgressHandler;
@@ -670,8 +660,8 @@
 ///
 /// # async fn try_main_async() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 /// let tries = 10;
-/// let handler: HandlerMutex&lt;Box&lt;dyn ProgressHandler&gt;&gt;
-///   = HandlerMutex::new(Box::new(MsgpackProgressHandler::new(tries, Arc::new(Mutex::new(stdout())))));
+/// let handler: Box&lt;dyn ProgressHandler&gt;
+///   = Box::new(MsgpackProgressHandler::new(tries, Arc::new(Mutex::new(stdout()))));
 /// let result = run_par(tries, 1, Regex::new(r&quot;WKCN&quot;)?, handler, Duration::from_secs(1), 4).await?;
 ///
 /// println!(&quot;{}&quot;, result.out(ResultOutputFormat::Text)?);
@@ -688,7 +678,7 @@
   tries: usize,
   times: usize,
   regex: Regex,
-  progress_handler: Mutex&lt;Box&lt;<span class="kw">dyn </span>ProgressHandler&gt;&gt;,
+  progress_handler: Box&lt;<span class="kw">dyn </span>ProgressHandler&gt;,
   progress_interval: Duration,
   workers: usize,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;WakuchinResult&gt; {
@@ -720,7 +710,7 @@
     })
     .unzip();
 
-  <span class="kw">let </span>render = ThreadRender::new(
+  <span class="kw">let </span><span class="kw-2">mut </span>render = ThreadRender::new(
     is_stopped_accidentially.clone(),
     counter.clone(),
     progress_rx_vec,
@@ -941,7 +931,6 @@
 ///
 /// * [`WakuchinError::TimesIsZero`](crate::error::WakuchinError::TimesIsZero) - Returns if you passed a zero to `times`
 ///   ```rust
-///   use std::cell::RefCell;
 ///   use std::time::Duration;
 ///
 ///   use regex::Regex;
@@ -950,7 +939,7 @@
 ///   use wakuchin::handlers::empty::EmptyProgressHandler;
 ///   use wakuchin::worker::run_seq;
 ///
-///   let handler: RefCell&lt;Box&lt;dyn ProgressHandler&gt;&gt; = RefCell::new(Box::new(EmptyProgressHandler::new()));
+///   let handler: Box&lt;dyn ProgressHandler&gt; = Box::new(EmptyProgressHandler::new());
 ///   let result = run_seq(10, 0, Regex::new(r&quot;WKCN&quot;)?, handler, Duration::from_secs(1));
 ///
 ///   assert!(result.is_err());
@@ -962,7 +951,6 @@
 /// # Examples
 ///
 /// ```rust
-/// use std::cell::RefCell;
 /// use std::io::stdout;
 /// use std::sync::{Arc, Mutex};
 /// use std::time::Duration;
@@ -976,8 +964,8 @@
 ///
 /// let tries = 10;
 ///
-/// let handler: RefCell&lt;Box&lt;dyn ProgressHandler&gt;&gt;
-///   = RefCell::new(Box::new(MsgpackProgressHandler::new(tries, Arc::new(Mutex::new(stdout())))));
+/// let handler: Box&lt;dyn ProgressHandler&gt;
+///   = Box::new(MsgpackProgressHandler::new(tries, Arc::new(Mutex::new(stdout()))));
 ///
 /// let result = run_seq(tries, 1, Regex::new(r&quot;WKCN&quot;)?, handler, Duration::from_secs(1))?;
 ///
@@ -989,7 +977,7 @@
   tries: usize,
   times: usize,
   regex: Regex,
-  progress_handler: RefCell&lt;Box&lt;<span class="kw">dyn </span>ProgressHandler&gt;&gt;,
+  progress_handler: Box&lt;<span class="kw">dyn </span>ProgressHandler&gt;,
   progress_interval: Duration,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;WakuchinResult&gt; {
   <span class="kw">if </span>tries == <span class="number">0 </span>{

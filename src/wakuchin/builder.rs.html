@@ -117,12 +117,8 @@
 <span id="117">117</span>
 <span id="118">118</span>
 <span id="119">119</span>
-<span id="120">120</span>
-<span id="121">121</span>
-</pre><pre class="rust"><code><span class="kw">use </span>std::cell::RefCell;
-<span class="kw">use </span>std::time::Duration;
+</pre><pre class="rust"><code><span class="kw">use </span>std::time::Duration;
 
-<span class="kw">use </span>parking_lot::Mutex;
 <span class="kw">use </span>regex::Regex;
 
 <span class="kw">use </span><span class="kw">crate</span>::error::WakuchinError;
@@ -223,7 +219,7 @@
       <span class="self">self</span>.tries,
       <span class="self">self</span>.times,
       <span class="self">self</span>.regex,
-      Mutex::new(<span class="self">self</span>.progress_handler),
+      <span class="self">self</span>.progress_handler,
       <span class="self">self</span>.progress_interval,
       <span class="self">self</span>.workers,
     )
@@ -235,7 +231,7 @@
       <span class="self">self</span>.tries,
       <span class="self">self</span>.times,
       <span class="self">self</span>.regex,
-      RefCell::new(<span class="self">self</span>.progress_handler),
+      <span class="self">self</span>.progress_handler,
       <span class="self">self</span>.progress_interval,
     )
   }

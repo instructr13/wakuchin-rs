@@ -221,16 +221,7 @@
 <span id="221">221</span>
 <span id="222">222</span>
 <span id="223">223</span>
-<span id="224">224</span>
-<span id="225">225</span>
-<span id="226">226</span>
-<span id="227">227</span>
-<span id="228">228</span>
-<span id="229">229</span>
-<span id="230">230</span>
-<span id="231">231</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::borrow::Cow;
-<span class="kw">use </span>std::cell::RefCell;
 <span class="kw">use </span>std::sync::atomic::{AtomicBool, Ordering};
 <span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>std::time::Duration;
@@ -238,7 +229,6 @@
 <span class="kw">use </span>anyhow::Result;
 <span class="kw">use </span>instant::Instant;
 <span class="kw">use </span>itertools::Itertools;
-<span class="kw">use </span>parking_lot::Mutex;
 <span class="kw">use </span>tokio::sync::watch;
 
 <span class="kw">use </span><span class="kw">crate</span>::handlers::ProgressHandler;
@@ -251,7 +241,7 @@
   is_stopped_accidentially: Arc&lt;AtomicBool&gt;,
   counter: ThreadHitCounter,
   progress_channels: Vec&lt;watch::Receiver&lt;Progress&gt;&gt;,
-  progress_handler: Mutex&lt;Box&lt;<span class="kw">dyn </span>ProgressHandler&gt;&gt;,
+  progress_handler: Box&lt;<span class="kw">dyn </span>ProgressHandler&gt;,
   total: usize,
   total_workers: usize,
 }
@@ -261,7 +251,7 @@
     is_stopped_accidentially: Arc&lt;AtomicBool&gt;,
     counter: ThreadHitCounter,
     progress_channels: Vec&lt;watch::Receiver&lt;Progress&gt;&gt;,
-    progress_handler: Mutex&lt;Box&lt;<span class="kw">dyn </span>ProgressHandler&gt;&gt;,
+    progress_handler: Box&lt;<span class="kw">dyn </span>ProgressHandler&gt;,
     total: usize,
     total_workers: usize,
   ) -&gt; <span class="self">Self </span>{
@@ -279,26 +269,22 @@
     <span class="self">self</span>.counter.get_all().into_hit_counts()
   }
 
-  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>invoke_before_start(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    <span class="self">self</span>.progress_handler.lock().before_start()
+  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>invoke_before_start(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    <span class="self">self</span>.progress_handler.before_start()
   }
 
-  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>run(<span class="kw-2">&amp;</span><span class="self">self</span>, interval: Duration) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>run(<span class="kw-2">&amp;mut </span><span class="self">self</span>, interval: Duration) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="kw">let </span><span class="kw-2">mut </span>start_time = Instant::now();
     <span class="kw">let </span><span class="kw-2">mut </span>current_diff = DiffStore::new(<span class="number">0_usize</span>);
     <span class="kw">let </span><span class="kw-2">mut </span>current_ = <span class="number">0</span>;
 
-    <span class="kw">let </span><span class="kw-2">mut </span>progress_handler = <span class="self">self</span>.progress_handler.lock();
-
     <span class="kw">loop </span>{
       <span class="kw">if </span><span class="self">self</span>.is_stopped_accidentially.load(Ordering::SeqCst) {
-        drop(progress_handler); <span class="comment">// unlock
-
-        </span><span class="kw">return </span><span class="self">self</span>.invoke_on_accidential_stop();
+        <span class="kw">return </span><span class="self">self</span>.invoke_on_accidential_stop();
       }
 
       <span class="kw">if </span><span class="self">self</span>.counter.count_stopped.load(Ordering::Acquire) {
-        progress_handler.handle(
+        <span class="self">self</span>.progress_handler.handle(
           <span class="kw-2">&amp;</span>(<span class="number">0</span>..<span class="self">self</span>.progress_channels.len())
             .map(|id| {
               Progress(ProgressKind::Done(DoneDetail {
@@ -344,7 +330,7 @@
         })
         .collect_vec();
 
-      progress_handler.handle(
+      <span class="self">self</span>.progress_handler.handle(
         progressses,
         <span class="kw-2">&amp;</span><span class="self">self</span>.hits(),
         interval,
@@ -359,26 +345,24 @@
     <span class="prelude-val">Ok</span>(())
   }
 
-  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>invoke_on_accidential_stop(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    <span class="self">self</span>.progress_handler.lock().on_accidential_stop()
+  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>invoke_on_accidential_stop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    <span class="self">self</span>.progress_handler.on_accidential_stop()
   }
 
-  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>invoke_after_finish(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    <span class="self">self</span>.progress_handler.lock().after_finish()
+  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>invoke_after_finish(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    <span class="self">self</span>.progress_handler.after_finish()
   }
 }
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>Render {
   current_diff: DiffStore&lt;usize&gt;,
   counter: HitCounter,
-  progress_handler: RefCell&lt;Box&lt;<span class="kw">dyn </span>ProgressHandler&gt;&gt;,
+  progress_handler: Box&lt;<span class="kw">dyn </span>ProgressHandler&gt;,
   start_time: Instant,
 }
 
 <span class="kw">impl </span>Render {
-  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
-    progress_handler: RefCell&lt;Box&lt;<span class="kw">dyn </span>ProgressHandler&gt;&gt;,
-  ) -&gt; <span class="self">Self </span>{
+  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(progress_handler: Box&lt;<span class="kw">dyn </span>ProgressHandler&gt;) -&gt; <span class="self">Self </span>{
     <span class="self">Self </span>{
       current_diff: DiffStore::new(<span class="number">0</span>),
       counter: HitCounter::new(),
@@ -398,8 +382,8 @@
     </span><span class="self">self</span>.counter.add(chars);
   }
 
-  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>invoke_before_start(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    <span class="self">self</span>.progress_handler.borrow_mut().before_start()
+  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>invoke_before_start(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    <span class="self">self</span>.progress_handler.before_start()
   }
 
   <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>render_progress(
@@ -409,7 +393,7 @@
     all_done: bool,
   ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="kw">if </span>interval.is_zero() {
-      <span class="self">self</span>.progress_handler.borrow_mut().handle(
+      <span class="self">self</span>.progress_handler.handle(
         <span class="kw-2">&amp;</span>[progress],
         <span class="kw-2">&amp;</span><span class="self">self</span>.hits(),
         interval,
@@ -439,7 +423,7 @@
         <span class="number">0
       </span>};
 
-    <span class="self">self</span>.progress_handler.borrow_mut().handle(
+    <span class="self">self</span>.progress_handler.handle(
       <span class="kw-2">&amp;</span>[progress],
       <span class="kw-2">&amp;</span><span class="self">self</span>.hits(),
       interval,
@@ -452,12 +436,12 @@
     <span class="prelude-val">Ok</span>(())
   }
 
-  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>invoke_on_accidential_stop(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    <span class="self">self</span>.progress_handler.borrow_mut().on_accidential_stop()
+  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>invoke_on_accidential_stop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    <span class="self">self</span>.progress_handler.on_accidential_stop()
   }
 
-  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>invoke_after_finish(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
-    <span class="self">self</span>.progress_handler.borrow_mut().after_finish()
+  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>invoke_after_finish(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    <span class="self">self</span>.progress_handler.after_finish()
   }
 }
 </code></pre></div>
