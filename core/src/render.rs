@@ -1,5 +1,4 @@
 use std::borrow::Cow;
-use std::cell::RefCell;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
@@ -7,7 +6,6 @@ use std::time::Duration;
 use anyhow::Result;
 use instant::Instant;
 use itertools::Itertools;
-use parking_lot::Mutex;
 use tokio::sync::watch;
 
 use crate::handlers::ProgressHandler;
@@ -20,7 +18,7 @@ pub(crate) struct ThreadRender {
   is_stopped_accidentially: Arc<AtomicBool>,
   counter: ThreadHitCounter,
   progress_channels: Vec<watch::Receiver<Progress>>,
-  progress_handler: Mutex<Box<dyn ProgressHandler>>,
+  progress_handler: Box<dyn ProgressHandler>,
   total: usize,
   total_workers: usize,
 }
@@ -30,7 +28,7 @@ impl ThreadRender {
     is_stopped_accidentially: Arc<AtomicBool>,
     counter: ThreadHitCounter,
     progress_channels: Vec<watch::Receiver<Progress>>,
-    progress_handler: Mutex<Box<dyn ProgressHandler>>,
+    progress_handler: Box<dyn ProgressHandler>,
     total: usize,
     total_workers: usize,
   ) -> Self {
@@ -48,26 +46,22 @@ impl ThreadRender {
     self.counter.get_all().into_hit_counts()
   }
 
-  pub(crate) fn invoke_before_start(&self) -> Result<()> {
-    self.progress_handler.lock().before_start()
+  pub(crate) fn invoke_before_start(&mut self) -> Result<()> {
+    self.progress_handler.before_start()
   }
 
-  pub(crate) async fn run(&self, interval: Duration) -> Result<()> {
+  pub(crate) async fn run(&mut self, interval: Duration) -> Result<()> {
     let mut start_time = Instant::now();
     let mut current_diff = DiffStore::new(0_usize);
     let mut current_ = 0;
 
-    let mut progress_handler = self.progress_handler.lock();
-
     loop {
       if self.is_stopped_accidentially.load(Ordering::SeqCst) {
-        drop(progress_handler); // unlock
-
         return self.invoke_on_accidential_stop();
       }
 
       if self.counter.count_stopped.load(Ordering::Acquire) {
-        progress_handler.handle(
+        self.progress_handler.handle(
           &(0..self.progress_channels.len())
             .map(|id| {
               Progress(ProgressKind::Done(DoneDetail {
@@ -113,7 +107,7 @@ impl ThreadRender {
         })
         .collect_vec();
 
-      progress_handler.handle(
+      self.progress_handler.handle(
         progressses,
         &self.hits(),
         interval,
@@ -128,26 +122,24 @@ impl ThreadRender {
     Ok(())
   }
 
-  pub(crate) fn invoke_on_accidential_stop(&self) -> Result<()> {
-    self.progress_handler.lock().on_accidential_stop()
+  pub(crate) fn invoke_on_accidential_stop(&mut self) -> Result<()> {
+    self.progress_handler.on_accidential_stop()
   }
 
-  pub(crate) fn invoke_after_finish(&self) -> Result<()> {
-    self.progress_handler.lock().after_finish()
+  pub(crate) fn invoke_after_finish(&mut self) -> Result<()> {
+    self.progress_handler.after_finish()
   }
 }
 
 pub(crate) struct Render {
   current_diff: DiffStore<usize>,
   counter: HitCounter,
-  progress_handler: RefCell<Box<dyn ProgressHandler>>,
+  progress_handler: Box<dyn ProgressHandler>,
   start_time: Instant,
 }
 
 impl Render {
-  pub(crate) fn new(
-    progress_handler: RefCell<Box<dyn ProgressHandler>>,
-  ) -> Self {
+  pub(crate) fn new(progress_handler: Box<dyn ProgressHandler>) -> Self {
     Self {
       current_diff: DiffStore::new(0),
       counter: HitCounter::new(),
@@ -167,8 +159,8 @@ impl Render {
     self.counter.add(chars);
   }
 
-  pub(crate) fn invoke_before_start(&self) -> Result<()> {
-    self.progress_handler.borrow_mut().before_start()
+  pub(crate) fn invoke_before_start(&mut self) -> Result<()> {
+    self.progress_handler.before_start()
   }
 
   pub(crate) fn render_progress(
@@ -178,7 +170,7 @@ impl Render {
     all_done: bool,
   ) -> Result<()> {
     if interval.is_zero() {
-      self.progress_handler.borrow_mut().handle(
+      self.progress_handler.handle(
         &[progress],
         &self.hits(),
         interval,
@@ -208,7 +200,7 @@ impl Render {
         0
       };
 
-    self.progress_handler.borrow_mut().handle(
+    self.progress_handler.handle(
       &[progress],
       &self.hits(),
       interval,
@@ -221,11 +213,11 @@ impl Render {
     Ok(())
   }
 
-  pub(crate) fn invoke_on_accidential_stop(&self) -> Result<()> {
-    self.progress_handler.borrow_mut().on_accidential_stop()
+  pub(crate) fn invoke_on_accidential_stop(&mut self) -> Result<()> {
+    self.progress_handler.on_accidential_stop()
   }
 
-  pub(crate) fn invoke_after_finish(&self) -> Result<()> {
-    self.progress_handler.borrow_mut().after_finish()
+  pub(crate) fn invoke_after_finish(&mut self) -> Result<()> {
+    self.progress_handler.after_finish()
   }
 }

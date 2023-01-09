@@ -1,7 +1,5 @@
-use std::cell::RefCell;
 use std::time::Duration;
 
-use parking_lot::Mutex;
 use regex::Regex;
 
 use crate::error::WakuchinError;
@@ -102,7 +100,7 @@ impl ResearchBuilder<usize, usize, Regex> {
       self.tries,
       self.times,
       self.regex,
-      Mutex::new(self.progress_handler),
+      self.progress_handler,
       self.progress_interval,
       self.workers,
     )
@@ -114,7 +112,7 @@ impl ResearchBuilder<usize, usize, Regex> {
       self.tries,
       self.times,
       self.regex,
-      RefCell::new(self.progress_handler),
+      self.progress_handler,
       self.progress_interval,
     )
   }

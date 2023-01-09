@@ -1,9 +1,7 @@
-use std::cell::RefCell;
 use std::time::Duration;
 
 use criterion::{criterion_group, Criterion};
 
-use parking_lot::Mutex;
 use regex::Regex;
 
 use wakuchin::handlers::empty::EmptyProgressHandler;
@@ -19,7 +17,7 @@ fn speed_par(c: &mut Criterion) {
         30000,
         2,
         Regex::new(r"^WKNCWKNC$").unwrap(),
-        Mutex::new(Box::new(EmptyProgressHandler::new())),
+        Box::new(EmptyProgressHandler::new()),
         Duration::from_millis(20),
         0,
       )
@@ -35,7 +33,7 @@ fn speed_seq(c: &mut Criterion) {
         30000,
         2,
         Regex::new(r"^WKNCWKNC$").unwrap(),
-        RefCell::new(Box::new(EmptyProgressHandler::new())),
+        Box::new(EmptyProgressHandler::new()),
         Duration::from_millis(20),
       )
     });
