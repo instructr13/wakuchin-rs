@@ -50,7 +50,7 @@ impl ThreadRender {
     self.progress_handler.before_start()
   }
 
-  pub(crate) async fn run(&mut self, interval: Duration) -> Result<()> {
+  pub(crate) fn run(&mut self, interval: Duration) -> Result<()> {
     let mut start_time = Instant::now();
     let mut current_diff = DiffStore::new(0_usize);
     let mut current_ = 0;

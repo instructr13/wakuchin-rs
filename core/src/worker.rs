@@ -192,7 +192,7 @@ pub async fn run_par(
       let is_stopped_accidentially = is_stopped_accidentially.clone();
 
       async move {
-        render.run(progress_interval).await?;
+        render.run(progress_interval)?;
 
         if !is_stopped_accidentially.load(Ordering::Relaxed) {
           render.invoke_after_finish()?;
