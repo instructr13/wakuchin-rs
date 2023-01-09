@@ -439,6 +439,10 @@
 <span id="439">439</span>
 <span id="440">440</span>
 <span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Wakuchin researcher main functions
 
 </span><span class="kw">use </span>std::sync::atomic::{AtomicBool, Ordering};
@@ -583,7 +587,7 @@
       is_stopped_accidentially.store(<span class="bool-val">true</span>, Ordering::SeqCst);
     }
   })
-  .unwrap();
+  .unwrap_or(());
 
   <span class="kw">let </span><span class="kw-2">mut </span>hits_detail = Vec::new();
 
@@ -640,15 +644,19 @@
               hits.push(hit);
             }
 
-            progress_tx
-              .send(Progress(ProgressKind::Processing(ProcessingDetail::new(
-                id + <span class="number">1</span>,
-                wakuchin,
-                i,
-                total,
-                total_workers,
-              ))))
-              .expect(<span class="string">&quot;progress channel is unavailable&quot;</span>);
+            <span class="kw">if </span>!progress_tx.is_closed() {
+              progress_tx
+                .send(Progress(ProgressKind::Processing(
+                  ProcessingDetail::new(
+                    id + <span class="number">1</span>,
+                    wakuchin,
+                    i,
+                    total,
+                    total_workers,
+                  ),
+                )))
+                .expect(<span class="string">&quot;progress channel is unavailable&quot;</span>);
+            }
 
             <span class="kw">if </span>is_stopped_accidentially.load(Ordering::Relaxed) {
               drop(hit_tx);
