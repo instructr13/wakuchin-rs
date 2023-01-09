@@ -142,7 +142,7 @@ pub fn run_par(
       is_stopped_accidentially.store(true, Ordering::SeqCst);
     }
   })
-  .unwrap();
+  .unwrap_or(());
 
   let mut hits_detail = Vec::new();
 
@@ -199,15 +199,19 @@ pub fn run_par(
               hits.push(hit);
             }
 
-            progress_tx
-              .send(Progress(ProgressKind::Processing(ProcessingDetail::new(
-                id + 1,
-                wakuchin,
-                i,
-                total,
-                total_workers,
-              ))))
-              .expect("progress channel is unavailable");
+            if !progress_tx.is_closed() {
+              progress_tx
+                .send(Progress(ProgressKind::Processing(
+                  ProcessingDetail::new(
+                    id + 1,
+                    wakuchin,
+                    i,
+                    total,
+                    total_workers,
+                  ),
+                )))
+                .expect("progress channel is unavailable");
+            }
 
             if is_stopped_accidentially.load(Ordering::Relaxed) {
               drop(hit_tx);
