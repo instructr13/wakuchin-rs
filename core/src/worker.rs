@@ -257,7 +257,7 @@ pub async fn run_par(
               )),
             ));
 
-            if is_stopped_accidentially.load(Ordering::SeqCst)
+            if is_stopped_accidentially.load(Ordering::Relaxed)
               && progress_tx_result.is_err()
             {
               break;
