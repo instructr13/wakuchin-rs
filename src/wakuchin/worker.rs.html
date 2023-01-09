@@ -606,10 +606,10 @@
     );
 
     <span class="comment">// hit handler
-    </span><span class="kw">let </span>hit_handle = s.spawn::&lt;<span class="kw">_</span>, <span class="prelude-ty">Result</span>&lt;()&gt;&gt;({
+    </span><span class="kw">let </span>hit_handle = s.spawn({
       <span class="kw">let </span>counter = counter.clone();
 
-      <span class="kw">move </span>|| counter.run().map_err(|e| <span class="macro">anyhow!</span>(e).into())
+      <span class="kw">move </span>|| counter.run()
     });
 
     <span class="comment">// progress reporter
@@ -691,7 +691,7 @@
     </span>drop(hit_tx);
 
     <span class="comment">// after all workers have finished, wait for ui and hit threads to finish
-    </span>hit_handle.join().unwrap()<span class="question-mark">?</span>;
+    </span>hit_handle.join().unwrap();
     ui_handle.join().unwrap()<span class="question-mark">?</span>;
 
     <span class="prelude-val">Ok</span>(counter.get_all().into_hit_counts())
