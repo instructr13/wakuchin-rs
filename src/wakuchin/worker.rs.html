@@ -439,125 +439,16 @@
 <span id="439">439</span>
 <span id="440">440</span>
 <span id="441">441</span>
-<span id="442">442</span>
-<span id="443">443</span>
-<span id="444">444</span>
-<span id="445">445</span>
-<span id="446">446</span>
-<span id="447">447</span>
-<span id="448">448</span>
-<span id="449">449</span>
-<span id="450">450</span>
-<span id="451">451</span>
-<span id="452">452</span>
-<span id="453">453</span>
-<span id="454">454</span>
-<span id="455">455</span>
-<span id="456">456</span>
-<span id="457">457</span>
-<span id="458">458</span>
-<span id="459">459</span>
-<span id="460">460</span>
-<span id="461">461</span>
-<span id="462">462</span>
-<span id="463">463</span>
-<span id="464">464</span>
-<span id="465">465</span>
-<span id="466">466</span>
-<span id="467">467</span>
-<span id="468">468</span>
-<span id="469">469</span>
-<span id="470">470</span>
-<span id="471">471</span>
-<span id="472">472</span>
-<span id="473">473</span>
-<span id="474">474</span>
-<span id="475">475</span>
-<span id="476">476</span>
-<span id="477">477</span>
-<span id="478">478</span>
-<span id="479">479</span>
-<span id="480">480</span>
-<span id="481">481</span>
-<span id="482">482</span>
-<span id="483">483</span>
-<span id="484">484</span>
-<span id="485">485</span>
-<span id="486">486</span>
-<span id="487">487</span>
-<span id="488">488</span>
-<span id="489">489</span>
-<span id="490">490</span>
-<span id="491">491</span>
-<span id="492">492</span>
-<span id="493">493</span>
-<span id="494">494</span>
-<span id="495">495</span>
-<span id="496">496</span>
-<span id="497">497</span>
-<span id="498">498</span>
-<span id="499">499</span>
-<span id="500">500</span>
-<span id="501">501</span>
-<span id="502">502</span>
-<span id="503">503</span>
-<span id="504">504</span>
-<span id="505">505</span>
-<span id="506">506</span>
-<span id="507">507</span>
-<span id="508">508</span>
-<span id="509">509</span>
-<span id="510">510</span>
-<span id="511">511</span>
-<span id="512">512</span>
-<span id="513">513</span>
-<span id="514">514</span>
-<span id="515">515</span>
-<span id="516">516</span>
-<span id="517">517</span>
-<span id="518">518</span>
-<span id="519">519</span>
-<span id="520">520</span>
-<span id="521">521</span>
-<span id="522">522</span>
-<span id="523">523</span>
-<span id="524">524</span>
-<span id="525">525</span>
-<span id="526">526</span>
-<span id="527">527</span>
-<span id="528">528</span>
-<span id="529">529</span>
-<span id="530">530</span>
-<span id="531">531</span>
-<span id="532">532</span>
-<span id="533">533</span>
-<span id="534">534</span>
-<span id="535">535</span>
-<span id="536">536</span>
-<span id="537">537</span>
-<span id="538">538</span>
-<span id="539">539</span>
-<span id="540">540</span>
-<span id="541">541</span>
-<span id="542">542</span>
-<span id="543">543</span>
-<span id="544">544</span>
-<span id="545">545</span>
-<span id="546">546</span>
-<span id="547">547</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Wakuchin researcher main functions
 
-</span><span class="kw">use </span>std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+</span><span class="kw">use </span>std::sync::atomic::{AtomicBool, Ordering};
 <span class="kw">use </span>std::sync::Arc;
-<span class="kw">use </span>std::thread::available_parallelism;
+<span class="kw">use </span>std::thread::{<span class="self">self</span>, available_parallelism};
 <span class="kw">use </span>std::time::Duration;
 
 <span class="kw">use </span>anyhow::anyhow;
 <span class="kw">use </span>divide_range::RangeDivisions;
 <span class="kw">use </span>regex::Regex;
-<span class="kw">use </span>tokio::runtime::{Builder, Runtime};
-<span class="kw">use </span>tokio::signal;
-<span class="kw">use </span>tokio::task::{yield_now, JoinSet};
 
 <span class="kw">use </span><span class="kw">crate</span>::channel::{channel, watch};
 <span class="kw">use </span><span class="kw">crate</span>::error::WakuchinError;
@@ -567,7 +458,7 @@
   DoneDetail, IdleDetail, ProcessingDetail, Progress, ProgressKind,
 };
 <span class="kw">use </span><span class="kw">crate</span>::render::{Render, ThreadRender};
-<span class="kw">use </span><span class="kw">crate</span>::result::{Hit, WakuchinResult};
+<span class="kw">use </span><span class="kw">crate</span>::result::{Hit, HitCount, WakuchinResult};
 <span class="kw">use crate</span>::{check, gen};
 
 <span class="kw">type </span><span class="prelude-ty">Result</span>&lt;T&gt; = std::result::Result&lt;T, WakuchinError&gt;;
@@ -579,22 +470,6 @@
 
   available_parallelism()
     .map(|num| num.into())
-    .map_err(|e| e.into())
-}
-
-<span class="kw">fn </span>create_runtime(workers: usize) -&gt; <span class="prelude-ty">Result</span>&lt;Runtime&gt; {
-  Builder::new_multi_thread()
-    .worker_threads(workers + <span class="number">2</span>)
-    .thread_name_fn(|| {
-      <span class="kw">static </span>ATOMIC_ID: AtomicUsize = AtomicUsize::new(<span class="number">0</span>);
-
-      <span class="kw">let </span>id = ATOMIC_ID.fetch_add(<span class="number">1</span>, Ordering::SeqCst);
-
-      <span class="macro">format!</span>(<span class="string">&quot;wakuchin-worker-{}&quot;</span>, id)
-    })
-    .thread_stack_size(<span class="number">4 </span>* <span class="number">1024 </span>* <span class="number">1024</span>)
-    .enable_time()
-    .build()
     .map_err(|e| e.into())
 }
 
@@ -627,19 +502,14 @@
 ///   use wakuchin::handlers::empty::EmptyProgressHandler;
 ///   use wakuchin::worker::run_par;
 ///
-///   # async fn try_main_async() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+///   # fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 ///   let handler: Box&lt;dyn ProgressHandler&gt; = Box::new(EmptyProgressHandler::new());
-///   let result = run_par(10, 0, Regex::new(r&quot;WKCN&quot;)?, handler, Duration::from_secs(1), 0).await;
+///   let result = run_par(10, 0, Regex::new(r&quot;WKCN&quot;)?, handler, Duration::from_secs(1), 0);
 ///
 ///   assert!(result.is_err());
 ///   assert_eq!(result.err().unwrap().to_string(), &quot;times cannot be zero&quot;);
 ///   #
 ///   #   Ok(())
-///   # }
-///   #
-///   # #[tokio::main]
-///   # async fn main() {
-///   #   try_main_async().await.unwrap();
 ///   # }
 ///   ```
 /// * [`WakuchinError::WorkerError`](crate::error::WakuchinError::WorkerError) - Returns when any worker raised an error
@@ -658,23 +528,18 @@
 /// use wakuchin::result::{out, ResultOutputFormat};
 /// use wakuchin::worker::run_par;
 ///
-/// # async fn try_main_async() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+/// # fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 /// let tries = 10;
 /// let handler: Box&lt;dyn ProgressHandler&gt;
 ///   = Box::new(MsgpackProgressHandler::new(tries, Arc::new(Mutex::new(stdout()))));
-/// let result = run_par(tries, 1, Regex::new(r&quot;WKCN&quot;)?, handler, Duration::from_secs(1), 4).await?;
+/// let result = run_par(tries, 1, Regex::new(r&quot;WKCN&quot;)?, handler, Duration::from_secs(1), 4)?;
 ///
 /// println!(&quot;{}&quot;, result.out(ResultOutputFormat::Text)?);
 /// #
 /// #   Ok(())
 /// # }
-/// #
-/// # #[tokio::main]
-/// # async fn main() {
-/// #   try_main_async().await.unwrap();
-/// # }
 /// ```
-</span><span class="kw">pub async fn </span>run_par(
+</span><span class="kw">pub fn </span>run_par(
   tries: usize,
   times: usize,
   regex: Regex,
@@ -699,7 +564,6 @@
 
   <span class="kw">let </span>is_stopped_accidentially = Arc::new(AtomicBool::new(<span class="bool-val">false</span>));
   <span class="kw">let </span>(hit_tx, hit_rx) = channel();
-  <span class="kw">let </span>counter = ThreadHitCounter::new(hit_rx);
 
   <span class="kw">let </span>(progress_tx_vec, progress_rx_vec): (Vec&lt;<span class="kw">_</span>&gt;, Vec&lt;<span class="kw">_</span>&gt;) = (<span class="number">0</span>..total_workers)
     .map(|id| {
@@ -710,76 +574,59 @@
     })
     .unzip();
 
-  <span class="kw">let </span><span class="kw-2">mut </span>render = ThreadRender::new(
-    is_stopped_accidentially.clone(),
-    counter.clone(),
-    progress_rx_vec,
-    progress_handler,
-    tries,
-    total_workers,
-  );
-
-  render.invoke_before_start()<span class="question-mark">?</span>;
-
-  <span class="kw">let </span>runtime = create_runtime(total_workers)<span class="question-mark">?</span>;
-
-  <span class="kw">let </span>runtime_handle = runtime.handle();
-
-  <span class="kw">let </span><span class="kw-2">mut </span>handles_to_abort = Vec::with_capacity(workers + <span class="number">2</span>);
-
-  <span class="kw">let </span><span class="kw-2">mut </span>hit_join_set = JoinSet::new();
-  <span class="kw">let </span><span class="kw-2">mut </span>ui_join_set: JoinSet&lt;<span class="prelude-ty">Result</span>&lt;()&gt;&gt; = JoinSet::new();
-
-  <span class="comment">// hit handler
-  </span>handles_to_abort.push(counter.run(<span class="kw-2">&amp;mut </span>hit_join_set, runtime_handle));
-
-  <span class="comment">// progress reporter
-  </span>handles_to_abort.push(ui_join_set.spawn_on(
-    {
-      <span class="kw">let </span>is_stopped_accidentially = is_stopped_accidentially.clone();
-
-      <span class="kw">async move </span>{
-        render.run(progress_interval).<span class="kw">await</span><span class="question-mark">?</span>;
-
-        <span class="kw">if </span>!is_stopped_accidentially.load(Ordering::Relaxed) {
-          render.invoke_after_finish()<span class="question-mark">?</span>;
-        }
-
-        <span class="prelude-val">Ok</span>(())
-      }
-    },
-    runtime_handle,
-  ));
-
   <span class="comment">// set SIGINT/SIGTERM handler
   </span><span class="attribute">#[cfg(not(target_arch = <span class="string">&quot;wasm32&quot;</span>))]
-  </span><span class="kw">let </span><span class="kw-2">mut </span>signal_join_set = JoinSet::new();
-
-  <span class="attribute">#[cfg(not(target_arch = <span class="string">&quot;wasm32&quot;</span>))]
-  </span>signal_join_set.spawn({
+  </span>ctrlc::set_handler({
     <span class="kw">let </span>is_stopped_accidentially = is_stopped_accidentially.clone();
 
-    <span class="kw">async move </span>{
-      signal::ctrl_c().<span class="kw">await</span>.unwrap();
-
+    <span class="kw">move </span>|| {
       is_stopped_accidentially.store(<span class="bool-val">true</span>, Ordering::SeqCst);
     }
-  });
+  })
+  .unwrap();
 
-  <span class="kw">let </span><span class="kw-2">mut </span>worker_join_set = JoinSet::new();
+  <span class="kw">let </span><span class="kw-2">mut </span>hits_detail = Vec::new();
 
-  (<span class="number">0</span>..tries)
-    .divide_evenly_into(total_workers)
-    .zip(progress_tx_vec.into_iter())
-    .enumerate()
-    .for_each(|(id, (wakuchins, progress_tx))| {
-      <span class="kw">let </span>is_stopped_accidentially = is_stopped_accidentially.clone();
-      <span class="kw">let </span>hit_tx = hit_tx.clone();
-      <span class="kw">let </span>regex = regex.clone();
-      <span class="kw">let </span>total = wakuchins.len();
+  <span class="kw">let </span>hits = thread::scope::&lt;<span class="kw">_</span>, <span class="prelude-ty">Result</span>&lt;Vec&lt;HitCount&gt;&gt;&gt;(|s| {
+    <span class="kw">let </span>counter = ThreadHitCounter::new(hit_rx);
 
-      handles_to_abort.push(worker_join_set.spawn_on(
-        <span class="kw">async move </span>{
+    <span class="kw">let </span><span class="kw-2">mut </span>worker_handles = Vec::with_capacity(workers);
+
+    <span class="kw">let </span><span class="kw-2">mut </span>render = ThreadRender::new(
+      is_stopped_accidentially.clone(),
+      counter.clone(),
+      progress_rx_vec,
+      progress_handler,
+      tries,
+      total_workers,
+    );
+
+    <span class="comment">// hit handler
+    </span><span class="kw">let </span>hit_handle = s.spawn::&lt;<span class="kw">_</span>, <span class="prelude-ty">Result</span>&lt;()&gt;&gt;({
+      <span class="kw">let </span>counter = counter.clone();
+
+      <span class="kw">move </span>|| counter.run().map_err(|e| <span class="macro">anyhow!</span>(e).into())
+    });
+
+    <span class="comment">// progress reporter
+    </span><span class="kw">let </span>ui_handle = s.spawn::&lt;<span class="kw">_</span>, <span class="prelude-ty">Result</span>&lt;()&gt;&gt;(<span class="kw">move </span>|| {
+      render.run(progress_interval)<span class="question-mark">?</span>;
+
+      <span class="prelude-val">Ok</span>(())
+    });
+
+    (<span class="number">0</span>..tries)
+      .divide_evenly_into(total_workers)
+      .zip(progress_tx_vec.into_iter())
+      .enumerate()
+      .for_each(|(id, (wakuchins, progress_tx))| {
+        <span class="kw">let </span>is_stopped_accidentially = is_stopped_accidentially.clone();
+        <span class="kw">let </span>regex = regex.clone();
+        <span class="kw">let </span>hit_tx = hit_tx.clone();
+
+        worker_handles.push(s.spawn(<span class="kw">move </span>|| {
+          <span class="kw">let </span>total = wakuchins.len();
+
           <span class="kw">let </span><span class="kw-2">mut </span>hits = Vec::new();
 
           <span class="kw">for </span>(i, wakuchin) <span class="kw">in </span>wakuchins.map(|<span class="kw">_</span>| gen(times)).enumerate() {
@@ -787,27 +634,26 @@
               <span class="kw">let </span>hit = Hit::new(i, <span class="kw-2">&amp;</span>wakuchin);
 
               hit_tx
-                .send_async(hit.clone())
-                .<span class="kw">await
-                </span>.expect(<span class="string">&quot;hit channel is unavailable&quot;</span>);
+                .send(hit.clone())
+                .expect(<span class="string">&quot;hit channel is unavailable&quot;</span>);
 
               hits.push(hit);
             }
 
-            <span class="kw">let </span>progress_tx_result = progress_tx.send(Progress(
-              ProgressKind::Processing(ProcessingDetail::new(
+            progress_tx
+              .send(Progress(ProgressKind::Processing(ProcessingDetail::new(
                 id + <span class="number">1</span>,
                 wakuchin,
                 i,
                 total,
                 total_workers,
-              )),
-            ));
+              ))))
+              .expect(<span class="string">&quot;progress channel is unavailable&quot;</span>);
 
-            <span class="kw">if </span>is_stopped_accidentially.load(Ordering::Relaxed)
-              &amp;&amp; progress_tx_result.is_err()
-            {
-              <span class="kw">break</span>;
+            <span class="kw">if </span>is_stopped_accidentially.load(Ordering::Relaxed) {
+              drop(hit_tx);
+
+              <span class="kw">return </span><span class="prelude-val">Err</span>(WakuchinError::Cancelled);
             }
           }
 
@@ -823,84 +669,26 @@
               .unwrap();
           }
 
-          hits
-        },
-        runtime_handle,
-      ));
-    });
+          <span class="prelude-val">Ok</span>(hits)
+        }));
+      });
 
-  drop(hit_tx);
-
-  signal_join_set.spawn({
-    <span class="kw">let </span>is_stopped_accidentially = is_stopped_accidentially.clone();
-
-    <span class="kw">async move </span>{
-      <span class="kw">while </span>!is_stopped_accidentially.load(Ordering::SeqCst) {
-        yield_now().<span class="kw">await</span>;
-      } <span class="comment">// spinlock
-
-      </span><span class="kw">for </span>handle <span class="kw">in </span>handles_to_abort {
-        handle.abort();
+    <span class="kw">for </span>worker_handle <span class="kw">in </span>worker_handles {
+      <span class="kw">for </span>hit <span class="kw">in </span>worker_handle.join().unwrap()<span class="question-mark">?</span>.into_iter() {
+        hits_detail.push(hit);
       }
     }
-  });
 
-  <span class="kw">let </span><span class="kw-2">mut </span>hits_detail = Vec::new();
+    <span class="comment">// cleanup
+    </span>drop(hit_tx);
 
-  <span class="kw">while let </span><span class="prelude-val">Some</span>(hits) = worker_join_set.join_next().<span class="kw">await </span>{
-    <span class="kw">match </span>hits {
-      <span class="prelude-val">Ok</span>(hits) =&gt; {
-        <span class="kw">for </span>hit <span class="kw">in </span>hits.into_iter() {
-          hits_detail.push(hit);
-        }
-      }
-      <span class="prelude-val">Err</span>(e) =&gt; {
-        runtime.shutdown_background();
+    <span class="comment">// after all workers have finished, wait for ui and hit threads to finish
+    </span>hit_handle.join().unwrap()<span class="question-mark">?</span>;
+    ui_handle.join().unwrap()<span class="question-mark">?</span>;
 
-        <span class="kw">if </span>e.is_cancelled() {
-          <span class="kw">return </span><span class="prelude-val">Err</span>(WakuchinError::Cancelled);
-        }
+    <span class="prelude-val">Ok</span>(counter.get_all().into_hit_counts())
+  })<span class="question-mark">?</span>;
 
-        <span class="kw">return </span><span class="prelude-val">Err</span>(e.into());
-      }
-    }
-  }
-
-  <span class="kw">while let </span><span class="prelude-val">Some</span>(result) = hit_join_set.join_next().<span class="kw">await </span>{
-    <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = result {
-      runtime.shutdown_background();
-
-      <span class="kw">if </span>e.is_cancelled() {
-        <span class="kw">return </span><span class="prelude-val">Err</span>(WakuchinError::Cancelled);
-      }
-
-      <span class="kw">return </span><span class="prelude-val">Err</span>(e.into());
-    }
-  }
-
-  <span class="comment">// after all workers have finished, wait for ui threads to finish
-  </span><span class="kw">while let </span><span class="prelude-val">Some</span>(result) = ui_join_set.join_next().<span class="kw">await </span>{
-    <span class="kw">if let </span><span class="prelude-val">Err</span>(e) = result {
-      runtime.shutdown_background();
-
-      <span class="kw">if </span>e.is_cancelled() {
-        <span class="kw">return </span><span class="prelude-val">Err</span>(WakuchinError::Cancelled);
-      }
-
-      <span class="kw">return </span><span class="prelude-val">Err</span>(e.into());
-    }
-
-    result<span class="question-mark">??</span>; <span class="comment">// JoinError&lt;Error&lt;T&gt;&gt;
-  </span>}
-
-  signal_join_set.abort_all();
-
-  <span class="kw">while </span>signal_join_set.join_next().<span class="kw">await</span>.is_some() {}
-
-  <span class="comment">// cleanup
-  </span>runtime.shutdown_background();
-
-  <span class="kw">let </span>hits = counter.get_all().into_hit_counts();
   <span class="kw">let </span>hits_total = hits.iter().map(|c| c.hits).sum::&lt;usize&gt;();
 
   <span class="prelude-val">Ok</span>(WakuchinResult {

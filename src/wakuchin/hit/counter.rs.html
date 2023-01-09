@@ -92,32 +92,13 @@
 <span id="92">92</span>
 <span id="93">93</span>
 <span id="94">94</span>
-<span id="95">95</span>
-<span id="96">96</span>
-<span id="97">97</span>
-<span id="98">98</span>
-<span id="99">99</span>
-<span id="100">100</span>
-<span id="101">101</span>
-<span id="102">102</span>
-<span id="103">103</span>
-<span id="104">104</span>
-<span id="105">105</span>
-<span id="106">106</span>
-<span id="107">107</span>
-<span id="108">108</span>
-<span id="109">109</span>
-<span id="110">110</span>
-<span id="111">111</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::borrow::Cow;
 <span class="kw">use </span>std::sync::atomic::{AtomicBool, Ordering};
 <span class="kw">use </span>std::sync::Arc;
+<span class="kw">use </span>std::thread;
 <span class="kw">use </span>std::time::Duration;
 
 <span class="kw">use </span>flume::{Receiver, TryRecvError};
-<span class="kw">use </span>tokio::task::JoinSet;
-<span class="kw">use </span>tokio::time::sleep;
-<span class="kw">use </span>tokio::{runtime::Handle, task::AbortHandle};
 
 <span class="kw">use </span><span class="kw">crate</span>::result::{Hit, HitCount};
 
@@ -159,37 +140,22 @@
     }
   }
 
-  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>run(
-    <span class="kw-2">&amp;</span><span class="self">self</span>,
-    set: <span class="kw-2">&amp;mut </span>JoinSet&lt;()&gt;,
-    handle: <span class="kw-2">&amp;</span>Handle,
-  ) -&gt; AbortHandle {
-    set.spawn_on(
-      {
-        <span class="kw">let </span>count_stopped = <span class="self">self</span>.count_stopped.clone();
-        <span class="kw">let </span>store = <span class="self">self</span>.store.clone();
-        <span class="kw">let </span>hit_rx = <span class="self">self</span>.hit_rx.clone();
-
-        <span class="kw">async move </span>{
-          <span class="kw">loop </span>{
-            <span class="kw">match </span>hit_rx.try_recv() {
-              <span class="prelude-val">Ok</span>(hit) =&gt; {
-                store.add(hit.chars);
-              }
-              <span class="prelude-val">Err</span>(TryRecvError::Disconnected) =&gt; {
-                count_stopped.store(<span class="bool-val">true</span>, Ordering::Release);
-
-                <span class="kw">break</span>;
-              }
-              <span class="prelude-val">Err</span>(TryRecvError::Empty) =&gt; {
-                sleep(Duration::from_millis(<span class="number">5</span>)).<span class="kw">await</span>;
-              }
-            }
-          }
+  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>run(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), TryRecvError&gt; {
+    <span class="kw">loop </span>{
+      <span class="kw">match </span><span class="self">self</span>.hit_rx.try_recv() {
+        <span class="prelude-val">Ok</span>(hit) =&gt; {
+          <span class="self">self</span>.store.add(hit.chars);
         }
-      },
-      handle,
-    )
+        <span class="prelude-val">Err</span>(TryRecvError::Disconnected) =&gt; {
+          <span class="self">self</span>.count_stopped.store(<span class="bool-val">true</span>, Ordering::Release);
+
+          <span class="kw">return </span><span class="prelude-val">Ok</span>(());
+        }
+        <span class="prelude-val">Err</span>(TryRecvError::Empty) =&gt; {
+          thread::sleep(Duration::from_millis(<span class="number">5</span>));
+        }
+      }
+    }
   }
 
   <span class="attribute">#[inline]

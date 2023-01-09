@@ -38,7 +38,7 @@
 <span class="kw">pub mod </span>empty;
 <span class="kw">pub mod </span>msgpack;
 
-<span class="kw">pub trait </span>ProgressHandler: Send + <span class="lifetime">&#39;static </span>{
+<span class="kw">pub trait </span>ProgressHandler: Send {
   <span class="kw">fn </span>before_start(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="prelude-val">Ok</span>(())
   }

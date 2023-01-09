@@ -116,7 +116,6 @@
 <span id="116">116</span>
 <span id="117">117</span>
 <span id="118">118</span>
-<span id="119">119</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::time::Duration;
 
 <span class="kw">use </span>regex::Regex;
@@ -193,9 +192,9 @@
 
   <span class="kw">pub fn </span>progress_handler(
     <span class="kw-2">mut </span><span class="self">self</span>,
-    progress_handler: <span class="kw">impl </span>ProgressHandler,
+    progress_handler: Box&lt;<span class="kw">dyn </span>ProgressHandler&gt;,
   ) -&gt; <span class="self">Self </span>{
-    <span class="self">self</span>.progress_handler = Box::new(progress_handler);
+    <span class="self">self</span>.progress_handler = progress_handler;
 
     <span class="self">self
   </span>}
@@ -214,7 +213,7 @@
 }
 
 <span class="kw">impl </span>ResearchBuilder&lt;usize, usize, Regex&gt; {
-  <span class="kw">pub async fn </span>run_par(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;WakuchinResult&gt; {
+  <span class="kw">pub fn </span>run_par(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;WakuchinResult&gt; {
     run_par(
       <span class="self">self</span>.tries,
       <span class="self">self</span>.times,
@@ -223,8 +222,7 @@
       <span class="self">self</span>.progress_interval,
       <span class="self">self</span>.workers,
     )
-    .<span class="kw">await
-  </span>}
+  }
 
   <span class="kw">pub fn </span>run_seq(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;WakuchinResult&gt; {
     run_seq(

@@ -17,13 +17,9 @@
 <span id="17">17</span>
 <span id="18">18</span>
 <span id="19">19</span>
-<span id="20">20</span>
-<span id="21">21</span>
-<span id="22">22</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::io;
 
 <span class="kw">use </span>thiserror::Error;
-<span class="kw">use </span>tokio::task::JoinError;
 
 <span class="doccomment">/// Error type for wakuchin.
 </span><span class="attribute">#[derive(Debug, Error)]
@@ -35,8 +31,6 @@
   </span>TimesIsZero,
   <span class="attribute">#[error(<span class="string">&quot;&#39;{0}&#39;: unknown result output format&quot;</span>)]
   </span>UnknownResultOutputFormat(String),
-  <span class="attribute">#[error(transparent)]
-  </span>WorkerError(<span class="attribute">#[from] </span>JoinError),
   <span class="attribute">#[error(<span class="string">&quot;error while serializing result: {0}&quot;</span>)]
   </span>SerializeError(<span class="attribute">#[from] </span>io::Error),
   <span class="attribute">#[error(transparent)]

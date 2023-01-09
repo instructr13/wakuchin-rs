@@ -221,6 +221,10 @@
 <span id="221">221</span>
 <span id="222">222</span>
 <span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::borrow::Cow;
 <span class="kw">use </span>std::sync::atomic::{AtomicBool, Ordering};
 <span class="kw">use </span>std::sync::Arc;
@@ -273,7 +277,9 @@
     <span class="self">self</span>.progress_handler.before_start()
   }
 
-  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async fn </span>run(<span class="kw-2">&amp;mut </span><span class="self">self</span>, interval: Duration) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>run(<span class="kw-2">&amp;mut </span><span class="self">self</span>, interval: Duration) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+    <span class="self">self</span>.invoke_before_start()<span class="question-mark">?</span>;
+
     <span class="kw">let </span><span class="kw-2">mut </span>start_time = Instant::now();
     <span class="kw">let </span><span class="kw-2">mut </span>current_diff = DiffStore::new(<span class="number">0_usize</span>);
     <span class="kw">let </span><span class="kw-2">mut </span>current_ = <span class="number">0</span>;
@@ -341,6 +347,8 @@
       current_ = <span class="number">0</span>;
       start_time = Instant::now();
     }
+
+    <span class="self">self</span>.invoke_after_finish()<span class="question-mark">?</span>;
 
     <span class="prelude-val">Ok</span>(())
   }
