@@ -7,7 +7,7 @@ use crate::{progress::Progress, result::HitCount};
 pub mod empty;
 pub mod msgpack;
 
-pub trait ProgressHandler: Sync + Send + 'static {
+pub trait ProgressHandler: Send + 'static {
   fn before_start(&mut self) -> Result<()> {
     Ok(())
   }
