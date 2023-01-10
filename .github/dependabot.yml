@@ -5,6 +5,10 @@ updates:
     schedule:
       interval: "daily"
   - package-ecosystem: "cargo"
-    directory: "/"
+    directory: "/core"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "cargo"
+    directory: "/cli"
     schedule:
       interval: "weekly"
