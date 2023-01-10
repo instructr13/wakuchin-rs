@@ -6,7 +6,7 @@ use flume::Receiver;
 
 use crate::result::{Hit, HitCount};
 
-use super::store::{HitStore, SyncHitStore};
+use super::store::{AtomicHitStore, HitStore};
 
 pub(crate) struct HitCounterEntry {
   entry: Vec<(Cow<'static, str>, usize)>,
@@ -31,7 +31,7 @@ impl HitCounterEntry {
 #[derive(Clone)]
 pub(crate) struct ThreadHitCounter {
   pub(crate) count_stopped: Arc<AtomicBool>,
-  store: HitStore,
+  store: AtomicHitStore,
   hit_rx: Receiver<Hit>,
 }
 
@@ -39,7 +39,7 @@ impl ThreadHitCounter {
   pub(crate) fn new(hit_rx: Receiver<Hit>) -> Self {
     Self {
       count_stopped: Arc::new(AtomicBool::new(false)),
-      store: HitStore::new(),
+      store: AtomicHitStore::new(),
       hit_rx,
     }
   }
@@ -59,14 +59,14 @@ impl ThreadHitCounter {
 }
 
 pub(crate) struct HitCounter {
-  store: SyncHitStore,
+  store: HitStore,
 }
 
 impl HitCounter {
   #[inline]
   pub(crate) fn new() -> Self {
     Self {
-      store: SyncHitStore::new(),
+      store: HitStore::new(),
     }
   }
 

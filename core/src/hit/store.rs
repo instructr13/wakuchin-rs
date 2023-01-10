@@ -6,11 +6,11 @@ use std::sync::Arc;
 use dashmap::DashMap;
 
 #[derive(Clone)]
-pub(crate) struct HitStore {
+pub(crate) struct AtomicHitStore {
   map: Arc<DashMap<Cow<'static, str>, AtomicUsize>>,
 }
 
-impl HitStore {
+impl AtomicHitStore {
   #[inline]
   pub(crate) fn new() -> Self {
     Self {
@@ -37,11 +37,11 @@ impl HitStore {
   }
 }
 
-pub(crate) struct SyncHitStore {
+pub(crate) struct HitStore {
   map: DashMap<Cow<'static, str>, usize>,
 }
 
-impl SyncHitStore {
+impl HitStore {
   #[inline]
   pub(crate) fn new() -> Self {
     Self {
