@@ -71,9 +71,9 @@ impl ConsoleProgressHandler {
       format!(
         "{}{}",
         if space == 0 {
-          current.green()
+          current.green().to_string()
         } else {
-          current.blue()
+          current.blue().to_string()
         },
         "━".repeat(space).dimmed()
       )
@@ -259,8 +259,7 @@ impl ConsoleProgressHandler {
         buf.format(current).bold(),
         tries = self.tries,
         rate = human_format::Formatter::new().format(rate),
-      ))
-    )?;
+      );
 
     Ok(())
   }
