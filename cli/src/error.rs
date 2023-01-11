@@ -19,8 +19,8 @@ pub(crate) enum AppError {
    {} {}{line}{column}{source}",
     "-->".blue().bold(),
     .path.to_string_lossy(),
-    line = .line.map(|l| format!(":{}", l)).unwrap_or_default(),
-    column = .column.map(|c| format!(":{}", c)).unwrap_or_default())]
+    line = .line.map(|l| format!(":{l}")).unwrap_or_default(),
+    column = .column.map(|c| format!(":{c}")).unwrap_or_default())]
   ConfigDeserializeError {
     path: Box<Path>,
     line: Option<usize>,

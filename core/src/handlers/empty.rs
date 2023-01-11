@@ -9,7 +9,8 @@ use super::ProgressHandler;
 pub struct EmptyProgressHandler {}
 
 impl EmptyProgressHandler {
-  pub fn new() -> Self {
+  #[must_use]
+  pub const fn new() -> Self {
     Self {}
   }
 }

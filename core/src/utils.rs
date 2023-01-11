@@ -13,7 +13,7 @@ impl<T> DiffStore<T>
 where
   T: Copy + Debug + PartialOrd + Sub<Output = T>,
 {
-  pub(crate) fn new(init: T) -> Self {
+  pub(crate) const fn new(init: T) -> Self {
     Self { previous: init }
   }
 

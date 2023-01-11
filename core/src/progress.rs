@@ -74,6 +74,6 @@ pub struct DoneDetail {
   pub total_workers: usize,
 }
 
-/// Progress data that you will use in progress_handler.
+/// Progress data you will use in `progress_handler`.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Progress(pub ProgressKind);

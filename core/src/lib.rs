@@ -14,6 +14,8 @@ mod hit;
 mod render;
 mod utils;
 
+use std::borrow::Cow;
+
 use regex::Regex;
 
 /// Generate a randomized wakuchin string.
@@ -57,12 +59,12 @@ use regex::Regex;
 /// assert_eq!(wakuchin_n_count, 3);
 /// ```
 #[inline]
-pub fn gen(times: usize) -> String {
+pub fn gen(times: usize) -> Cow<'static, str> {
   let mut wakuchin = symbol::WAKUCHIN.repeat(times);
 
   fastrand::shuffle(&mut wakuchin);
 
-  wakuchin.iter().collect()
+  wakuchin.iter().collect::<String>().into()
 }
 
 /// Generate a vector of randomized wakuchin string.
@@ -111,7 +113,7 @@ pub fn gen(times: usize) -> String {
 /// assert_eq!(wakuchin_c_count, 9);
 /// assert_eq!(wakuchin_n_count, 9);
 /// ```
-pub fn gen_vec(len: usize, times: usize) -> Vec<String> {
+pub fn gen_vec(len: usize, times: usize) -> Vec<Cow<'static, str>> {
   (0..len).map(|_| gen(times)).collect()
 }
 

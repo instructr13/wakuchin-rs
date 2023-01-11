@@ -20,6 +20,7 @@ pub struct ResearchBuilder<Tries, Times, TRegex> {
 }
 
 impl ResearchBuilder<(), (), ()> {
+  #[must_use]
   pub fn new() -> Self {
     Self {
       tries: (),
@@ -99,7 +100,7 @@ impl ResearchBuilder<usize, usize, Regex> {
     run_par(
       self.tries,
       self.times,
-      self.regex,
+      &self.regex,
       self.progress_handler,
       self.progress_interval,
       self.workers,
@@ -110,7 +111,7 @@ impl ResearchBuilder<usize, usize, Regex> {
     run_seq(
       self.tries,
       self.times,
-      self.regex,
+      &self.regex,
       self.progress_handler,
       self.progress_interval,
     )

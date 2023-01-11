@@ -53,7 +53,7 @@ impl App {
     let interactive =
       atty::is(atty::Stream::Stdin) && atty::is(atty::Stream::Stderr);
 
-    App {
+    Self {
       args: Args::parse(),
       config: Config::default(),
       interactive,
@@ -78,7 +78,7 @@ impl App {
     Input::<usize>::with_theme(&ColorfulTheme::default())
       .with_prompt("How many tries:")
       .interact_on(term)
-      .map_err(|e| e.into())
+      .map_err(Into::into)
   }
 
   fn prompt_times(&self, term: &Term) -> Result<usize> {
@@ -87,7 +87,7 @@ impl App {
     Input::<usize>::with_theme(&ColorfulTheme::default())
       .with_prompt("Wakuchins times:")
       .interact_on(term)
-      .map_err(|e| e.into())
+      .map_err(Into::into)
   }
 
   fn prompt_regex(&self, term: &Term) -> Result<Regex> {

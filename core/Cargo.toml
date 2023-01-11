@@ -23,7 +23,7 @@ criterion = { version = "0.4" }
 
 [dependencies]
 anyhow = "1.0"
-base64 = "0.20"
+base64 = "0.21"
 dashmap = "5.3"
 divide_range = "0.1"
 fastrand = "1.8"

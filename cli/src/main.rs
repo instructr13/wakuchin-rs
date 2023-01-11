@@ -38,7 +38,7 @@ async fn main() {
       std::process::exit(1);
     }
 
-    eprintln!("{} {}", "error:".red().bold(), err);
+    eprintln!("{} {err}", "error:".red().bold());
 
     std::process::exit(1);
   }

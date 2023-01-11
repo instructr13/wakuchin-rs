@@ -26,9 +26,7 @@ fn get_total_workers(workers: usize) -> Result<usize> {
     return Ok(workers);
   }
 
-  available_parallelism()
-    .map(|num| num.into())
-    .map_err(|e| e.into())
+  available_parallelism().map(Into::into).map_err(Into::into)
 }
 
 /// Research wakuchin with parallelism.
@@ -62,7 +60,7 @@ fn get_total_workers(workers: usize) -> Result<usize> {
 ///
 ///   # fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///   let handler: Box<dyn ProgressHandler> = Box::new(EmptyProgressHandler::new());
-///   let result = run_par(10, 0, Regex::new(r"WKCN")?, handler, Duration::from_secs(1), 0);
+///   let result = run_par(10, 0, &Regex::new(r"WKCN")?, handler, Duration::from_secs(1), 0);
 ///
 ///   assert!(result.is_err());
 ///   assert_eq!(result.err().unwrap().to_string(), "times cannot be zero");
@@ -90,7 +88,7 @@ fn get_total_workers(workers: usize) -> Result<usize> {
 /// let tries = 10;
 /// let handler: Box<dyn ProgressHandler>
 ///   = Box::new(MsgpackProgressHandler::new(tries, Arc::new(Mutex::new(stdout()))));
-/// let result = run_par(tries, 1, Regex::new(r"WKCN")?, handler, Duration::from_secs(1), 4)?;
+/// let result = run_par(tries, 1, &Regex::new(r"WKCN")?, handler, Duration::from_secs(1), 4)?;
 ///
 /// println!("{}", result.out(ResultOutputFormat::Text)?);
 /// #
@@ -100,7 +98,7 @@ fn get_total_workers(workers: usize) -> Result<usize> {
 pub fn run_par(
   tries: usize,
   times: usize,
-  regex: Regex,
+  regex: &Regex,
   progress_handler: Box<dyn ProgressHandler>,
   progress_interval: Duration,
   workers: usize,
@@ -145,33 +143,29 @@ pub fn run_par(
 
   let mut hits_detail = Vec::new();
 
+  let counter = ThreadHitCounter::new(hit_rx);
+
+  let mut render = ThreadRender::new(
+    is_stopped_accidentially.clone(),
+    counter.clone(),
+    progress_rx_vec,
+    progress_handler,
+    tries,
+    total_workers,
+  );
+
   let hits = thread::scope::<_, Result<Vec<HitCount>>>(|s| {
-    let counter = ThreadHitCounter::new(hit_rx);
-
-    let mut worker_handles = Vec::with_capacity(workers);
-
-    let mut render = ThreadRender::new(
-      is_stopped_accidentially.clone(),
-      counter.clone(),
-      progress_rx_vec,
-      progress_handler,
-      tries,
-      total_workers,
-    );
-
     // hit handler
-    let hit_handle = s.spawn({
-      let counter = counter.clone();
-
-      move || counter.run()
-    });
+    let hit_handle = s.spawn(|| counter.run());
 
     // progress reporter
-    let ui_handle = s.spawn::<_, Result<()>>(move || {
+    let ui_handle = s.spawn::<_, Result<()>>(|| {
       render.run(progress_interval)?;
 
       Ok(())
     });
+
+    let mut worker_handles = Vec::with_capacity(workers);
 
     (0..tries)
       .divide_evenly_into(total_workers)
@@ -189,7 +183,7 @@ pub fn run_par(
 
           for (i, wakuchin) in wakuchins.map(|_| gen(times)).enumerate() {
             if check(&wakuchin, &regex) {
-              let hit = Hit::new(i, &wakuchin);
+              let hit = Hit::new(i, &*wakuchin);
 
               hit_tx
                 .send(hit.clone())
@@ -290,7 +284,7 @@ pub fn run_par(
 ///   use wakuchin::worker::run_seq;
 ///
 ///   let handler: Box<dyn ProgressHandler> = Box::new(EmptyProgressHandler::new());
-///   let result = run_seq(10, 0, Regex::new(r"WKCN")?, handler, Duration::from_secs(1));
+///   let result = run_seq(10, 0, &Regex::new(r"WKCN")?, handler, Duration::from_secs(1));
 ///
 ///   assert!(result.is_err());
 ///   assert_eq!(result.err().unwrap().to_string(), "times cannot be zero");
@@ -317,7 +311,7 @@ pub fn run_par(
 /// let handler: Box<dyn ProgressHandler>
 ///   = Box::new(MsgpackProgressHandler::new(tries, Arc::new(Mutex::new(stdout()))));
 ///
-/// let result = run_seq(tries, 1, Regex::new(r"WKCN")?, handler, Duration::from_secs(1))?;
+/// let result = run_seq(tries, 1, &Regex::new(r"WKCN")?, handler, Duration::from_secs(1))?;
 ///
 /// println!("{}", result.out(ResultOutputFormat::Text)?);
 /// #
@@ -326,7 +320,7 @@ pub fn run_par(
 pub fn run_seq(
   tries: usize,
   times: usize,
-  regex: Regex,
+  regex: &Regex,
   progress_handler: Box<dyn ProgressHandler>,
   progress_interval: Duration,
 ) -> Result<WakuchinResult> {
@@ -390,8 +384,8 @@ pub fn run_seq(
         return Err(WakuchinError::Cancelled);
       }
 
-      if check(&wakuchin, &regex) {
-        let hit = Hit::new(i, &wakuchin);
+      if check(&wakuchin, regex) {
+        let hit = Hit::new(i, &*wakuchin);
 
         render.handle_hit(wakuchin);
 

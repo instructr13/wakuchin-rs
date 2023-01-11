@@ -151,8 +151,7 @@ pub(crate) fn load_config(path: &Path) -> Result<Config> {
     "toml" => toml::from_str(&contents).map_err(|e| {
       let (line, column) = e
         .line_col()
-        .map(|(l, c)| (Some(l), Some(c)))
-        .unwrap_or((None, None));
+        .map_or((None, None), |(l, c)| (Some(l), Some(c)));
 
       AppError::ConfigDeserializeError {
         path: path.into(),
