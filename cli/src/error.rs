@@ -2,7 +2,7 @@ use std::io;
 use std::path::Path;
 
 use format_serde_error::SerdeError;
-use owo_colors::OwoColorize;
+use owo_colors::OwoColorize as _;
 use thiserror::Error;
 
 #[derive(Debug, Error)]

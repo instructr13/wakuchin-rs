@@ -8,7 +8,7 @@ use std::panic;
 use std::sync::{Arc, Mutex};
 
 use anyhow::Result;
-use owo_colors::OwoColorize;
+use owo_colors::OwoColorize as _;
 use wakuchin::builder::ResearchBuilder;
 use wakuchin::error::WakuchinError;
 use wakuchin::handlers::msgpack::{

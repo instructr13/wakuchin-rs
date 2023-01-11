@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use clap::ValueEnum;
 use console::Term;
-use owo_colors::OwoColorize;
+use owo_colors::OwoColorize as _;
 use serde::{Deserialize, Serialize};
 use wakuchin::convert::chars_to_wakuchin;
 use wakuchin::handlers::ProgressHandler;
