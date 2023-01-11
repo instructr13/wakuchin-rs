@@ -1,8 +1,8 @@
 use std::io;
 use std::path::Path;
 
-use crossterm::style::Stylize;
 use format_serde_error::SerdeError;
+use owo_colors::OwoColorize;
 use thiserror::Error;
 
 #[derive(Debug, Error)]

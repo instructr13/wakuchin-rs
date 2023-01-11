@@ -18,8 +18,8 @@ simd-accel = ["simd-json"]
 stdweb = ["instant/stdweb"]
 wasm-bindgen = ["instant/wasm-bindgen"]
 
-[dev-dependencies]
-criterion = { version = "0.4", features = ["async_tokio"] }
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+criterion = { version = "0.4" }
 
 [dependencies]
 anyhow = "1.0"

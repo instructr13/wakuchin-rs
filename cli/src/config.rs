@@ -1,3 +1,4 @@
+use std::fs::read_to_string;
 use std::path::Path;
 use std::{borrow::Borrow, time::Duration};
 
@@ -7,7 +8,6 @@ use format_serde_error::SerdeError;
 use humantime::DurationError;
 use regex::Regex;
 use serde::Deserialize;
-use tokio::fs::read_to_string;
 use wakuchin::result::ResultOutputFormat;
 
 use crate::error::{AppError, Result};
@@ -115,14 +115,11 @@ pub(crate) struct Config {
   pub(crate) workers: usize,
 }
 
-pub(crate) async fn load_config(path: &Path) -> Result<Config> {
-  let contents =
-    read_to_string(path)
-      .await
-      .map_err(|e| AppError::ConfigIoError {
-        path: path.into(),
-        source: e,
-      })?;
+pub(crate) fn load_config(path: &Path) -> Result<Config> {
+  let contents = read_to_string(path).map_err(|e| AppError::ConfigIoError {
+    path: path.into(),
+    source: e,
+  })?;
 
   let config: <Config as ClapSerde>::Opt = match path
     .extension()
@@ -172,16 +169,21 @@ pub(crate) async fn load_config(path: &Path) -> Result<Config> {
 
 #[cfg(test)]
 mod test {
-  use std::path::{Path, PathBuf};
   use std::time::Duration;
 
   use anyhow::Result;
   use humantime::DurationError;
 
+  #[cfg(not(target_arch = "wasm32"))]
   use crate::config::InternalResultOutputFormat;
+  #[cfg(not(target_arch = "wasm32"))]
   use crate::error::AppError;
+  #[cfg(not(target_arch = "wasm32"))]
   use crate::handlers::HandlerKind;
+  #[cfg(not(target_arch = "wasm32"))]
+  use std::path::{Path, PathBuf};
 
+  #[cfg(not(target_arch = "wasm32"))]
   fn init() {
     format_serde_error::never_color();
   }
@@ -201,8 +203,9 @@ mod test {
     Ok(())
   }
 
-  #[tokio::test]
-  async fn test_load_config() -> Result<()> {
+  #[cfg(not(target_arch = "wasm32"))]
+  #[test]
+  fn test_load_config() -> Result<()> {
     init();
 
     let base_path = Path::new(env!("CARGO_MANIFEST_DIR"));
@@ -211,8 +214,7 @@ mod test {
 
     not_exist_json.push("../examples/not_exist.json");
 
-    let not_exist_json_err =
-      super::load_config(&not_exist_json).await.unwrap_err();
+    let not_exist_json_err = super::load_config(&not_exist_json).unwrap_err();
 
     assert_eq!(
       not_exist_json_err.to_string(),
@@ -227,7 +229,7 @@ mod test {
     invalid_regex_yaml.push("../examples/invalid-regex.yml");
 
     let invalid_regex_yaml_err =
-      super::load_config(&invalid_regex_yaml).await.unwrap_err();
+      super::load_config(&invalid_regex_yaml).unwrap_err();
 
     if let AppError::ConfigDeserializeError { source, .. } =
       invalid_regex_yaml_err
@@ -241,7 +243,7 @@ mod test {
 
     correct_toml.push("../examples/tries-300000000.toml");
 
-    let config = super::load_config(&correct_toml).await?;
+    let config = super::load_config(&correct_toml)?;
 
     assert_eq!(config.tries, 300000000);
     assert_eq!(config.times, 2);
