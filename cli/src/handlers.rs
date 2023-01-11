@@ -47,7 +47,7 @@ impl Default for HandlerKind {
 
 pub(crate) struct ConsoleProgressHandler {
   no_progress: bool,
-  handler_height: usize,
+  handler_height: u16,
   tries: usize,
   tries_string: String,
   times: usize,
@@ -59,8 +59,28 @@ impl ConsoleProgressHandler {
       no_progress,
       handler_height: 0,
       tries,
-      tries_string: format!("{}", tries),
+      tries_string: format!("{tries}"),
       times,
+    }
+  }
+
+  fn render_progress_segment(width: usize, percentage: f64) -> String {
+    if percentage >= 100.0 {
+      "━".repeat(width).blue().to_string()
+    } else {
+      let block = (width as f64 * percentage / 100.0) as usize;
+      let current = "━".repeat(block) + "╸";
+      let space = width - block - 1;
+
+      format!(
+        "{}{}",
+        if space == 0 {
+          current.green()
+        } else {
+          current.blue()
+        },
+        "━".repeat(space).dim()
+      )
     }
   }
 
@@ -201,26 +221,6 @@ impl ConsoleProgressHandler {
     current_total
   }
 
-  fn render_progress_segment(&self, width: usize, percentage: f64) -> String {
-    if percentage >= 100.0 {
-      "━".repeat(width).blue().to_string()
-    } else {
-      let block = (width as f64 * percentage / 100.0) as usize;
-      let current = "━".repeat(block) + "╸";
-      let space = width - block - 1;
-
-      format!(
-        "{}{}",
-        if space == 0 {
-          current.green()
-        } else {
-          current.blue()
-        },
-        "━".repeat(space).dim()
-      )
-    }
-  }
-
   /// Use blue bar to indicate progress that is processing.
   /// Use green bar to indicate progress that is done.
   fn render_progress_bar(
@@ -240,9 +240,9 @@ impl ConsoleProgressHandler {
     };
 
     let percentage = current as f64 / self.tries as f64 * 100.0;
-    let bar = self.render_progress_segment(bar_width.into(), percentage);
-    let rate = current_diff as f32 / elapsed_time.as_secs_f32();
-    let eta = (self.tries - current) as f32 / rate;
+    let bar = Self::render_progress_segment(bar_width.into(), percentage);
+    let rate = current_diff as f64 / elapsed_time.as_secs_f64();
+    let eta = (self.tries - current) as f64 / rate;
 
     execute!(
       stderr(),
@@ -252,7 +252,7 @@ impl ConsoleProgressHandler {
         "total".green().underlined(),
         buf.format(current),
         tries = self.tries,
-        rate = human_format::Formatter::new().format(rate.into()),
+        rate = human_format::Formatter::new().format(rate),
       ))
     )?;
 
@@ -287,13 +287,18 @@ impl ProgressHandler for ConsoleProgressHandler {
     }
 
     if self.handler_height == 0 {
-      self.handler_height = progresses.len() + hit_counts.len() + 1;
+      let progresses_len: u16 = progresses
+        .len()
+        .try_into()
+        .expect("Too many progresses to display");
+      let hit_counts_len: u16 = hit_counts
+        .len()
+        .try_into()
+        .expect("Too many hit counts to display");
+
+      self.handler_height = progresses_len + hit_counts_len + 1;
     } else {
-      execute!(
-        stderr(),
-        MoveLeft(u16::MAX),
-        MoveUp(self.handler_height as u16)
-      )?;
+      execute!(stderr(), MoveLeft(u16::MAX), MoveUp(self.handler_height))?;
     }
 
     let mut itoa_buf = itoa::Buffer::new();

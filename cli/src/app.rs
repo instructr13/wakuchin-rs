@@ -45,7 +45,7 @@ impl App {
     let interactive =
       atty::is(atty::Stream::Stdin) && atty::is(atty::Stream::Stderr);
 
-    App {
+    Self {
       args: Args::parse(),
       config: Config::default(),
       interactive,
@@ -66,7 +66,7 @@ impl App {
     Input::<usize>::with_theme(&ColorfulTheme::default())
       .with_prompt("How many tries:")
       .interact_on(term)
-      .map_err(|e| e.into())
+      .map_err(Into::into)
   }
 
   fn prompt_times(&self, term: &Term) -> Result<usize> {
@@ -75,7 +75,7 @@ impl App {
     Input::<usize>::with_theme(&ColorfulTheme::default())
       .with_prompt("Wakuchins times:")
       .interact_on(term)
-      .map_err(|e| e.into())
+      .map_err(Into::into)
   }
 
   fn prompt_regex(&self, term: &Term) -> Result<Regex> {
@@ -123,9 +123,7 @@ impl App {
 
   pub(crate) async fn setup_config(&mut self) -> Result<()> {
     let mut config = if let Some(config_path) = &self.args.config_path {
-      load_config(config_path.as_path())
-        .await?
-        .merge(&mut self.args.config)
+      load_config(config_path.as_path())?.merge(&mut self.args.config)
     } else {
       Config::from(&mut self.args.config)
     };

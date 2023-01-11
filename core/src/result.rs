@@ -9,7 +9,7 @@ use smooth::Smooth;
 use crate::error::WakuchinError;
 
 /// The output format of the result
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Deserialize)]
 pub enum ResultOutputFormat {
   /// Text output
   ///
@@ -86,7 +86,7 @@ impl Hit {
   }
 }
 
-/// The count of hits that you will use in progress_handler.
+/// The count of hits you will use in `progress_handler`.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct HitCount {
   /// Wakuchin chars that were hit.

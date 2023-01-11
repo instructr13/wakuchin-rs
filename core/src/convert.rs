@@ -42,7 +42,7 @@ fn wakuchin_to_char(char: char) -> char {
 /// assert_eq!(chars_to_wakuchin("WKNCWKNC"), "わくんちわくんち");
 /// ```
 pub fn chars_to_wakuchin(chars: &str) -> String {
-  String::from_iter(chars.chars().map(self::char_to_wakuchin))
+  chars.chars().map(self::char_to_wakuchin).collect()
 }
 
 /// Convert from actual wakuchin chars to internally used wakuchin chars.
@@ -65,7 +65,7 @@ pub fn chars_to_wakuchin(chars: &str) -> String {
 /// assert_eq!(wakuchin_to_chars("わくんちわくんち"), "WKNCWKNC");
 /// ```
 pub fn wakuchin_to_chars(chars: &str) -> String {
-  String::from_iter(chars.chars().map(self::wakuchin_to_char))
+  chars.chars().map(self::wakuchin_to_char).collect()
 }
 
 #[cfg(test)]

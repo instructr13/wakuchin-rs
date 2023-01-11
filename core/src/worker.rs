@@ -27,9 +27,7 @@ fn get_total_workers(workers: usize) -> Result<usize> {
     return Ok(workers);
   }
 
-  available_parallelism()
-    .map(|num| num.into())
-    .map_err(|e| e.into())
+  available_parallelism().map(Into::into).map_err(Into::into)
 }
 
 /// Research wakuchin with parallelism.
@@ -63,7 +61,7 @@ fn get_total_workers(workers: usize) -> Result<usize> {
 ///
 ///   # fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///   let handler: Box<dyn ProgressHandler> = Box::new(EmptyProgressHandler::new());
-///   let result = run_par(10, 0, Regex::new(r"WKCN")?, handler, Duration::from_secs(1), 0);
+///   let result = run_par(10, 0, &Regex::new(r"WKCN")?, handler, Duration::from_secs(1), 0);
 ///
 ///   assert!(result.is_err());
 ///   assert_eq!(result.err().unwrap().to_string(), "times cannot be zero");
@@ -91,7 +89,7 @@ fn get_total_workers(workers: usize) -> Result<usize> {
 /// let tries = 10;
 /// let handler: Box<dyn ProgressHandler>
 ///   = Box::new(MsgpackProgressHandler::new(tries, Arc::new(Mutex::new(stdout()))));
-/// let result = run_par(tries, 1, Regex::new(r"WKCN")?, handler, Duration::from_secs(1), 4)?;
+/// let result = run_par(tries, 1, &Regex::new(r"WKCN")?, handler, Duration::from_secs(1), 4)?;
 ///
 /// println!("{}", result.out(ResultOutputFormat::Text)?);
 /// #
@@ -287,7 +285,7 @@ pub fn run_par(
 ///   use wakuchin::worker::run_seq;
 ///
 ///   let handler: Box<dyn ProgressHandler> = Box::new(EmptyProgressHandler::new());
-///   let result = run_seq(10, 0, Regex::new(r"WKCN")?, handler, Duration::from_secs(1));
+///   let result = run_seq(10, 0, &Regex::new(r"WKCN")?, handler, Duration::from_secs(1));
 ///
 ///   assert!(result.is_err());
 ///   assert_eq!(result.err().unwrap().to_string(), "times cannot be zero");
@@ -314,7 +312,7 @@ pub fn run_par(
 /// let handler: Box<dyn ProgressHandler>
 ///   = Box::new(MsgpackProgressHandler::new(tries, Arc::new(Mutex::new(stdout()))));
 ///
-/// let result = run_seq(tries, 1, Regex::new(r"WKCN")?, handler, Duration::from_secs(1))?;
+/// let result = run_seq(tries, 1, &Regex::new(r"WKCN")?, handler, Duration::from_secs(1))?;
 ///
 /// println!("{}", result.out(ResultOutputFormat::Text)?);
 /// #
@@ -323,7 +321,7 @@ pub fn run_par(
 pub fn run_seq(
   tries: usize,
   times: usize,
-  regex: Regex,
+  regex: &Regex,
   progress_handler: Box<dyn ProgressHandler>,
   progress_interval: Duration,
 ) -> Result<WakuchinResult> {
@@ -387,7 +385,7 @@ pub fn run_seq(
         return Err(WakuchinError::Cancelled);
       }
 
-      if check(&wakuchin, &regex) {
+      if check(&wakuchin, regex) {
         let hit = Hit::new(i, &*wakuchin);
 
         render.handle_hit(wakuchin);

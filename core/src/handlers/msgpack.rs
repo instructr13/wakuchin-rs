@@ -13,8 +13,8 @@ use super::ProgressHandler;
 struct MsgpackProgress<'a> {
   progresses: &'a [Progress],
   hit_counts: &'a [HitCount],
-  current_rate: f32,
-  remaining_time: f32,
+  current_rate: f64,
+  remaining_time: f64,
   tries: usize,
   all_done: bool,
 }
@@ -63,9 +63,9 @@ impl ProgressHandler for MsgpackBase64ProgressHandler {
       current_total = self.tries;
     }
 
-    let elapsed_time = elapsed_time.as_secs_f32();
-    let current_rate = current_diff as f32 / elapsed_time;
-    let remaining_time = (self.tries - current_total) as f32 / current_rate;
+    let elapsed_time = elapsed_time.as_secs_f64();
+    let current_rate = current_diff as f64 / elapsed_time;
+    let remaining_time = (self.tries - current_total) as f64 / current_rate;
 
     let progress = MsgpackProgress {
       progresses,
@@ -134,9 +134,9 @@ impl ProgressHandler for MsgpackProgressHandler {
       current_total = self.tries;
     }
 
-    let elapsed_time = elapsed_time.as_secs_f32();
-    let current_rate = current_diff as f32 / elapsed_time;
-    let remaining_time = (self.tries - current_total) as f32 / current_rate;
+    let elapsed_time = elapsed_time.as_secs_f64();
+    let current_rate = current_diff as f64 / elapsed_time;
+    let remaining_time = (self.tries - current_total) as f64 / current_rate;
 
     let progress = MsgpackProgress {
       progresses,
@@ -214,7 +214,7 @@ mod test {
     let result = String::from_utf8(result_vec)?;
 
     assert_eq!(
-      "lpGBqlByb2Nlc3NpbmeVAKhXS05DV0tOQwBkAZGSo+OBggDKP4AAAMpCyAAAZMI=",
+      "lpGBqlByb2Nlc3NpbmeVAKhXS05DV0tOQwBkAZGSo+OBggDLP/AAAAAAAADLQFkAAAAAAABkwg==",
       result
     );
 
@@ -265,7 +265,7 @@ mod test {
     let result = base64::encode(result_vec);
 
     assert_eq!(
-      "lpGBqlByb2Nlc3NpbmeVAKhXS05DV0tOQwBkAZGSo+OBggDKP4AAAMpCyAAAZMI=",
+      "lpGBqlByb2Nlc3NpbmeVAKhXS05DV0tOQwBkAZGSo+OBggDLP/AAAAAAAADLQFkAAAAAAABkwg==",
       result
     );
 

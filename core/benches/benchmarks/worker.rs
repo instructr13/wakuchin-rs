@@ -29,7 +29,7 @@ fn speed_seq(c: &mut Criterion) {
       run_seq(
         30000,
         2,
-        Regex::new(r"^WKNCWKNC$").unwrap(),
+        &Regex::new(r"^WKNCWKNC$").unwrap(),
         Box::new(EmptyProgressHandler::new()),
         Duration::from_millis(20),
       )
