@@ -272,10 +272,14 @@
 <span id="272">272</span>
 <span id="273">273</span>
 <span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
 </pre><pre class="rust"><code><span class="kw">use </span>std::io::Write;
 <span class="kw">use </span>std::sync::{Arc, Mutex};
 <span class="kw">use </span>std::time::Duration;
 
+<span class="kw">use </span>base64::{engine::general_purpose, Engine <span class="kw">as _</span>};
 <span class="kw">use </span>serde::Serialize;
 
 <span class="kw">use </span><span class="kw">crate</span>::progress::{DoneDetail, ProcessingDetail, Progress, ProgressKind};
@@ -352,7 +356,7 @@
 
     progress.serialize(<span class="kw-2">&amp;mut </span>serializer)<span class="question-mark">?</span>;
 
-    <span class="kw">let </span>encoded = base64::encode(<span class="kw-2">&amp;mut </span>buf);
+    <span class="kw">let </span>encoded = general_purpose::STANDARD.encode(<span class="kw-2">&amp;mut </span>buf);
 
     <span class="kw">let </span><span class="kw-2">mut </span>writer = <span class="self">self</span>.writer.lock().unwrap();
     writer.write_all(encoded.as_bytes())<span class="question-mark">?</span>;
@@ -436,6 +440,8 @@
   <span class="kw">use </span>std::time::Duration;
 
   <span class="kw">use </span>anyhow::Result;
+  <span class="kw">use </span>base64::engine::general_purpose;
+  <span class="kw">use </span>base64::Engine;
 
   <span class="kw">use </span><span class="kw">crate</span>::handlers::ProgressHandler;
   <span class="kw">use </span><span class="kw">crate</span>::progress::{ProcessingDetail, Progress, ProgressKind};
@@ -536,7 +542,7 @@
       cursor.read_to_end(<span class="kw-2">&amp;mut </span>result_vec)<span class="question-mark">?</span>;
     }
 
-    <span class="kw">let </span>result = base64::encode(result_vec);
+    <span class="kw">let </span>result = general_purpose::STANDARD.encode(result_vec);
 
     <span class="macro">assert_eq!</span>(
       <span class="string">&quot;lpGBqlByb2Nlc3NpbmeVAKhXS05DV0tOQwBkAZGSo+OBggDLP/AAAAAAAADLQFkAAAAAAABkwg==&quot;</span>,
