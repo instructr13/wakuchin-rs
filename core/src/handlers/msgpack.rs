@@ -2,6 +2,7 @@ use std::io::Write;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use base64::{engine::general_purpose, Engine as _};
 use serde::Serialize;
 
 use crate::progress::{DoneDetail, ProcessingDetail, Progress, ProgressKind};
@@ -78,7 +79,7 @@ impl ProgressHandler for MsgpackBase64ProgressHandler {
 
     progress.serialize(&mut serializer)?;
 
-    let encoded = base64::encode(&mut buf);
+    let encoded = general_purpose::STANDARD.encode(&mut buf);
 
     let mut writer = self.writer.lock().unwrap();
     writer.write_all(encoded.as_bytes())?;
@@ -162,6 +163,8 @@ mod test {
   use std::time::Duration;
 
   use anyhow::Result;
+  use base64::engine::general_purpose;
+  use base64::Engine;
 
   use crate::handlers::ProgressHandler;
   use crate::progress::{ProcessingDetail, Progress, ProgressKind};
@@ -262,7 +265,7 @@ mod test {
       cursor.read_to_end(&mut result_vec)?;
     }
 
-    let result = base64::encode(result_vec);
+    let result = general_purpose::STANDARD.encode(result_vec);
 
     assert_eq!(
       "lpGBqlByb2Nlc3NpbmeVAKhXS05DV0tOQwBkAZGSo+OBggDLP/AAAAAAAADLQFkAAAAAAABkwg==",
