@@ -101,7 +101,7 @@ fn get_total_workers(workers: usize) -> Result<usize> {
 pub fn run_par(
   tries: usize,
   times: usize,
-  regex: Regex,
+  regex: &Regex,
   progress_handler: Box<dyn ProgressHandler>,
   progress_interval: Duration,
   workers: usize,
@@ -146,33 +146,29 @@ pub fn run_par(
 
   let mut hits_detail = Vec::new();
 
+  let counter = ThreadHitCounter::new(hit_rx);
+
+  let mut render = ThreadRender::new(
+    is_stopped_accidentially.clone(),
+    counter.clone(),
+    progress_rx_vec,
+    progress_handler,
+    tries,
+    total_workers,
+  );
+
   let hits = thread::scope::<_, Result<Vec<HitCount>>>(|s| {
-    let counter = ThreadHitCounter::new(hit_rx);
-
-    let mut worker_handles = Vec::with_capacity(workers);
-
-    let mut render = ThreadRender::new(
-      is_stopped_accidentially.clone(),
-      counter.clone(),
-      progress_rx_vec,
-      progress_handler,
-      tries,
-      total_workers,
-    );
-
     // hit handler
-    let hit_handle = s.spawn({
-      let counter = counter.clone();
-
-      move || counter.run()
-    });
+    let hit_handle = s.spawn(|| counter.run());
 
     // progress reporter
-    let ui_handle = s.spawn::<_, Result<()>>(move || {
+    let ui_handle = s.spawn::<_, Result<()>>(|| {
       render.run(progress_interval)?;
 
       Ok(())
     });
+
+    let mut worker_handles = Vec::with_capacity(workers);
 
     (0..tries)
       .divide_evenly_into(total_workers)
@@ -190,7 +186,7 @@ pub fn run_par(
 
           for (i, wakuchin) in wakuchins.map(|_| gen(times)).enumerate() {
             if check(&wakuchin, &regex) {
-              let hit = Hit::new(i, &wakuchin);
+              let hit = Hit::new(i, &*wakuchin);
 
               hit_tx
                 .send(hit.clone())
@@ -392,7 +388,7 @@ pub fn run_seq(
       }
 
       if check(&wakuchin, &regex) {
-        let hit = Hit::new(i, &wakuchin);
+        let hit = Hit::new(i, &*wakuchin);
 
         render.handle_hit(wakuchin);
 

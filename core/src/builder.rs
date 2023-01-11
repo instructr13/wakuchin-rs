@@ -99,7 +99,7 @@ impl ResearchBuilder<usize, usize, Regex> {
     run_par(
       self.tries,
       self.times,
-      self.regex,
+      &self.regex,
       self.progress_handler,
       self.progress_interval,
       self.workers,
