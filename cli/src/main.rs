@@ -8,8 +8,7 @@ use std::panic;
 use std::sync::{Arc, Mutex};
 
 use anyhow::Result;
-use crossterm::style::Stylize;
-
+use owo_colors::OwoColorize;
 use wakuchin::builder::ResearchBuilder;
 use wakuchin::error::WakuchinError;
 use wakuchin::handlers::msgpack::{
@@ -19,12 +18,17 @@ use wakuchin::handlers::msgpack::{
 use crate::app::App;
 use crate::handlers::{ConsoleProgressHandler, HandlerKind};
 
-#[cfg(all(not(target_os = "android"), not(target_env = "msvc")))]
-use tikv_jemallocator::Jemalloc;
-
-#[cfg(all(not(target_os = "android"), not(target_env = "msvc")))]
+#[cfg(all(
+  not(target_os = "android"),
+  not(target_env = "msvc"),
+  not(target_arch = "wasm32")
+))]
 #[global_allocator]
-static GLOBAL: Jemalloc = Jemalloc;
+static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
+
+#[cfg(target_arch = "wasm32")]
+#[global_allocator]
+static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
@@ -79,10 +83,10 @@ async fn try_main() -> Result<()> {
     }
   };
 
-  #[cfg(not(feature = "sequential"))]
+  #[cfg(not(any(feature = "sequential", target_arch = "wasm32")))]
   let result = builder.workers(config.workers).run_par();
 
-  #[cfg(feature = "sequential")]
+  #[cfg(any(feature = "sequential", target_arch = "wasm32"))]
   let result = builder.run_seq();
 
   let result = result?;

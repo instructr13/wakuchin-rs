@@ -1,4 +1,3 @@
-use std::io::stderr;
 use std::panic::{self, PanicInfo};
 use std::path::PathBuf;
 use std::process;
@@ -7,23 +6,32 @@ use anyhow::anyhow;
 use clap::Parser;
 use clap_serde_derive::ClapSerde;
 use console::Term;
-use crossterm::{cursor, execute, style::Print};
 use dialoguer::{theme::ColorfulTheme, Input};
 use regex::Regex;
 
 use crate::config::{load_config, Config};
 use crate::error::Result;
 
+#[cfg(not(target_arch = "wasm32"))]
 use shadow_rs::shadow;
 
+#[cfg(not(target_arch = "wasm32"))]
 shadow!(build);
+
+#[cfg(not(target_arch = "wasm32"))]
+const LONG_VERSION: Option<&'static str> = Some(build::CLAP_LONG_VERSION);
+
+#[cfg(target_arch = "wasm32")]
+const LONG_VERSION: Option<&'static str> = None;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = "A next generation wakuchin researcher software written in Rust
 P2P-Develop
 
 Wakuchin will generate shuffled \"わくちん\" characters and check whether they match a given regex.
-If they do, it will print the result to stdout.", long_version = build::CLAP_LONG_VERSION, after_long_help = "For more information, see GitHub repository: https://github.com/P2P-Develop/wakuchin-rs")]
+If they do, it will print the result to stdout.",
+long_version = LONG_VERSION,
+after_long_help = "For more information, see GitHub repository: https://github.com/P2P-Develop/wakuchin-rs")]
 struct Args {
   /// Config file path, can be json, yaml, or toml, detected by extension
   #[arg(value_name = "FILE")]
@@ -54,7 +62,11 @@ impl App {
 
   fn check_interactive(&self) {
     if !self.interactive {
-      eprintln!("error: Cannot prompt in non-interactive mode (hint: pipe stdin/stderr to tty or fill in the missing arguments)");
+      if cfg!(target_arch = "wasm32") {
+        eprintln!("error: Cannot prompt in WebAssembly runtime (hint: pass arguments or config path to run)")
+      } else {
+        eprintln!("error: Cannot prompt in non-interactive mode (hint: pipe stdin/stderr to tty or fill in the missing arguments)");
+      }
 
       process::exit(1);
     }
@@ -102,18 +114,18 @@ impl App {
     let default_hook = panic::take_hook();
 
     panic::set_hook(Box::new(|panic_info| {
-      execute!(
-        stderr(),
-        cursor::Show,
-        Print("\n"),
-        cursor::MoveUp(1),
-        cursor::MoveLeft(u16::MAX),
-        Print("wakuchin has panicked.\n"),
-        Print("Please report this to the author.\n"),
-        Print(format!("{}", panic_info)),
-        cursor::MoveLeft(u16::MAX),
-      )
-      .unwrap();
+      let term = Term::buffered_stderr();
+
+      term.show_cursor().unwrap();
+      term.move_cursor_up(1).unwrap();
+      term.move_cursor_left(u16::MAX as usize).unwrap();
+
+      term.flush().unwrap();
+
+      eprintln!(
+        "wakuchin has panicked.\nPlease report this to the author:\n{}",
+        panic_info,
+      );
 
       process::exit(1);
     }));

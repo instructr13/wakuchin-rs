@@ -5,7 +5,6 @@ use std::sync::Arc;
 use std::thread::{self, available_parallelism};
 use std::time::Duration;
 
-use anyhow::anyhow;
 use divide_range::RangeDivisions;
 use regex::Regex;
 
@@ -352,7 +351,7 @@ pub fn run_seq(
       is_accidentially_stopped.store(true, Ordering::SeqCst);
     }
   })
-  .map_err(|e| anyhow!(e))?;
+  .map_err(|e| anyhow::anyhow!(e))?;
 
   render.render_progress(
     progress_interval,
