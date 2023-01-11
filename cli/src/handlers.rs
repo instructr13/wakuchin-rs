@@ -41,7 +41,7 @@ impl Default for HandlerKind {
 
 pub(crate) struct ConsoleProgressHandler {
   no_progress: bool,
-  handler_height: u16,
+  handler_height: usize,
   term: Term,
   tries: usize,
   tries_string: String,
@@ -97,7 +97,7 @@ impl ConsoleProgressHandler {
 
       eprintln!(
         "        {} {}: {:<} ({:.3}%)",
-        "hits".underline().blue(),
+        "hits".blue().underline(),
         chars.dimmed(),
         buf.format(count).bold(),
         count as f64 / self.tries as f64 * 100.0,
@@ -290,19 +290,12 @@ impl ProgressHandler for ConsoleProgressHandler {
     }
 
     if self.handler_height == 0 {
-      let progresses_len: u16 = progresses
-        .len()
-        .try_into()
-        .expect("Too many progresses to display");
-      let hit_counts_len: u16 = hit_counts
-        .len()
-        .try_into()
-        .expect("Too many hit counts to display");
-
-      self.handler_height = progresses_len + hit_counts_len + 1;
+      self.handler_height = progresses.len() + hit_counts.len() + 1;
     } else {
-      self.term.move_cursor_left(usize::MAX)?;
-      self.term.move_cursor_up(self.handler_height as usize)?;
+      self.term.move_cursor_left(u16::MAX as usize)?;
+      self
+        .term
+        .move_cursor_up(self.handler_height as u16 as usize)?;
     }
 
     let mut itoa_buf = itoa::Buffer::new();
@@ -331,7 +324,7 @@ impl ProgressHandler for ConsoleProgressHandler {
   fn after_finish(&mut self) -> anyhow::Result<()> {
     if !self.no_progress {
       for _ in 0..self.handler_height {
-        self.term.clear_last_lines(1)?;
+        self.term.clear_last_lines(self.handler_height)?;
         self.term.clear_line()?;
       }
     }
