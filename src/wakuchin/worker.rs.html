@@ -436,7 +436,6 @@
 <span id="436">436</span>
 <span id="437">437</span>
 <span id="438">438</span>
-<span id="439">439</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Wakuchin researcher main functions
 
 </span><span class="kw">use </span>std::sync::atomic::{AtomicBool, Ordering};
@@ -444,7 +443,6 @@
 <span class="kw">use </span>std::thread::{<span class="self">self</span>, available_parallelism};
 <span class="kw">use </span>std::time::Duration;
 
-<span class="kw">use </span>anyhow::anyhow;
 <span class="kw">use </span>divide_range::RangeDivisions;
 <span class="kw">use </span>regex::Regex;
 
@@ -791,7 +789,7 @@
       is_accidentially_stopped.store(<span class="bool-val">true</span>, Ordering::SeqCst);
     }
   })
-  .map_err(|e| <span class="macro">anyhow!</span>(e))<span class="question-mark">?</span>;
+  .map_err(|e| <span class="macro">anyhow::anyhow!</span>(e))<span class="question-mark">?</span>;
 
   render.render_progress(
     progress_interval,
