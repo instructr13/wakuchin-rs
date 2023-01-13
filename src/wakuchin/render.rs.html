@@ -245,7 +245,7 @@
 <span class="kw">use </span><span class="kw">crate</span>::result::HitCount;
 <span class="kw">use </span><span class="kw">crate</span>::utils::DiffStore;
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>ThreadRender {
+<span class="kw">pub struct </span>ThreadRender {
   is_stopped_accidentially: Arc&lt;AtomicBool&gt;,
   counter: ThreadHitCounter,
   progress_channels: Vec&lt;watch::Receiver&lt;Progress&gt;&gt;,
@@ -255,7 +255,7 @@
 }
 
 <span class="kw">impl </span>ThreadRender {
-  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
+  <span class="kw">pub fn </span>new(
     is_stopped_accidentially: Arc&lt;AtomicBool&gt;,
     counter: ThreadHitCounter,
     progress_channels: Vec&lt;watch::Receiver&lt;Progress&gt;&gt;,
@@ -279,11 +279,11 @@
   }
 
   <span class="attribute">#[inline]
-  </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>invoke_before_start(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+  </span><span class="kw">pub fn </span>invoke_before_start(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="self">self</span>.progress_handler.before_start(<span class="self">self</span>.total_workers)
   }
 
-  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>run(<span class="kw-2">&amp;mut </span><span class="self">self</span>, interval: Duration) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+  <span class="kw">pub fn </span>run(<span class="kw-2">&amp;mut </span><span class="self">self</span>, interval: Duration) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="self">self</span>.invoke_before_start()<span class="question-mark">?</span>;
 
     <span class="kw">let </span><span class="kw-2">mut </span>start_time = Instant::now();
@@ -358,16 +358,16 @@
     <span class="prelude-val">Ok</span>(())
   }
 
-  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>invoke_on_accidential_stop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+  <span class="kw">pub fn </span>invoke_on_accidential_stop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="self">self</span>.progress_handler.on_accidential_stop()
   }
 
-  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>invoke_after_finish(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+  <span class="kw">pub fn </span>invoke_after_finish(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="self">self</span>.progress_handler.after_finish()
   }
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>Render {
+<span class="kw">pub struct </span>Render {
   current_diff: DiffStore&lt;usize&gt;,
   counter: HitCounter,
   progress_handler: Box&lt;<span class="kw">dyn </span>ProgressHandler&gt;,
@@ -375,7 +375,7 @@
 }
 
 <span class="kw">impl </span>Render {
-  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(progress_handler: Box&lt;<span class="kw">dyn </span>ProgressHandler&gt;) -&gt; <span class="self">Self </span>{
+  <span class="kw">pub fn </span>new(progress_handler: Box&lt;<span class="kw">dyn </span>ProgressHandler&gt;) -&gt; <span class="self">Self </span>{
     <span class="self">Self </span>{
       current_diff: DiffStore::new(<span class="number">0</span>),
       counter: HitCounter::new(),
@@ -385,22 +385,22 @@
   }
 
   <span class="attribute">#[inline]
-  </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>hits(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;HitCount&gt; {
+  </span><span class="kw">pub fn </span>hits(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;HitCount&gt; {
     <span class="self">self</span>.counter.get_all().into_hit_counts()
   }
 
   <span class="attribute">#[inline]
-  </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>handle_hit(<span class="kw-2">&amp;</span><span class="self">self</span>, chars: <span class="kw">impl </span>Into&lt;Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;&gt;) {
+  </span><span class="kw">pub fn </span>handle_hit(<span class="kw-2">&amp;</span><span class="self">self</span>, chars: <span class="kw">impl </span>Into&lt;Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;&gt;) {
     <span class="comment">// Insert hit to hit counter with specific char entry
     </span><span class="self">self</span>.counter.add(chars);
   }
 
   <span class="attribute">#[inline]
-  </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>invoke_before_start(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+  </span><span class="kw">pub fn </span>invoke_before_start(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="self">self</span>.progress_handler.before_start(<span class="number">1</span>)
   }
 
-  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>render_progress(
+  <span class="kw">pub fn </span>render_progress(
     <span class="kw-2">&amp;mut </span><span class="self">self</span>,
     interval: Duration,
     progress: Progress,
@@ -451,12 +451,12 @@
   }
 
   <span class="attribute">#[inline]
-  </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>invoke_on_accidential_stop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+  </span><span class="kw">pub fn </span>invoke_on_accidential_stop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="self">self</span>.progress_handler.on_accidential_stop()
   }
 
   <span class="attribute">#[inline]
-  </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>invoke_after_finish(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+  </span><span class="kw">pub fn </span>invoke_after_finish(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
     <span class="self">self</span>.progress_handler.after_finish()
   }
 }

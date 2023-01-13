@@ -75,20 +75,20 @@
 <span class="kw">use </span>dashmap::DashMap;
 
 <span class="attribute">#[derive(Clone)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>AtomicHitStore {
+</span><span class="kw">pub struct </span>AtomicHitStore {
   map: Arc&lt;DashMap&lt;Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;, AtomicUsize&gt;&gt;,
 }
 
 <span class="kw">impl </span>AtomicHitStore {
   <span class="attribute">#[inline]
-  </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new() -&gt; <span class="self">Self </span>{
+  </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
     <span class="self">Self </span>{
       map: Arc::new(DashMap::new()),
     }
   }
 
   <span class="attribute">#[inline]
-  </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>add(<span class="kw-2">&amp;</span><span class="self">self</span>, chars: <span class="kw">impl </span>Into&lt;Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;&gt;) {
+  </span><span class="kw">pub fn </span>add(<span class="kw-2">&amp;</span><span class="self">self</span>, chars: <span class="kw">impl </span>Into&lt;Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;&gt;) {
     <span class="self">self
       </span>.map
       .entry(chars.into())
@@ -97,7 +97,7 @@
   }
 
   <span class="attribute">#[inline]
-  </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get_all(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;(Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;, usize)&gt; {
+  </span><span class="kw">pub fn </span>get_all(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;(Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;, usize)&gt; {
     <span class="self">self
       </span>.map
       .iter()
@@ -106,20 +106,20 @@
   }
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>HitStore {
+<span class="kw">pub struct </span>HitStore {
   map: DashMap&lt;Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;, usize&gt;,
 }
 
 <span class="kw">impl </span>HitStore {
   <span class="attribute">#[inline]
-  </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new() -&gt; <span class="self">Self </span>{
+  </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
     <span class="self">Self </span>{
       map: DashMap::new(),
     }
   }
 
   <span class="attribute">#[inline]
-  </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>add(<span class="kw-2">&amp;</span><span class="self">self</span>, chars: <span class="kw">impl </span>Into&lt;Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;&gt;) {
+  </span><span class="kw">pub fn </span>add(<span class="kw-2">&amp;</span><span class="self">self</span>, chars: <span class="kw">impl </span>Into&lt;Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;&gt;) {
     <span class="self">self
       </span>.map
       .entry(chars.into())
@@ -128,7 +128,7 @@
   }
 
   <span class="attribute">#[inline]
-  </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get_all(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;(Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;, usize)&gt; {
+  </span><span class="kw">pub fn </span>get_all(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;(Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;, usize)&gt; {
     <span class="self">self
       </span>.map
       .iter()

@@ -90,18 +90,18 @@
 
 <span class="kw">use </span><span class="kw">super</span>::store::{AtomicHitStore, HitStore};
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>HitCounterEntry {
+<span class="kw">pub struct </span>HitCounterEntry {
   entry: Vec&lt;(Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;, usize)&gt;,
 }
 
 <span class="kw">impl </span>HitCounterEntry {
   <span class="attribute">#[inline]
-  </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(entry: Vec&lt;(Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;, usize)&gt;) -&gt; <span class="self">Self </span>{
+  </span><span class="kw">pub fn </span>new(entry: Vec&lt;(Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;, usize)&gt;) -&gt; <span class="self">Self </span>{
     <span class="self">Self </span>{ entry }
   }
 
   <span class="attribute">#[inline]
-  </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>into_hit_counts(<span class="self">self</span>) -&gt; Vec&lt;HitCount&gt; {
+  </span><span class="kw">pub fn </span>into_hit_counts(<span class="self">self</span>) -&gt; Vec&lt;HitCount&gt; {
     <span class="self">self
       </span>.entry
       .into_iter()
@@ -111,14 +111,14 @@
 }
 
 <span class="attribute">#[derive(Clone)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>ThreadHitCounter {
-  <span class="kw">pub</span>(<span class="kw">crate</span>) count_stopped: Arc&lt;AtomicBool&gt;,
+</span><span class="kw">pub struct </span>ThreadHitCounter {
+  <span class="kw">pub </span>count_stopped: Arc&lt;AtomicBool&gt;,
   store: AtomicHitStore,
   hit_rx: Receiver&lt;Hit&gt;,
 }
 
 <span class="kw">impl </span>ThreadHitCounter {
-  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(hit_rx: Receiver&lt;Hit&gt;) -&gt; <span class="self">Self </span>{
+  <span class="kw">pub fn </span>new(hit_rx: Receiver&lt;Hit&gt;) -&gt; <span class="self">Self </span>{
     <span class="self">Self </span>{
       count_stopped: Arc::new(AtomicBool::new(<span class="bool-val">false</span>)),
       store: AtomicHitStore::new(),
@@ -126,7 +126,7 @@
     }
   }
 
-  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>run(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+  <span class="kw">pub fn </span>run(<span class="kw-2">&amp;</span><span class="self">self</span>) {
     <span class="kw">for </span>hit <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.hit_rx {
       <span class="self">self</span>.store.add(hit.chars);
     }
@@ -135,30 +135,30 @@
   }
 
   <span class="attribute">#[inline]
-  </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get_all(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; HitCounterEntry {
+  </span><span class="kw">pub fn </span>get_all(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; HitCounterEntry {
     HitCounterEntry::new(<span class="self">self</span>.store.get_all())
   }
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>HitCounter {
+<span class="kw">pub struct </span>HitCounter {
   store: HitStore,
 }
 
 <span class="kw">impl </span>HitCounter {
   <span class="attribute">#[inline]
-  </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new() -&gt; <span class="self">Self </span>{
+  </span><span class="kw">pub fn </span>new() -&gt; <span class="self">Self </span>{
     <span class="self">Self </span>{
       store: HitStore::new(),
     }
   }
 
   <span class="attribute">#[inline]
-  </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>add(<span class="kw-2">&amp;</span><span class="self">self</span>, chars: <span class="kw">impl </span>Into&lt;Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;&gt;) {
-    <span class="self">self</span>.store.add(chars)
+  </span><span class="kw">pub fn </span>add(<span class="kw-2">&amp;</span><span class="self">self</span>, chars: <span class="kw">impl </span>Into&lt;Cow&lt;<span class="lifetime">&#39;static</span>, str&gt;&gt;) {
+    <span class="self">self</span>.store.add(chars);
   }
 
   <span class="attribute">#[inline]
-  </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>get_all(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; HitCounterEntry {
+  </span><span class="kw">pub fn </span>get_all(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; HitCounterEntry {
     HitCounterEntry::new(<span class="self">self</span>.store.get_all())
   }
 }

@@ -45,7 +45,7 @@
 <span class="kw">use </span>std::ops::Sub;
 
 <span class="attribute">#[derive(Debug)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct </span>DiffStore&lt;T&gt;
+</span><span class="kw">pub struct </span>DiffStore&lt;T&gt;
 <span class="kw">where
   </span>T: Copy + Debug + PartialOrd + Sub,
 {
@@ -56,11 +56,11 @@
 <span class="kw">where
   </span>T: Copy + Debug + PartialOrd + Sub&lt;Output = T&gt;,
 {
-  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">const fn </span>new(init: T) -&gt; <span class="self">Self </span>{
+  <span class="kw">pub const fn </span>new(init: T) -&gt; <span class="self">Self </span>{
     <span class="self">Self </span>{ previous: init }
   }
 
-  <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>update(<span class="kw-2">&amp;mut </span><span class="self">self</span>, new: T) -&gt; T {
+  <span class="kw">pub fn </span>update(<span class="kw-2">&amp;mut </span><span class="self">self</span>, new: T) -&gt; T {
     <span class="kw">let </span>ret = new - <span class="self">self</span>.previous;
 
     <span class="self">self</span>.previous = new;

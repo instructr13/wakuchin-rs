@@ -12,24 +12,16 @@
 <span id="12">12</span>
 <span id="13">13</span>
 <span id="14">14</span>
-<span id="15">15</span>
-<span id="16">16</span>
-<span id="17">17</span>
-<span id="18">18</span>
 </pre><pre class="rust"><code><span class="kw">use </span>flume::unbounded;
 <span class="kw">use </span>tokio::sync::watch;
 
-<span class="attribute">#[inline(always)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>channel&lt;T&gt;() -&gt; (flume::Sender&lt;T&gt;, flume::Receiver&lt;T&gt;) {
+<span class="kw">pub fn </span>channel&lt;T&gt;() -&gt; (flume::Sender&lt;T&gt;, flume::Receiver&lt;T&gt;) {
   <span class="kw">let </span>(tx, rx) = unbounded();
 
   (tx, rx)
 }
 
-<span class="attribute">#[inline(always)]
-</span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>watch&lt;T&gt;(
-  initial_value: T,
-) -&gt; (watch::Sender&lt;T&gt;, watch::Receiver&lt;T&gt;) {
+<span class="kw">pub fn </span>watch&lt;T&gt;(initial_value: T) -&gt; (watch::Sender&lt;T&gt;, watch::Receiver&lt;T&gt;) {
   <span class="kw">let </span>(tx, rx) = watch::channel(initial_value);
 
   (tx, rx)
