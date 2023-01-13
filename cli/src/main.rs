@@ -28,7 +28,7 @@ static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
-  if let Err(err) = try_main().await {
+  if let Err(err) = try_main() {
     if let Some(WakuchinError::Cancelled) = err.downcast_ref::<WakuchinError>()
     {
       std::process::exit(1);
@@ -40,10 +40,10 @@ async fn main() {
   }
 }
 
-async fn try_main() -> Result<()> {
+fn try_main() -> Result<()> {
   let mut app = App::new();
 
-  app.setup_config().await?;
+  app.setup_config()?;
 
   let config = app.config;
 

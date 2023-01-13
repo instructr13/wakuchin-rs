@@ -26,7 +26,7 @@ fn parse_duration(
 #[derive(
   Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Deserialize,
 )]
-pub(crate) enum InternalResultOutputFormat {
+pub enum InternalResultOutputFormat {
   #[serde(rename = "text")]
   Text,
   #[serde(rename = "json")]
@@ -49,16 +49,16 @@ impl From<InternalResultOutputFormat> for ResultOutputFormat {
 }
 
 #[derive(Clone, Debug, ClapSerde)]
-pub(crate) struct Config {
+pub struct Config {
   /// Number of tries
   #[arg(short = 'i', long, value_name = "N")]
-  pub(crate) tries: usize,
+  pub tries: usize,
 
   /// Wakuchin times n
   ///
   /// Repeats "わくちん" n times.
   #[arg(short, long, value_name = "N")]
-  pub(crate) times: usize,
+  pub times: usize,
 
   /// Regex to detect hits
   ///
@@ -71,12 +71,12 @@ pub(crate) struct Config {
   #[default(Regex::new(r"%default%").unwrap())]
   #[serde(with = "serde_regex")]
   #[arg(short, long, verbatim_doc_comment)]
-  pub(crate) regex: Regex,
+  pub regex: Regex,
 
   // Result output format
   #[serde(rename(deserialize = "output"))]
   #[arg(short = 'f', long = "format", value_name = "FORMAT", value_enum)]
-  pub(crate) out: InternalResultOutputFormat,
+  pub out: InternalResultOutputFormat,
 
   /// Progress refresh interval
   ///
@@ -90,7 +90,7 @@ pub(crate) struct Config {
     value_name = "DURATION",
     value_parser = parse_duration
   )]
-  pub(crate) interval: Duration,
+  pub interval: Duration,
 
   /// Progress handler to use
   ///
@@ -99,11 +99,11 @@ pub(crate) struct Config {
   ///  - "msgpack": Prints progress to stdout as raw msgpack-encoded data
   ///  - "msgpack-base64": Prints progress to stdout as base64-encoded msgpack data
   #[arg(short = 'H', long, value_enum, verbatim_doc_comment)]
-  pub(crate) handler: HandlerKind,
+  pub handler: HandlerKind,
 
   /// Do not show progress, able to use with --handler=console
   #[arg(long, value_name = "BOOL")]
-  pub(crate) no_progress: bool,
+  pub no_progress: bool,
 
   #[cfg(not(feature = "sequential"))]
   #[arg(
@@ -112,10 +112,10 @@ pub(crate) struct Config {
     value_name = "N",
     help = "Number of workers, 0 means number of logical CPUs"
   )]
-  pub(crate) workers: usize,
+  pub workers: usize,
 }
 
-pub(crate) fn load_config(path: &Path) -> Result<Config> {
+pub fn load_config(path: &Path) -> Result<Config> {
   let contents = read_to_string(path).map_err(|e| AppError::ConfigIoError {
     path: path.into(),
     source: e,

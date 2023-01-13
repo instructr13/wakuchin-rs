@@ -6,7 +6,7 @@ use owo_colors::OwoColorize as _;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-pub(crate) enum AppError {
+pub enum AppError {
   #[error("'{}': {source}", .path.to_string_lossy())]
   ConfigIoError {
     path: Box<Path>,
@@ -43,5 +43,4 @@ impl From<anyhow::Error> for AppError {
     Self::Other(e)
   }
 }
-
-pub(crate) type Result<T> = anyhow::Result<T, AppError>;
+pub type Result<T> = anyhow::Result<T, AppError>;

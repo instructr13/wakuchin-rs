@@ -245,11 +245,7 @@ pub fn run_par(
       });
 
     for worker_handle in worker_handles {
-      for hit in worker_handle
-        .join()
-        .unwrap_or_else(|e| resume_unwind(e))?
-        .into_iter()
-      {
+      for hit in worker_handle.join().unwrap_or_else(|e| resume_unwind(e))? {
         hits_detail.push(hit);
       }
     }

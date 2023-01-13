@@ -1,2 +1,2 @@
-pub(crate) mod counter;
+pub mod counter;
 mod store;

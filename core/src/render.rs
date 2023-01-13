@@ -14,7 +14,7 @@ use crate::progress::{DoneDetail, ProcessingDetail, Progress, ProgressKind};
 use crate::result::HitCount;
 use crate::utils::DiffStore;
 
-pub(crate) struct ThreadRender {
+pub struct ThreadRender {
   is_stopped_accidentially: Arc<AtomicBool>,
   counter: ThreadHitCounter,
   progress_channels: Vec<watch::Receiver<Progress>>,
@@ -24,7 +24,7 @@ pub(crate) struct ThreadRender {
 }
 
 impl ThreadRender {
-  pub(crate) fn new(
+  pub fn new(
     is_stopped_accidentially: Arc<AtomicBool>,
     counter: ThreadHitCounter,
     progress_channels: Vec<watch::Receiver<Progress>>,
@@ -48,11 +48,11 @@ impl ThreadRender {
   }
 
   #[inline]
-  pub(crate) fn invoke_before_start(&mut self) -> Result<()> {
+  pub fn invoke_before_start(&mut self) -> Result<()> {
     self.progress_handler.before_start(self.total_workers)
   }
 
-  pub(crate) fn run(&mut self, interval: Duration) -> Result<()> {
+  pub fn run(&mut self, interval: Duration) -> Result<()> {
     self.invoke_before_start()?;
 
     let mut start_time = Instant::now();
@@ -127,16 +127,16 @@ impl ThreadRender {
     Ok(())
   }
 
-  pub(crate) fn invoke_on_accidential_stop(&mut self) -> Result<()> {
+  pub fn invoke_on_accidential_stop(&mut self) -> Result<()> {
     self.progress_handler.on_accidential_stop()
   }
 
-  pub(crate) fn invoke_after_finish(&mut self) -> Result<()> {
+  pub fn invoke_after_finish(&mut self) -> Result<()> {
     self.progress_handler.after_finish()
   }
 }
 
-pub(crate) struct Render {
+pub struct Render {
   current_diff: DiffStore<usize>,
   counter: HitCounter,
   progress_handler: Box<dyn ProgressHandler>,
@@ -144,7 +144,7 @@ pub(crate) struct Render {
 }
 
 impl Render {
-  pub(crate) fn new(progress_handler: Box<dyn ProgressHandler>) -> Self {
+  pub fn new(progress_handler: Box<dyn ProgressHandler>) -> Self {
     Self {
       current_diff: DiffStore::new(0),
       counter: HitCounter::new(),
@@ -154,22 +154,22 @@ impl Render {
   }
 
   #[inline]
-  pub(crate) fn hits(&self) -> Vec<HitCount> {
+  pub fn hits(&self) -> Vec<HitCount> {
     self.counter.get_all().into_hit_counts()
   }
 
   #[inline]
-  pub(crate) fn handle_hit(&self, chars: impl Into<Cow<'static, str>>) {
+  pub fn handle_hit(&self, chars: impl Into<Cow<'static, str>>) {
     // Insert hit to hit counter with specific char entry
     self.counter.add(chars);
   }
 
   #[inline]
-  pub(crate) fn invoke_before_start(&mut self) -> Result<()> {
+  pub fn invoke_before_start(&mut self) -> Result<()> {
     self.progress_handler.before_start(1)
   }
 
-  pub(crate) fn render_progress(
+  pub fn render_progress(
     &mut self,
     interval: Duration,
     progress: Progress,
@@ -220,12 +220,12 @@ impl Render {
   }
 
   #[inline]
-  pub(crate) fn invoke_on_accidential_stop(&mut self) -> Result<()> {
+  pub fn invoke_on_accidential_stop(&mut self) -> Result<()> {
     self.progress_handler.on_accidential_stop()
   }
 
   #[inline]
-  pub(crate) fn invoke_after_finish(&mut self) -> Result<()> {
+  pub fn invoke_after_finish(&mut self) -> Result<()> {
     self.progress_handler.after_finish()
   }
 }

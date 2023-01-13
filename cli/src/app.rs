@@ -42,20 +42,20 @@ struct Args {
   config: <Config as ClapSerde>::Opt,
 }
 
-pub(crate) struct App {
+pub struct App {
+  pub config: Config,
   args: Args,
-  pub(crate) config: Config,
   interactive: bool,
 }
 
 impl App {
-  pub(crate) fn new() -> Self {
+  pub fn new() -> Self {
     let interactive =
       atty::is(atty::Stream::Stdin) && atty::is(atty::Stream::Stderr);
 
     Self {
-      args: Args::parse(),
       config: Config::default(),
+      args: Args::parse(),
       interactive,
     }
   }
@@ -63,7 +63,7 @@ impl App {
   fn check_interactive(&self) {
     if !self.interactive {
       if cfg!(target_arch = "wasm32") {
-        eprintln!("error: Cannot prompt in WebAssembly runtime (hint: pass arguments or config path to run)")
+        eprintln!("error: Cannot prompt in WebAssembly runtime (hint: pass arguments or config path to run)");
       } else {
         eprintln!("error: Cannot prompt in non-interactive mode (hint: pipe stdin/stderr to tty or fill in the missing arguments)");
       }
@@ -109,8 +109,7 @@ impl App {
     Regex::new(&regex).map_err(|e| anyhow!(e).into())
   }
 
-  pub(crate) fn set_panic_hook(
-  ) -> Box<dyn Fn(&PanicInfo) + Send + Sync + 'static> {
+  pub fn set_panic_hook() -> Box<dyn Fn(&PanicInfo) + Send + Sync + 'static> {
     let default_hook = panic::take_hook();
 
     panic::set_hook(Box::new(|panic_info| {
@@ -133,7 +132,7 @@ impl App {
     default_hook
   }
 
-  pub(crate) async fn setup_config(&mut self) -> Result<()> {
+  pub fn setup_config(&mut self) -> Result<()> {
     let mut config = if let Some(config_path) = &self.args.config_path {
       load_config(config_path.as_path())?.merge(&mut self.args.config)
     } else {

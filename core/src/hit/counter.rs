@@ -8,18 +8,18 @@ use crate::result::{Hit, HitCount};
 
 use super::store::{AtomicHitStore, HitStore};
 
-pub(crate) struct HitCounterEntry {
+pub struct HitCounterEntry {
   entry: Vec<(Cow<'static, str>, usize)>,
 }
 
 impl HitCounterEntry {
   #[inline]
-  pub(crate) fn new(entry: Vec<(Cow<'static, str>, usize)>) -> Self {
+  pub fn new(entry: Vec<(Cow<'static, str>, usize)>) -> Self {
     Self { entry }
   }
 
   #[inline]
-  pub(crate) fn into_hit_counts(self) -> Vec<HitCount> {
+  pub fn into_hit_counts(self) -> Vec<HitCount> {
     self
       .entry
       .into_iter()
@@ -29,14 +29,14 @@ impl HitCounterEntry {
 }
 
 #[derive(Clone)]
-pub(crate) struct ThreadHitCounter {
-  pub(crate) count_stopped: Arc<AtomicBool>,
+pub struct ThreadHitCounter {
+  pub count_stopped: Arc<AtomicBool>,
   store: AtomicHitStore,
   hit_rx: Receiver<Hit>,
 }
 
 impl ThreadHitCounter {
-  pub(crate) fn new(hit_rx: Receiver<Hit>) -> Self {
+  pub fn new(hit_rx: Receiver<Hit>) -> Self {
     Self {
       count_stopped: Arc::new(AtomicBool::new(false)),
       store: AtomicHitStore::new(),
@@ -44,7 +44,7 @@ impl ThreadHitCounter {
     }
   }
 
-  pub(crate) fn run(&self) {
+  pub fn run(&self) {
     for hit in &self.hit_rx {
       self.store.add(hit.chars);
     }
@@ -53,30 +53,30 @@ impl ThreadHitCounter {
   }
 
   #[inline]
-  pub(crate) fn get_all(&self) -> HitCounterEntry {
+  pub fn get_all(&self) -> HitCounterEntry {
     HitCounterEntry::new(self.store.get_all())
   }
 }
 
-pub(crate) struct HitCounter {
+pub struct HitCounter {
   store: HitStore,
 }
 
 impl HitCounter {
   #[inline]
-  pub(crate) fn new() -> Self {
+  pub fn new() -> Self {
     Self {
       store: HitStore::new(),
     }
   }
 
   #[inline]
-  pub(crate) fn add(&self, chars: impl Into<Cow<'static, str>>) {
-    self.store.add(chars)
+  pub fn add(&self, chars: impl Into<Cow<'static, str>>) {
+    self.store.add(chars);
   }
 
   #[inline]
-  pub(crate) fn get_all(&self) -> HitCounterEntry {
+  pub fn get_all(&self) -> HitCounterEntry {
     HitCounterEntry::new(self.store.get_all())
   }
 }

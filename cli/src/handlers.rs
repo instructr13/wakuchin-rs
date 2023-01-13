@@ -11,8 +11,6 @@ use wakuchin::progress::{
 };
 use wakuchin::result::HitCount;
 
-type Result<T> = anyhow::Result<T>;
-
 const PROGRESS_BAR_WIDTH: u16 = 33;
 
 #[derive(
@@ -27,7 +25,7 @@ const PROGRESS_BAR_WIDTH: u16 = 33;
   ValueEnum,
 )]
 #[serde(rename_all = "snake_case")]
-pub(crate) enum HandlerKind {
+pub enum HandlerKind {
   Console,
   Msgpack,
   MsgpackBase64,
@@ -39,7 +37,7 @@ impl Default for HandlerKind {
   }
 }
 
-pub(crate) struct ConsoleProgressHandler {
+pub struct ConsoleProgressHandler {
   no_progress: bool,
   handler_height: usize,
   term: Term,
@@ -50,7 +48,7 @@ pub(crate) struct ConsoleProgressHandler {
 }
 
 impl ConsoleProgressHandler {
-  pub(crate) fn new(no_progress: bool, tries: usize, times: usize) -> Self {
+  pub fn new(no_progress: bool, tries: usize, times: usize) -> Self {
     Self {
       no_progress,
       handler_height: 0,
@@ -208,9 +206,9 @@ impl ConsoleProgressHandler {
         eprintln!(
           "{}",
           Self::pad_id(1, self.total_workers.to_string().len(), body)
-        )
+        );
       } else {
-        eprintln!("{}", body);
+        eprintln!("{body}");
       }
     }
 
@@ -225,7 +223,7 @@ impl ConsoleProgressHandler {
     current: usize,
     elapsed_time: Duration,
     current_diff: usize,
-  ) -> Result<()> {
+  ) {
     let tries_width = self.tries_string.len();
 
     let possible_bar_width = {
@@ -262,8 +260,6 @@ impl ConsoleProgressHandler {
       tries = self.tries,
       rate = human_format::Formatter::new().format(rate),
     );
-
-    Ok(())
   }
 }
 
@@ -326,7 +322,7 @@ impl ProgressHandler for ConsoleProgressHandler {
       current_total,
       elapsed_time,
       current_diff,
-    )?;
+    );
 
     Ok(())
   }

@@ -6,20 +6,20 @@ use std::sync::Arc;
 use dashmap::DashMap;
 
 #[derive(Clone)]
-pub(crate) struct AtomicHitStore {
+pub struct AtomicHitStore {
   map: Arc<DashMap<Cow<'static, str>, AtomicUsize>>,
 }
 
 impl AtomicHitStore {
   #[inline]
-  pub(crate) fn new() -> Self {
+  pub fn new() -> Self {
     Self {
       map: Arc::new(DashMap::new()),
     }
   }
 
   #[inline]
-  pub(crate) fn add(&self, chars: impl Into<Cow<'static, str>>) {
+  pub fn add(&self, chars: impl Into<Cow<'static, str>>) {
     self
       .map
       .entry(chars.into())
@@ -28,7 +28,7 @@ impl AtomicHitStore {
   }
 
   #[inline]
-  pub(crate) fn get_all(&self) -> Vec<(Cow<'static, str>, usize)> {
+  pub fn get_all(&self) -> Vec<(Cow<'static, str>, usize)> {
     self
       .map
       .iter()
@@ -37,20 +37,20 @@ impl AtomicHitStore {
   }
 }
 
-pub(crate) struct HitStore {
+pub struct HitStore {
   map: DashMap<Cow<'static, str>, usize>,
 }
 
 impl HitStore {
   #[inline]
-  pub(crate) fn new() -> Self {
+  pub fn new() -> Self {
     Self {
       map: DashMap::new(),
     }
   }
 
   #[inline]
-  pub(crate) fn add(&self, chars: impl Into<Cow<'static, str>>) {
+  pub fn add(&self, chars: impl Into<Cow<'static, str>>) {
     self
       .map
       .entry(chars.into())
@@ -59,7 +59,7 @@ impl HitStore {
   }
 
   #[inline]
-  pub(crate) fn get_all(&self) -> Vec<(Cow<'static, str>, usize)> {
+  pub fn get_all(&self) -> Vec<(Cow<'static, str>, usize)> {
     self
       .map
       .iter()

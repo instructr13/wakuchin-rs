@@ -2,7 +2,7 @@ use std::fmt::Debug;
 use std::ops::Sub;
 
 #[derive(Debug)]
-pub(crate) struct DiffStore<T>
+pub struct DiffStore<T>
 where
   T: Copy + Debug + PartialOrd + Sub,
 {
@@ -13,11 +13,11 @@ impl<T> DiffStore<T>
 where
   T: Copy + Debug + PartialOrd + Sub<Output = T>,
 {
-  pub(crate) const fn new(init: T) -> Self {
+  pub const fn new(init: T) -> Self {
     Self { previous: init }
   }
 
-  pub(crate) fn update(&mut self, new: T) -> T {
+  pub fn update(&mut self, new: T) -> T {
     let ret = new - self.previous;
 
     self.previous = new;
