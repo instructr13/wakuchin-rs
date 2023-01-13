@@ -2,10 +2,11 @@
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use std::thread::{self, available_parallelism};
+use std::thread::{available_parallelism, scope};
 use std::time::Duration;
 
 use divide_range::RangeDivisions;
+use flume::bounded;
 use regex::Regex;
 
 use crate::channel::{channel, watch};
@@ -20,6 +21,9 @@ use crate::result::{Hit, HitCount, WakuchinResult};
 use crate::{check, gen};
 
 type Result<T> = std::result::Result<T, WakuchinError>;
+
+#[cfg(not(target_arch = "wasm32"))]
+use signal_hook::consts::SIGINT;
 
 fn get_total_workers(workers: usize) -> Result<usize> {
   if workers != 0 {
@@ -130,17 +134,6 @@ pub fn run_par(
     })
     .unzip();
 
-  // set SIGINT/SIGTERM handler
-  #[cfg(not(target_arch = "wasm32"))]
-  ctrlc::set_handler({
-    let is_stopped_accidentially = is_stopped_accidentially.clone();
-
-    move || {
-      is_stopped_accidentially.store(true, Ordering::SeqCst);
-    }
-  })
-  .unwrap_or(());
-
   let mut hits_detail = Vec::new();
 
   let counter = ThreadHitCounter::new(hit_rx);
@@ -154,7 +147,34 @@ pub fn run_par(
     total_workers,
   );
 
-  let hits = thread::scope::<_, Result<Vec<HitCount>>>(|s| {
+  // used internally to prevent 'static lifetime issues
+  #[cfg(not(target_arch = "wasm32"))]
+  let (internal_stop_tx, internal_stop_rx) = bounded(1);
+
+  let hits = scope::<_, Result<Vec<HitCount>>>(|s| {
+    // signal handler
+    #[cfg(not(target_arch = "wasm32"))]
+    let signal_id = unsafe {
+      signal_hook_registry::register(SIGINT, move || {
+        internal_stop_tx.send(()).unwrap();
+      })
+    }?;
+
+    #[cfg(not(target_arch = "wasm32"))]
+    let signal_handle = s.spawn(|| loop {
+      if counter.count_stopped.load(Ordering::Acquire) {
+        return;
+      }
+
+      if internal_stop_rx.is_full() {
+        is_stopped_accidentially.store(true, Ordering::SeqCst);
+
+        return;
+      }
+
+      std::hint::spin_loop();
+    });
+
     // hit handler
     let hit_handle = s.spawn(|| counter.run());
 
@@ -182,6 +202,12 @@ pub fn run_par(
           let mut hits = Vec::new();
 
           for (i, wakuchin) in wakuchins.map(|_| gen(times)).enumerate() {
+            if is_stopped_accidentially.load(Ordering::Relaxed) {
+              drop(hit_tx);
+
+              return Err(WakuchinError::Cancelled);
+            }
+
             if check(&wakuchin, &regex) {
               let hit = Hit::new(i, &*wakuchin);
 
@@ -204,12 +230,6 @@ pub fn run_par(
                   ),
                 )))
                 .expect("progress channel is unavailable");
-            }
-
-            if is_stopped_accidentially.load(Ordering::Relaxed) {
-              drop(hit_tx);
-
-              return Err(WakuchinError::Cancelled);
             }
           }
 
@@ -241,6 +261,12 @@ pub fn run_par(
     // after all workers have finished, wait for ui and hit threads to finish
     hit_handle.join().unwrap();
     ui_handle.join().unwrap()?;
+
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+      signal_handle.join().unwrap();
+      signal_hook_registry::unregister(signal_id);
+    }
 
     Ok(counter.get_all().into_hit_counts())
   })?;
@@ -337,96 +363,126 @@ pub fn run_seq(
     return Err(WakuchinError::TimesIsZero);
   }
 
-  let mut render = Render::new(progress_handler);
+  let is_stopped_accidentially = AtomicBool::new(false);
 
-  render.invoke_before_start()?;
-
-  let is_accidentially_stopped = Arc::new(AtomicBool::new(false));
-
+  // used internally to prevent 'static lifetime issues
   #[cfg(not(target_arch = "wasm32"))]
-  ctrlc::set_handler({
-    let is_accidentially_stopped = is_accidentially_stopped.clone();
+  let (internal_stop_tx, internal_stop_rx) = bounded(1);
 
-    move || {
-      is_accidentially_stopped.store(true, Ordering::SeqCst);
-    }
-  })
-  .map_err(|e| anyhow::anyhow!(e))?;
+  let (hits_detail, hits) = scope(|s| {
+    let is_stopped_accidentially = &is_stopped_accidentially;
 
-  render.render_progress(
-    progress_interval,
-    Progress(ProgressKind::Idle(IdleDetail {
-      id: 0,
-      total_workers: 1,
-    })),
-    false,
-  )?;
+    #[cfg(not(target_arch = "wasm32"))]
+    let signal_id = unsafe {
+      signal_hook_registry::register(SIGINT, move || {
+        internal_stop_tx.send(()).unwrap();
+      })
+    }?;
 
-  let mut hits_detail_err = Ok(());
-
-  let hits_detail = (0..tries)
-    .map(|_| gen(times))
-    .enumerate()
-    .map(|(i, wakuchin)| {
-      render.render_progress(
-        progress_interval,
-        Progress(ProgressKind::Processing(ProcessingDetail::new(
-          0,
-          wakuchin.clone(),
-          i,
-          tries,
-          1,
-        ))),
-        false,
-      )?;
-
-      if is_accidentially_stopped.load(Ordering::SeqCst) {
-        return Err(WakuchinError::Cancelled);
+    #[cfg(not(target_arch = "wasm32"))]
+    let signal_handle = s.spawn(|| loop {
+      if is_stopped_accidentially.load(Ordering::SeqCst) {
+        return;
       }
 
-      if check(&wakuchin, regex) {
-        let hit = Hit::new(i, &*wakuchin);
+      if internal_stop_rx.is_full() {
+        is_stopped_accidentially.store(true, Ordering::SeqCst);
 
-        render.handle_hit(wakuchin);
-
-        Ok(Some(hit))
-      } else {
-        Ok(None)
+        return;
       }
-    })
-    .scan(
-      &mut hits_detail_err,
-      |hits_detail_err, result| match result {
-        Ok(result) => Some(result),
-        Err(err) => {
-          **hits_detail_err = Err(err);
 
-          None
+      std::hint::spin_loop();
+    });
+
+    let mut render = Render::new(progress_handler);
+
+    render.invoke_before_start()?;
+
+    render.render_progress(
+      progress_interval,
+      Progress(ProgressKind::Idle(IdleDetail {
+        id: 0,
+        total_workers: 1,
+      })),
+      false,
+    )?;
+
+    let mut hits_detail_err = Ok(());
+
+    let hits_detail = (0..tries)
+      .map(|_| gen(times))
+      .enumerate()
+      .map(|(i, wakuchin)| {
+        render.render_progress(
+          progress_interval,
+          Progress(ProgressKind::Processing(ProcessingDetail::new(
+            0,
+            wakuchin.clone(),
+            i,
+            tries,
+            1,
+          ))),
+          false,
+        )?;
+
+        if is_stopped_accidentially.load(Ordering::SeqCst) {
+          return Err(WakuchinError::Cancelled);
         }
-      },
-    )
-    .flatten()
-    .collect();
 
-  if matches!(hits_detail_err, Err(WakuchinError::Cancelled)) {
-    render.invoke_on_accidential_stop()?;
+        if check(&wakuchin, regex) {
+          let hit = Hit::new(i, &*wakuchin);
 
-    return Err(WakuchinError::Cancelled);
-  }
+          render.handle_hit(wakuchin);
 
-  render.render_progress(
-    Duration::ZERO,
-    Progress(ProgressKind::Done(DoneDetail {
-      id: 0,
-      total: tries,
-      total_workers: 1,
-    })),
-    true,
-  )?;
+          Ok(Some(hit))
+        } else {
+          Ok(None)
+        }
+      })
+      .scan(
+        &mut hits_detail_err,
+        |hits_detail_err, result| match result {
+          Ok(result) => Some(result),
+          Err(err) => {
+            **hits_detail_err = Err(err);
 
-  render.invoke_after_finish()?;
+            None
+          }
+        },
+      )
+      .flatten()
+      .collect();
 
-  let hits = render.hits();
+    if matches!(hits_detail_err, Err(WakuchinError::Cancelled)) {
+      render.invoke_on_accidential_stop()?;
+
+      return Err(WakuchinError::Cancelled);
+    }
+
+    // cleanup
+    is_stopped_accidentially.store(true, Ordering::SeqCst);
+
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+      signal_handle.join().unwrap();
+      signal_hook_registry::unregister(signal_id);
+    }
+
+    render.render_progress(
+      Duration::ZERO,
+      Progress(ProgressKind::Done(DoneDetail {
+        id: 0,
+        total: tries,
+        total_workers: 1,
+      })),
+      true,
+    )?;
+
+    render.invoke_after_finish()?;
+
+    Ok((hits_detail, render.hits()))
+  })?;
+
   let hits_total = hits.iter().map(|c| c.hits).sum::<usize>();
 
   Ok(WakuchinResult {
