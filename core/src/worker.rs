@@ -1,5 +1,6 @@
 //! Wakuchin researcher main functions
 
+use std::panic::resume_unwind;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::thread::{available_parallelism, scope};
@@ -241,7 +242,11 @@ pub fn run_par(
       });
 
     for worker_handle in worker_handles {
-      for hit in worker_handle.join().unwrap()?.into_iter() {
+      for hit in worker_handle
+        .join()
+        .unwrap_or_else(|e| resume_unwind(e))?
+        .into_iter()
+      {
         hits_detail.push(hit);
       }
     }
@@ -250,12 +255,12 @@ pub fn run_par(
     drop(hit_tx);
 
     // after all workers have finished, wait for ui and hit threads to finish
-    hit_handle.join().unwrap();
-    ui_handle.join().unwrap()?;
+    hit_handle.join().unwrap_or_else(|e| resume_unwind(e));
+    ui_handle.join().unwrap_or_else(|e| resume_unwind(e))?;
 
     #[cfg(not(target_arch = "wasm32"))]
     {
-      signal_handle.join().unwrap();
+      signal_handle.join().unwrap_or_else(|e| resume_unwind(e));
       signal_hook_registry::unregister(signal_id);
     }
 
@@ -451,7 +456,7 @@ pub fn run_seq(
 
     #[cfg(not(target_arch = "wasm32"))]
     {
-      signal_handle.join().unwrap();
+      signal_handle.join().unwrap_or_else(|e| resume_unwind(e));
       signal_hook_registry::unregister(signal_id);
     }
 
