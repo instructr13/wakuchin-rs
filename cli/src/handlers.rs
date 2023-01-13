@@ -46,6 +46,7 @@ pub(crate) struct ConsoleProgressHandler {
   tries: usize,
   tries_string: String,
   times: usize,
+  total_workers: usize,
 }
 
 impl ConsoleProgressHandler {
@@ -55,9 +56,39 @@ impl ConsoleProgressHandler {
       handler_height: 0,
       term: Term::stderr(),
       tries,
-      tries_string: format!("{tries}"),
+      tries_string: tries.to_string(),
       times,
+      total_workers: 0,
     }
+  }
+
+  fn append_id(
+    id: usize,
+    id_width: usize,
+    base: impl Into<String>,
+  ) -> (bool, String) {
+    if id == 0 {
+      return (true, base.into());
+    }
+
+    (
+      false,
+      format!(
+        "{} {base}",
+        format!("#{id:<id_width$}").bold(),
+        base = base.into()
+      ),
+    )
+  }
+
+  fn pad_id(id: usize, id_width: usize, base: impl Into<String>) -> String {
+    if id == 0 {
+      return base.into();
+    }
+
+    let actual_width = id_width + 2; // # + space
+
+    format!("{}{base}", " ".repeat(actual_width), base = base.into())
   }
 
   fn render_progress_segment(width: usize, percentage: f64) -> String {
@@ -83,6 +114,7 @@ impl ConsoleProgressHandler {
   fn render_hit_counts(
     &self,
     buf: &mut itoa::Buffer,
+    id_width: usize,
     hit_counts: &[HitCount],
   ) -> usize {
     let mut current_hit_total = 0;
@@ -96,8 +128,12 @@ impl ConsoleProgressHandler {
       current_hit_total += count;
 
       eprintln!(
-        "        {} {}: {:<} ({:.3}%)",
-        "hits".blue().underline(),
+        "      {} {}: {:<} ({:.3}%)",
+        Self::pad_id(
+          self.total_workers,
+          id_width,
+          "hits".blue().underline().to_string(),
+        ),
         chars.dimmed(),
         buf.format(count).bold(),
         count as f64 / self.tries as f64 * 100.0,
@@ -105,8 +141,12 @@ impl ConsoleProgressHandler {
     }
 
     eprintln!(
-      "  {} {:<tries_width$} / {tries} ({:.3}%)",
-      "total hits".blue().underline(),
+      "{} {:<tries_width$} / {tries} ({:.3}%)",
+      Self::pad_id(
+        self.total_workers,
+        id_width,
+        "total hits".blue().underline().to_string()
+      ),
       buf.format(current_hit_total).bold(),
       current_hit_total as f64 / self.tries as f64 * 100.0,
       tries = self.tries
@@ -123,98 +163,54 @@ impl ConsoleProgressHandler {
     let mut current_total = 0;
 
     let tries_width = self.tries_string.len();
-    let mut id_width: usize = 0;
+    let id_width = self.total_workers.to_string().len();
 
     for progress in progresses {
-      match progress {
-        Progress(ProgressKind::Idle(IdleDetail {
-          id: 0,
-          total_workers: 1,
-        })) => {
-          eprintln!("{}", "Idle".yellow());
+      let (sequential, body) = match progress {
+        Progress(ProgressKind::Idle(IdleDetail { id })) => {
+          Self::append_id(*id, id_width, "Idle".yellow().to_string())
         }
-        Progress(ProgressKind::Idle(IdleDetail { id, total_workers })) => {
-          if id_width == 0 {
-            id_width = total_workers.to_string().len();
-          }
-
-          eprintln!(
-            "{} {}",
-            format!("#{id:<id_width$}").bold(),
-            "Idle".yellow(),
-          );
-        }
-        Progress(ProgressKind::Processing(processing_detail)) => {
-          match processing_detail {
-            ProcessingDetail {
-              id: 0,
-              current,
-              total,
-              total_workers: 1,
-              ..
-            } => {
-              current_total += current;
-
-              eprintln!(
-                "{} {} • {:<tries_width$} / {total}",
-                "Processing".blue(),
-                chars_to_wakuchin(&processing_detail.wakuchin).dimmed(),
-                buf.format(*current)
-              );
-            }
-            ProcessingDetail {
-              id,
-              current,
-              total,
-              total_workers,
-              ..
-            } => {
-              current_total += current;
-
-              let id_width = total_workers.to_string().len();
-
-              eprintln!(
-                "{} {} {} • {:<tries_width$} / {total}",
-                format!("#{id:<id_width$}").bold(),
-                "Processing".blue(),
-                chars_to_wakuchin(&processing_detail.wakuchin).dimmed(),
-                buf.format(*current)
-              );
-            }
-          }
-        }
-        Progress(ProgressKind::Done(DoneDetail {
-          id: 0,
-          total,
-          total_workers: 1,
-          ..
-        })) => {
-          current_total += total;
-
-          eprintln!(
-            "{} {}",
-            "Done      ".green(),
-            " ".repeat(self.times * 8 + self.tries_string.len() * 2 + 5),
-          );
-        }
-        Progress(ProgressKind::Done(DoneDetail {
+        Progress(ProgressKind::Processing(ProcessingDetail {
           id,
+          current,
           total,
-          total_workers,
+          wakuchin,
         })) => {
+          current_total += current;
+
+          Self::append_id(
+            *id,
+            id_width,
+            format!(
+              "{} {} • {:<tries_width$} / {total}",
+              "Processing".blue(),
+              chars_to_wakuchin(wakuchin).dimmed(),
+              buf.format(*current)
+            ),
+          )
+        }
+        Progress(ProgressKind::Done(DoneDetail { id, total })) => {
           current_total += total;
 
-          if id_width == 0 {
-            id_width = total_workers.to_string().len();
-          }
-
-          eprintln!(
-            "{} {} {}",
-            format!("#{id:<id_width$}").bold(),
-            "Done      ".green(),
-            " ".repeat(self.times * 8 + self.tries_string.len() * 2 + 5),
-          );
+          Self::append_id(
+            *id,
+            id_width,
+            format!(
+              "{} {}",
+              "Done      ".green(),
+              " ".repeat(self.times * 8 + self.tries_string.len() * 2 + 5)
+            ),
+          )
         }
+      };
+
+      if sequential {
+        eprintln!(
+          "{}",
+          Self::pad_id(1, self.total_workers.to_string().len(), body)
+        )
+      } else {
+        eprintln!("{}", body);
       }
     }
 
@@ -231,11 +227,12 @@ impl ConsoleProgressHandler {
     current_diff: usize,
   ) -> Result<()> {
     let tries_width = self.tries_string.len();
+
     let possible_bar_width = {
       let size = self.term.size_checked();
 
       if let Some((width, _)) = size {
-        if width < tries_width as u16 || width + (tries_width as u16) < 55 {
+        if width < tries_width as u16 || width + (tries_width as u16) < 45 {
           PROGRESS_BAR_WIDTH
         } else {
           width - tries_width as u16 * 2 - 55
@@ -251,32 +248,37 @@ impl ConsoleProgressHandler {
       PROGRESS_BAR_WIDTH
     };
 
+    let id_width = self.total_workers.to_string().len();
     let percentage = current as f64 / self.tries as f64 * 100.0;
     let bar = Self::render_progress_segment(bar_width.into(), percentage);
     let rate = current_diff as f64 / elapsed_time.as_secs_f64();
     let eta = (self.tries - current) as f64 / rate;
 
     eprintln!(
-        "{} {bar} • {}: {:<tries_width$} / {tries} ({percentage:.0}%, {rate}/sec, eta: {eta:>3.0}sec)   ",
-        "Status".bold(),
-        "total".green().underline(),
-        buf.format(current).bold(),
-        tries = self.tries,
-        rate = human_format::Formatter::new().format(rate),
-      );
+      "{} {bar} • {}: {:<tries_width$} / {tries} ({percentage:.0}%, {rate}/sec, eta: {eta:>3.0}sec)   ",
+      Self::pad_id(self.total_workers, id_width, "Status".bold().to_string()),
+      "total".green().underline(),
+      buf.format(current).bold(),
+      tries = self.tries,
+      rate = human_format::Formatter::new().format(rate),
+    );
 
     Ok(())
   }
 }
 
 impl ProgressHandler for ConsoleProgressHandler {
-  fn before_start(&mut self) -> anyhow::Result<()> {
-    if !self.no_progress {
-      eprint!("Spawning workers...");
-
-      //self.term.hide_cursor()?;
-      self.term.move_cursor_left(u16::MAX as usize)?;
+  fn before_start(&mut self, total_workers: usize) -> anyhow::Result<()> {
+    if self.no_progress {
+      return Ok(());
     }
+
+    eprint!("Spawning workers...");
+
+    self.term.hide_cursor()?;
+    self.term.move_cursor_left(u16::MAX as usize)?;
+
+    self.total_workers = total_workers;
 
     Ok(())
   }
@@ -294,7 +296,7 @@ impl ProgressHandler for ConsoleProgressHandler {
     }
 
     if self.handler_height == 0 {
-      self.handler_height = progresses.len() + hit_counts.len() + 2;
+      self.handler_height = self.total_workers + hit_counts.len() + 2;
     } else {
       self.term.move_cursor_left(u16::MAX as usize)?;
       self
@@ -304,7 +306,11 @@ impl ProgressHandler for ConsoleProgressHandler {
 
     let mut itoa_buf = itoa::Buffer::new();
 
-    self.render_hit_counts(&mut itoa_buf, hit_counts);
+    self.render_hit_counts(
+      &mut itoa_buf,
+      self.total_workers.to_string().len(),
+      hit_counts,
+    );
 
     let current_total = self.render_workers(&mut itoa_buf, progresses);
 

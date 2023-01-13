@@ -49,7 +49,7 @@ impl ThreadRender {
 
   #[inline]
   pub(crate) fn invoke_before_start(&mut self) -> Result<()> {
-    self.progress_handler.before_start()
+    self.progress_handler.before_start(self.total_workers)
   }
 
   pub(crate) fn run(&mut self, interval: Duration) -> Result<()> {
@@ -71,7 +71,6 @@ impl ThreadRender {
               Progress(ProgressKind::Done(DoneDetail {
                 id,
                 total: self.total,
-                total_workers: self.total_workers,
               }))
             })
             .collect_vec(),
@@ -167,7 +166,7 @@ impl Render {
 
   #[inline]
   pub(crate) fn invoke_before_start(&mut self) -> Result<()> {
-    self.progress_handler.before_start()
+    self.progress_handler.before_start(1)
   }
 
   pub(crate) fn render_progress(

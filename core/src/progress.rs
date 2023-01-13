@@ -19,9 +19,6 @@ pub enum ProgressKind {
 pub struct IdleDetail {
   /// Worker id. 1-indexed, 0 means single worker (sequential).
   pub id: usize,
-
-  /// Total number of workers.
-  pub total_workers: usize,
 }
 
 /// Detail of processing progress.
@@ -38,9 +35,6 @@ pub struct ProcessingDetail {
 
   /// Total number of wakuchin chars to process _in this worker_.
   pub total: usize,
-
-  /// Total number of workers.
-  pub total_workers: usize,
 }
 
 impl ProcessingDetail {
@@ -49,14 +43,12 @@ impl ProcessingDetail {
     wakuchin: impl Into<Cow<'static, str>>,
     current: usize,
     total: usize,
-    total_workers: usize,
   ) -> Self {
     Self {
       id,
       wakuchin: wakuchin.into(),
       current,
       total,
-      total_workers,
     }
   }
 }
@@ -69,9 +61,6 @@ pub struct DoneDetail {
 
   /// Total number of wakuchin chars to process _in this worker_.
   pub total: usize,
-
-  /// Total number of workers.
-  pub total_workers: usize,
 }
 
 /// Progress data you will use in `progress_handler`.

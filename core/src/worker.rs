@@ -126,12 +126,7 @@ pub fn run_par(
   let (hit_tx, hit_rx) = channel();
 
   let (progress_tx_vec, progress_rx_vec): (Vec<_>, Vec<_>) = (0..total_workers)
-    .map(|id| {
-      watch(Progress(ProgressKind::Idle(IdleDetail {
-        id: id + 1,
-        total_workers,
-      })))
-    })
+    .map(|id| watch(Progress(ProgressKind::Idle(IdleDetail { id: id + 1 }))))
     .unzip();
 
   let mut hits_detail = Vec::new();
@@ -224,13 +219,7 @@ pub fn run_par(
             if !progress_tx.is_closed() {
               progress_tx
                 .send(Progress(ProgressKind::Processing(
-                  ProcessingDetail::new(
-                    id + 1,
-                    wakuchin,
-                    current,
-                    total,
-                    total_workers,
-                  ),
+                  ProcessingDetail::new(id + 1, wakuchin, current, total),
                 )))
                 .expect("progress channel is unavailable");
             }
@@ -243,7 +232,6 @@ pub fn run_par(
               .send(Progress(ProgressKind::Done(DoneDetail {
                 id: id + 1,
                 total,
-                total_workers,
               })))
               .unwrap();
           }
@@ -403,10 +391,7 @@ pub fn run_seq(
 
     render.render_progress(
       progress_interval,
-      Progress(ProgressKind::Idle(IdleDetail {
-        id: 0,
-        total_workers: 1,
-      })),
+      Progress(ProgressKind::Idle(IdleDetail { id: 0 })),
       false,
     )?;
 
@@ -423,7 +408,6 @@ pub fn run_seq(
             wakuchin.clone(),
             i,
             tries,
-            1,
           ))),
           false,
         )?;
@@ -476,7 +460,6 @@ pub fn run_seq(
       Progress(ProgressKind::Done(DoneDetail {
         id: 0,
         total: tries,
-        total_workers: 1,
       })),
       true,
     )?;

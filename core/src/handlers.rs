@@ -9,7 +9,7 @@ pub mod msgpack;
 
 pub trait ProgressHandler: Send {
   #[inline]
-  fn before_start(&mut self) -> Result<()> {
+  fn before_start(&mut self, _total_workers: usize) -> Result<()> {
     Ok(())
   }
 

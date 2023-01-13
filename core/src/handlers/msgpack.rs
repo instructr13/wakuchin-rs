@@ -185,7 +185,6 @@ mod test {
         total: 100,
         id: 0,
         wakuchin: "WKNCWKNC".into(),
-        total_workers: 1,
       }))];
 
     let hit_counts = vec![HitCount {
@@ -217,7 +216,7 @@ mod test {
     let result = String::from_utf8(result_vec)?;
 
     assert_eq!(
-      "lpGBqlByb2Nlc3NpbmeVAKhXS05DV0tOQwBkAZGSo+OBggDLP/AAAAAAAADLQFkAAAAAAABkwg==",
+      "lpGBqlByb2Nlc3NpbmeUAKhXS05DV0tOQwBkkZKj44GCAMs/8AAAAAAAAMtAWQAAAAAAAGTC",
       result
     );
 
@@ -236,7 +235,6 @@ mod test {
         total: 100,
         id: 0,
         wakuchin: "WKNCWKNC".into(),
-        total_workers: 1,
       }))];
 
     let hit_counts = vec![HitCount {
@@ -268,7 +266,7 @@ mod test {
     let result = general_purpose::STANDARD.encode(result_vec);
 
     assert_eq!(
-      "lpGBqlByb2Nlc3NpbmeVAKhXS05DV0tOQwBkAZGSo+OBggDLP/AAAAAAAADLQFkAAAAAAABkwg==",
+      "lpGBqlByb2Nlc3NpbmeUAKhXS05DV0tOQwBkkZKj44GCAMs/8AAAAAAAAMtAWQAAAAAAAGTC",
       result
     );
 
