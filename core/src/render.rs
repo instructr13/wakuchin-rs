@@ -42,10 +42,12 @@ impl ThreadRender {
     }
   }
 
+  #[inline]
   fn hits(&self) -> Vec<HitCount> {
     self.counter.get_all().into_hit_counts()
   }
 
+  #[inline]
   pub(crate) fn invoke_before_start(&mut self) -> Result<()> {
     self.progress_handler.before_start()
   }
@@ -163,6 +165,7 @@ impl Render {
     self.counter.add(chars);
   }
 
+  #[inline]
   pub(crate) fn invoke_before_start(&mut self) -> Result<()> {
     self.progress_handler.before_start()
   }
@@ -217,10 +220,12 @@ impl Render {
     Ok(())
   }
 
+  #[inline]
   pub(crate) fn invoke_on_accidential_stop(&mut self) -> Result<()> {
     self.progress_handler.on_accidential_stop()
   }
 
+  #[inline]
   pub(crate) fn invoke_after_finish(&mut self) -> Result<()> {
     self.progress_handler.after_finish()
   }

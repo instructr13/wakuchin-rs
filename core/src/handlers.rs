@@ -8,6 +8,7 @@ pub mod empty;
 pub mod msgpack;
 
 pub trait ProgressHandler: Send {
+  #[inline]
   fn before_start(&mut self) -> Result<()> {
     Ok(())
   }
@@ -21,10 +22,12 @@ pub trait ProgressHandler: Send {
     all_done: bool,
   ) -> Result<()>;
 
+  #[inline]
   fn after_finish(&mut self) -> Result<()> {
     Ok(())
   }
 
+  #[inline]
   fn on_accidential_stop(&mut self) -> Result<()> {
     self.after_finish()
   }

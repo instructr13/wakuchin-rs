@@ -113,6 +113,7 @@ pub fn gen(times: usize) -> Cow<'static, str> {
 /// assert_eq!(wakuchin_c_count, 9);
 /// assert_eq!(wakuchin_n_count, 9);
 /// ```
+#[inline]
 pub fn gen_vec(len: usize, times: usize) -> Vec<Cow<'static, str>> {
   (0..len).map(|_| gen(times)).collect()
 }
@@ -189,7 +190,7 @@ pub fn validate_external(wakuchin: &str) -> bool {
 /// assert!(!check("わくちん", &Regex::new(r"^[WKCN]+$").unwrap()));
 /// assert!(!check("WKCNX", &Regex::new(r"^[WKCN]+$").unwrap()));
 /// ```
-#[inline]
+#[inline(always)]
 pub fn check(chars: &str, regex: &Regex) -> bool {
   regex.is_match(chars)
 }

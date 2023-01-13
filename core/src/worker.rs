@@ -160,6 +160,8 @@ pub fn run_par(
       })
     }?;
 
+    let is_stopped_accidentially = is_stopped_accidentially.as_ref();
+
     #[cfg(not(target_arch = "wasm32"))]
     let signal_handle = s.spawn(|| loop {
       if counter.count_stopped.load(Ordering::Acquire) {
@@ -192,7 +194,6 @@ pub fn run_par(
       .zip(progress_tx_vec.into_iter())
       .enumerate()
       .for_each(|(id, (wakuchins, progress_tx))| {
-        let is_stopped_accidentially = is_stopped_accidentially.clone();
         let regex = regex.clone();
         let hit_tx = hit_tx.clone();
 

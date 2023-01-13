@@ -96,6 +96,7 @@ impl<Tries, Times, TRegex> ResearchBuilder<Tries, Times, TRegex> {
 }
 
 impl ResearchBuilder<usize, usize, Regex> {
+  #[inline]
   pub fn run_par(self) -> Result<WakuchinResult> {
     run_par(
       self.tries,
@@ -107,6 +108,7 @@ impl ResearchBuilder<usize, usize, Regex> {
     )
   }
 
+  #[inline]
   pub fn run_seq(self) -> Result<WakuchinResult> {
     run_seq(
       self.tries,

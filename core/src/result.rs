@@ -133,6 +133,7 @@ pub struct WakuchinResult {
 impl WakuchinResult {
   /// Return string of the result with specific output format.
   /// This function is a wrapper of `out`.
+  #[inline]
   pub fn out(
     &self,
     format: ResultOutputFormat,

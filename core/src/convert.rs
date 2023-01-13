@@ -41,6 +41,7 @@ fn wakuchin_to_char(char: char) -> char {
 /// assert_eq!(chars_to_wakuchin("WKCN"), "わくちん");
 /// assert_eq!(chars_to_wakuchin("WKNCWKNC"), "わくんちわくんち");
 /// ```
+#[inline]
 pub fn chars_to_wakuchin(chars: &str) -> String {
   chars.chars().map(self::char_to_wakuchin).collect()
 }
@@ -64,6 +65,7 @@ pub fn chars_to_wakuchin(chars: &str) -> String {
 /// assert_eq!(wakuchin_to_chars("わくちん"), "WKCN");
 /// assert_eq!(wakuchin_to_chars("わくんちわくんち"), "WKNCWKNC");
 /// ```
+#[inline]
 pub fn wakuchin_to_chars(chars: &str) -> String {
   chars.chars().map(self::wakuchin_to_char).collect()
 }
