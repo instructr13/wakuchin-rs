@@ -73,7 +73,10 @@ fn get_total_workers(workers: usize) -> Result<usize> {
 ///   #   Ok(())
 ///   # }
 ///   ```
-/// * [`WakuchinError::WorkerError`](crate::error::WakuchinError::WorkerError) - Returns when any worker raised an error
+///
+/// # Panics
+///
+/// This function panics when workers raised panic (mostly about disconnected channels).
 ///
 /// # Examples
 ///
@@ -313,6 +316,10 @@ pub fn run_par(
 ///   #
 ///   # Ok::<(), Box<dyn std::error::Error>>(())
 ///   ```
+///
+/// # Panics
+///
+/// This function panics when it fails to spawn signal handler thread, or to register signal hooks.
 ///
 /// # Examples
 ///
