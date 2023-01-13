@@ -478,9 +478,15 @@
 <span id="478">478</span>
 <span id="479">479</span>
 <span id="480">480</span>
+<span id="481">481</span>
+<span id="482">482</span>
+<span id="483">483</span>
+<span id="484">484</span>
+<span id="485">485</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Wakuchin researcher main functions
 
-</span><span class="kw">use </span>std::sync::atomic::{AtomicBool, Ordering};
+</span><span class="kw">use </span>std::panic::resume_unwind;
+<span class="kw">use </span>std::sync::atomic::{AtomicBool, Ordering};
 <span class="kw">use </span>std::sync::Arc;
 <span class="kw">use </span>std::thread::{available_parallelism, scope};
 <span class="kw">use </span>std::time::Duration;
@@ -721,7 +727,11 @@
       });
 
     <span class="kw">for </span>worker_handle <span class="kw">in </span>worker_handles {
-      <span class="kw">for </span>hit <span class="kw">in </span>worker_handle.join().unwrap()<span class="question-mark">?</span>.into_iter() {
+      <span class="kw">for </span>hit <span class="kw">in </span>worker_handle
+        .join()
+        .unwrap_or_else(|e| resume_unwind(e))<span class="question-mark">?
+        </span>.into_iter()
+      {
         hits_detail.push(hit);
       }
     }
@@ -730,12 +740,12 @@
     </span>drop(hit_tx);
 
     <span class="comment">// after all workers have finished, wait for ui and hit threads to finish
-    </span>hit_handle.join().unwrap();
-    ui_handle.join().unwrap()<span class="question-mark">?</span>;
+    </span>hit_handle.join().unwrap_or_else(|e| resume_unwind(e));
+    ui_handle.join().unwrap_or_else(|e| resume_unwind(e))<span class="question-mark">?</span>;
 
     <span class="attribute">#[cfg(not(target_arch = <span class="string">&quot;wasm32&quot;</span>))]
     </span>{
-      signal_handle.join().unwrap();
+      signal_handle.join().unwrap_or_else(|e| resume_unwind(e));
       signal_hook_registry::unregister(signal_id);
     }
 
@@ -931,7 +941,7 @@
 
     <span class="attribute">#[cfg(not(target_arch = <span class="string">&quot;wasm32&quot;</span>))]
     </span>{
-      signal_handle.join().unwrap();
+      signal_handle.join().unwrap_or_else(|e| resume_unwind(e));
       signal_hook_registry::unregister(signal_id);
     }
 
