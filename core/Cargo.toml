@@ -14,7 +14,6 @@ readme = "README.md"
 path = "src/lib.rs"
 
 [features]
-simd-accel = ["simd-json"]
 stdweb = ["instant/stdweb"]
 wasm-bindgen = ["instant/wasm-bindgen"]
 
@@ -36,7 +35,6 @@ regex = "1.7"
 rmp-serde = "1.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-simd-json = { version = "0.6", optional = true }
 smooth = "0.1"
 thiserror = "1.0"
 tokio = { version = "=1.24", features = ["sync"] }

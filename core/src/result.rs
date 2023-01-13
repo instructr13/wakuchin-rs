@@ -222,9 +222,6 @@ Total hits: {} ({}%)",
       itoa_buf.format(result.hits_total),
       (result.hits_total as f64 / result.tries as f64 * 100.0).smooth_str()
     )),
-    #[cfg(feature = "simd-accel")]
-    ResultOutputFormat::Json => Ok(simd_json::to_string(result)?),
-    #[cfg(not(feature = "simd-accel"))]
     ResultOutputFormat::Json => Ok(
       serde_json::to_string(result)
         .map_err(|e| WakuchinError::SerializeError(e.into()))?,
