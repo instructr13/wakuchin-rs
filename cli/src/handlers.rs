@@ -235,7 +235,11 @@ impl ConsoleProgressHandler {
       let size = self.term.size_checked();
 
       if let Some((width, _)) = size {
-        width - tries_width as u16 * 2 - 55
+        if width < tries_width as u16 || width + (tries_width as u16) < 55 {
+          PROGRESS_BAR_WIDTH
+        } else {
+          width - tries_width as u16 * 2 - 55
+        }
       } else {
         PROGRESS_BAR_WIDTH
       }
@@ -252,7 +256,7 @@ impl ConsoleProgressHandler {
     let rate = current_diff as f64 / elapsed_time.as_secs_f64();
     let eta = (self.tries - current) as f64 / rate;
 
-    eprint!(
+    eprintln!(
         "{} {bar} • {}: {:<tries_width$} / {tries} ({percentage:.0}%, {rate}/sec, eta: {eta:>3.0}sec)   ",
         "Status".bold(),
         "total".green().underline(),
@@ -270,7 +274,7 @@ impl ProgressHandler for ConsoleProgressHandler {
     if !self.no_progress {
       eprint!("Spawning workers...");
 
-      self.term.hide_cursor()?;
+      //self.term.hide_cursor()?;
       self.term.move_cursor_left(u16::MAX as usize)?;
     }
 
@@ -290,7 +294,7 @@ impl ProgressHandler for ConsoleProgressHandler {
     }
 
     if self.handler_height == 0 {
-      self.handler_height = progresses.len() + hit_counts.len() + 1;
+      self.handler_height = progresses.len() + hit_counts.len() + 2;
     } else {
       self.term.move_cursor_left(u16::MAX as usize)?;
       self
@@ -324,7 +328,7 @@ impl ProgressHandler for ConsoleProgressHandler {
   fn after_finish(&mut self) -> anyhow::Result<()> {
     if !self.no_progress {
       for _ in 0..self.handler_height {
-        self.term.clear_last_lines(self.handler_height)?;
+        self.term.clear_last_lines(1)?;
         self.term.clear_line()?;
       }
     }
