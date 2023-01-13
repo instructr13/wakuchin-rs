@@ -201,7 +201,9 @@ pub fn run_par(
 
           let mut hits = Vec::new();
 
-          for (i, wakuchin) in wakuchins.map(|_| gen(times)).enumerate() {
+          for (current, (i, wakuchin)) in
+            wakuchins.map(|i| (i, gen(times))).enumerate()
+          {
             if is_stopped_accidentially.load(Ordering::Relaxed) {
               drop(hit_tx);
 
@@ -224,7 +226,7 @@ pub fn run_par(
                   ProcessingDetail::new(
                     id + 1,
                     wakuchin,
-                    i,
+                    current,
                     total,
                     total_workers,
                   ),
