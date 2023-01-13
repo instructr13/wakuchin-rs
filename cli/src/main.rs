@@ -26,10 +26,6 @@ use crate::handlers::{ConsoleProgressHandler, HandlerKind};
 #[global_allocator]
 static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
-#[cfg(target_arch = "wasm32")]
-#[global_allocator]
-static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
-
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
   if let Err(err) = try_main().await {

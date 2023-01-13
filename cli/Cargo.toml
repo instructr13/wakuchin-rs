@@ -52,6 +52,3 @@ shadow-rs = "0.20"
 
 [target.'cfg(all(not(target_os = "android"), not(target_env = "msvc"), not(target_arch = "wasm32")))'.dependencies]
 tikv-jemallocator = "0.5"
-
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-wee_alloc = "0.4"
