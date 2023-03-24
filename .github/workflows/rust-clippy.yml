@@ -28,12 +28,12 @@ jobs:
           override: true
 
       - name: Install clippy-sarif
-        uses: baptiste0928/cargo-install@v1
+        uses: baptiste0928/cargo-install@v2
         with:
           crate: clippy-sarif
 
       - name: Install sarif-fmt
-        uses: baptiste0928/cargo-install@v1
+        uses: baptiste0928/cargo-install@v2
         with:
           crate: sarif-fmt
 
