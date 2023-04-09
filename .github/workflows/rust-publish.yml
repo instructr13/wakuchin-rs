@@ -31,7 +31,7 @@ jobs:
           semver_only: true
 
       - name: Install cargo-release
-        uses: baptiste0928/cargo-install@v1
+        uses: baptiste0928/cargo-install@v2
         with:
           crate: cargo-release
 
