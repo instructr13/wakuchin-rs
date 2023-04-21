@@ -26,7 +26,7 @@ pub enum AppError {
     line: Option<usize>,
     column: Option<usize>,
     #[source]
-    source: SerdeError,
+    source: Box<SerdeError>,
   },
   #[error(transparent)]
   Other(anyhow::Error),

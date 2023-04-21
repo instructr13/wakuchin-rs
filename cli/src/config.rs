@@ -132,7 +132,7 @@ pub fn load_config(path: &Path) -> Result<Config> {
         path: path.into(),
         line: Some(e.line()),
         column: Some(e.column()),
-        source: SerdeError::new(contents, e),
+        source: Box::new(SerdeError::new(contents, e)),
       }
     })?,
     "yaml" | "yml" => serde_yaml::from_str(&contents).map_err(|e| {
@@ -145,7 +145,7 @@ pub fn load_config(path: &Path) -> Result<Config> {
         path: path.into(),
         line,
         column,
-        source: SerdeError::new(contents, e),
+        source: Box::new(SerdeError::new(contents, e)),
       }
     })?,
     "toml" => toml::from_str(&contents).map_err(|e| {
@@ -157,7 +157,7 @@ pub fn load_config(path: &Path) -> Result<Config> {
         path: path.into(),
         line,
         column,
-        source: SerdeError::new(contents, e),
+        source: Box::new(SerdeError::new(contents, e)),
       }
     })?,
     _ => Err(AppError::ConfigTypeNotSupported { path: path.into() })?,
