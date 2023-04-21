@@ -312,7 +312,7 @@ impl ProgressHandler for ConsoleProgressHandler {
 
     if all_done {
       self.term.clear_line()?;
-      eprint!("{} {}", "Status".bold(), "All Done".bold().green());
+      eprintln!("{} {}", "Status".bold(), "All Done".bold().green());
 
       return Ok(());
     }
