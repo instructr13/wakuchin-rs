@@ -65,28 +65,31 @@ impl ConsoleProgressHandler {
     id_width: usize,
     base: impl Into<String>,
   ) -> (bool, String) {
+    let base = base.into();
+
     if id == 0 {
-      return (true, base.into());
+      return (true, base);
     }
 
     (
       false,
       format!(
         "{} {base}",
-        format!("#{id:<id_width$}").bold(),
-        base = base.into()
+        format!("#{id:<id_width$}").bold()
       ),
     )
   }
 
   fn pad_id(id: usize, id_width: usize, base: impl Into<String>) -> String {
+    let base = base.into();
+
     if id == 0 {
-      return base.into();
+      return base;
     }
 
     let actual_width = id_width + 2; // # + space
 
-    format!("{}{base}", " ".repeat(actual_width), base = base.into())
+    format!("{}{base}", " ".repeat(actual_width))
   }
 
   fn render_progress_segment(width: usize, percentage: f64) -> String {
