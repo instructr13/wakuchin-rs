@@ -18,11 +18,12 @@ use shadow_rs::shadow;
 #[cfg(not(target_arch = "wasm32"))]
 shadow!(build);
 
-#[cfg(not(target_arch = "wasm32"))]
-const LONG_VERSION: Option<&'static str> = Some(build::CLAP_LONG_VERSION);
-
-#[cfg(target_arch = "wasm32")]
-const LONG_VERSION: Option<&'static str> = None;
+const LONG_VERSION: Option<&'static str> = if cfg!(not(target_arch = "wasm32"))
+{
+  Some(build::CLAP_LONG_VERSION)
+} else {
+  None
+};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = "A next generation wakuchin researcher software written in Rust
