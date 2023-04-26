@@ -1,3 +1,4 @@
+use std::ops::{Bound, RangeBounds};
 use std::time::Duration;
 
 use clap::ValueEnum;
@@ -11,7 +12,8 @@ use wakuchin::progress::{
 };
 use wakuchin::result::HitCount;
 
-const PROGRESS_BAR_WIDTH: u16 = 33;
+const DEFAULT_TERMINAL_WIDTH: u16 = 33;
+const DEFAULT_TERMINAL_HEIGHT: u16 = 20;
 
 #[derive(
   Clone,
@@ -60,6 +62,18 @@ impl ConsoleProgressHandler {
     }
   }
 
+  /// Append a worker ID to the base string.
+  /// If the ID is 0, return true and the base string.
+  ///
+  /// # Arguments
+  ///
+  /// * `id` - Worker ID
+  /// * `id_width` - Max width of the ID
+  /// * `base` - Base string
+  ///
+  /// # Returns
+  ///
+  /// `(is_sequential, appended_string)`
   fn append_id(
     id: usize,
     id_width: usize,
@@ -73,11 +87,28 @@ impl ConsoleProgressHandler {
 
     (
       false,
-      format!(
-        "{} {base}",
-        format!("#{id:<id_width$}").bold()
-      ),
+      format!("{} {base}", format!("#{id:<id_width$}").bold()),
     )
+  }
+
+  fn append_id_range(
+    id_range: impl RangeBounds<usize>,
+    base: impl Into<String>,
+  ) -> (bool, String) {
+    let base = base.into();
+
+    let (start, end) = match (id_range.start_bound(), id_range.end_bound()) {
+      (Bound::Included(start), Bound::Included(end)) => (start, end),
+      _ => unreachable!(),
+    };
+
+    match (start, end) {
+      (0, 0) | (1, 1) => (true, base),
+      _ => (
+        false,
+        format!("{} {base}", format!("#{}-{}", start, end).bold(),),
+      ),
+    }
   }
 
   fn pad_id(id: usize, id_width: usize, base: impl Into<String>) -> String {
@@ -160,7 +191,93 @@ impl ConsoleProgressHandler {
     &self,
     buf: &mut itoa::Buffer,
     progresses: &[Progress],
+    terminal_height: u16,
   ) -> usize {
+    // truncate all progress with one line if the terminal height is too small
+    if self.handler_height > terminal_height.into() {
+      // collect total processing workers
+      let (idle_workers, processing_workers, done_workers) = progresses
+        .iter()
+        .filter_map(|progress| {
+          (
+            matches!(progress, Progress(ProgressKind::Idle(_))),
+            matches!(progress, Progress(ProgressKind::Processing(_))),
+            matches!(progress, Progress(ProgressKind::Done(_))),
+          )
+            .into()
+        })
+        .fold(
+          (0, 0, 0),
+          |(idle_workers, processing_workers, done_workers),
+           (is_idle, is_processing, is_done)| {
+            (
+              idle_workers + is_idle as usize,
+              processing_workers + is_processing as usize,
+              done_workers + is_done as usize,
+            )
+          },
+        );
+
+      fn truncate_if_zero(base: impl Into<String>, value: usize) -> String {
+        if value == 0 {
+          return "".to_string();
+        }
+
+        base.into()
+      }
+
+      fn make_workers_count_item(
+        name: impl Into<String>,
+        count: usize,
+        append_comma: bool,
+      ) -> String {
+        format!(
+          "{}{}{} {count}",
+          if append_comma { ", " } else { "" },
+          name.into(),
+          ":".dimmed()
+        )
+      }
+
+      let (_, appended_string) = Self::append_id_range(
+        1..=self.total_workers,
+        format!(
+          "{}{}{}{}",
+          "...".dimmed(),
+          truncate_if_zero(
+            make_workers_count_item(
+              "idle".yellow().to_string(),
+              idle_workers,
+              false
+            ),
+            idle_workers
+          ),
+          truncate_if_zero(
+            make_workers_count_item(
+              "processing".blue().to_string(),
+              processing_workers,
+              true
+            ),
+            processing_workers
+          ),
+          truncate_if_zero(
+            make_workers_count_item(
+              "done".green().to_string(),
+              done_workers,
+              true
+            ),
+            done_workers
+          ),
+        )
+        .dimmed()
+        .to_string(),
+      );
+
+      eprintln!("{}", appended_string);
+
+      return processing_workers + done_workers;
+    }
+
     let mut current_total = 0;
 
     let tries_width = self.tries_string.len();
@@ -226,27 +343,24 @@ impl ConsoleProgressHandler {
     current: usize,
     elapsed_time: Duration,
     current_diff: usize,
+    terminal_width: u16,
   ) {
     let tries_width = self.tries_string.len();
 
     let possible_bar_width = {
-      let size = self.term.size_checked();
-
-      if let Some((width, _)) = size {
-        if width < tries_width as u16 || width + (tries_width as u16) < 45 {
-          PROGRESS_BAR_WIDTH
-        } else {
-          width - tries_width as u16 * 2 - 55
-        }
+      if terminal_width < tries_width as u16
+        || terminal_width + (tries_width as u16) < 45
+      {
+        DEFAULT_TERMINAL_WIDTH
       } else {
-        PROGRESS_BAR_WIDTH
+        terminal_width - tries_width as u16 * 2 - 55
       }
     };
 
-    let bar_width = if PROGRESS_BAR_WIDTH > possible_bar_width {
+    let bar_width = if DEFAULT_TERMINAL_WIDTH > possible_bar_width {
       possible_bar_width
     } else {
-      PROGRESS_BAR_WIDTH
+      DEFAULT_TERMINAL_WIDTH
     };
 
     let id_width = self.total_workers.to_string().len();
@@ -311,7 +425,14 @@ impl ProgressHandler for ConsoleProgressHandler {
       hit_counts,
     );
 
-    let current_total = self.render_workers(&mut itoa_buf, progresses);
+    let size = self.term.size_checked();
+
+    let (height, width) = match size {
+      Some((height, width)) => (height, width),
+      None => (DEFAULT_TERMINAL_HEIGHT, DEFAULT_TERMINAL_WIDTH),
+    };
+
+    let current_total = self.render_workers(&mut itoa_buf, progresses, height);
 
     if all_done {
       self.term.clear_line()?;
@@ -325,6 +446,7 @@ impl ProgressHandler for ConsoleProgressHandler {
       current_total,
       elapsed_time,
       current_diff,
+      width,
     );
 
     Ok(())
