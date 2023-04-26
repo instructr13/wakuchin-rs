@@ -15,6 +15,8 @@ use wakuchin::result::HitCount;
 const DEFAULT_TERMINAL_WIDTH: u16 = 33;
 const DEFAULT_TERMINAL_HEIGHT: u16 = 20;
 
+const PROGRESS_BAR_WIDTH_MAX: u16 = DEFAULT_TERMINAL_WIDTH;
+
 #[derive(
   Clone,
   Debug,
@@ -357,10 +359,10 @@ impl ConsoleProgressHandler {
       }
     };
 
-    let bar_width = if DEFAULT_TERMINAL_WIDTH > possible_bar_width {
+    let bar_width = if PROGRESS_BAR_WIDTH_MAX > possible_bar_width {
       possible_bar_width
     } else {
-      DEFAULT_TERMINAL_WIDTH
+      PROGRESS_BAR_WIDTH_MAX
     };
 
     let id_width = self.total_workers.to_string().len();
