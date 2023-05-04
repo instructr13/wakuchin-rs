@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":[["WakuchinError","Error type for wakuchin."]]};
+window.SIDEBAR_ITEMS = {"enum":["WakuchinError"]};

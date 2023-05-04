@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["EmptyProgressHandler",""]]};
+window.SIDEBAR_ITEMS = {"struct":["EmptyProgressHandler"]};

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":[["empty",""],["msgpack",""]],"trait":[["ProgressHandler",""]]};
+window.SIDEBAR_ITEMS = {"mod":["empty","msgpack"],"trait":["ProgressHandler"]};
