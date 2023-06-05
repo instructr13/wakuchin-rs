@@ -20,7 +20,7 @@ path = "src/main.rs"
 sequential = []
 
 [build-dependencies]
-shadow-rs = "0.21"
+shadow-rs = "0.23"
 
 [dependencies]
 wakuchin = { version = "0.3.0", path = "../core" }
@@ -47,7 +47,7 @@ tokio = { version = "=1.27", features = ["io-util", "macros", "rt"] }
 toml = "0.5"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-shadow-rs = "0.21"
+shadow-rs = "0.23"
 
 [target.'cfg(all(not(target_os = "android"), not(target_env = "msvc"), not(target_arch = "wasm32")))'.dependencies]
 tikv-jemallocator = "0.5"
