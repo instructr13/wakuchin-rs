@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["run_par","run_seq"]};
+window.SIDEBAR_ITEMS = {"fn":["exact","run_par","run_seq"]};

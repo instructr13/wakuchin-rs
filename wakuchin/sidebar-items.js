@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["check","gen","gen_vec","validate","validate_external"],"mod":["builder","convert","error","handlers","progress","result","symbol","worker"]};
+window.SIDEBAR_ITEMS = {"constant":["MAX_TIMES"],"fn":["check","gen","gen_vec","validate","validate_external"],"mod":["builder","convert","error","handlers","pattern","progress","result","symbol","worker"],"struct":["Generator"]};

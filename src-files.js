@@ -1,0 +1,2 @@
+createSrcSidebar('[["wakuchin",["",[["handlers",[],["empty.rs","msgpack.rs"]]],["arrangement.rs","builder.rs","convert.rs","error.rs","gate.rs","handlers.rs","hit.rs","lib.rs","pattern.rs","progress.rs","render.rs","result.rs","slot.rs","symbol.rs","utils.rs","worker.rs"]]]]');
+//{"start":19,"fragment_lengths":[255]}
