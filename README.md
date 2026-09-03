@@ -9,19 +9,36 @@
 
 - 🚀 **Fast**
   - Research wakuchin with parallelism, zero allocations per try
-  - **179 Mtries/s** on an Apple M4 \(10 cores\) — 300,000,000 tries of `WKCN * 2` in **1.67 s**
+  - **3.5 Gtries/s** on an Apple M4 \(10 cores\) — 300,000,000 tries of
+    `WKCN * 2` in **84 ms**
 
     | workers | time | ns/try | speedup |
     | ------: | ---: | -----: | ------: |
-    | 1 | 10.46 s | 34.9 | 1.00× |
-    | 2 | 5.28 s | 17.6 | 1.98× |
-    | 4 | 2.85 s | 9.5 | 3.67× |
-    | 8 | 1.89 s | 6.3 | 5.52× |
-    | 10 \(default\) | 1.67 s | 5.6 | 6.25× |
-    | 16 | 1.68 s | 5.6 | 6.21× |
+    | 1 | 407 ms | 1.36 | 1.00× |
+    | 2 | 213 ms | 0.71 | 1.92× |
+    | 4 | 114 ms | 0.38 | 3.57× |
+    | 8 | 84 ms | 0.28 | 4.83× |
+    | 10 \(default\) | 133 ms | 0.44 | 3.06× |
 
     Measured with [`wakuchin_cli`](cli) `--release`, `--no-progress`, regex
-    `(WKNCWKNC|WCKNWCKN)` \(hit rate 0.04%\), best of several runs per point.
+    `(WKNCWKNC|WCKNWCKN)`, best of three runs per point.
+- 🎯 **Exact when it can be**
+  - `--exact` skips sampling entirely and reports the answer with **no statistical error**
+
+    ```console
+    $ wakuchin --times 2 --regex '(WKNCWKNC|WCKNWCKN)' --exact true
+    --- Result ---
+    Tries: 2520
+    WCKNWCKN hits: 1 (0.04%)
+    WKNCWKNC hits: 1 (0.04%)
+    Total hits: 2 (0.08%)
+    ```
+
+    A candidate is a permutation of `WKCN` repeated `times` times, so there are
+    only `(4n)!/(n!)^4 = 2520` of them at `times = 2`. Checking every one is
+    cheaper than a few thousand random tries, and answers the question outright
+    instead of estimating it. Available while that space is small enough to
+    enumerate; past that it says so rather than quietly returning an estimate.
 - 🔧 **Extendable**
   - You can use the Rust APIs of [`wakuchin`](core)
 - 📰 **Researcher-friendly**
@@ -38,11 +55,18 @@ $ cargo bench --package wakuchin --bench bench_core -- --save-baseline main
 $ cargo bench --package wakuchin --bench bench_core -- --baseline main
 ```
 
+## Profile-guided optimization
+
+`scripts/pgo.sh` builds the CLI with PGO. It measured **-4.1%** wall time
+(single worker) and an 11% smaller binary against the plain release profile.
+
+Two things worth knowing before reaching for it:
+
+- Most of that win was on the regex engine, and the regex has since left the hot
+  loop for small `times`. Re-measure rather than assuming the 4% still applies.
+
 ## Testing
 
 ```bash
 $ cargo test --workspace --all-features
 ```
-
-`core/tests/alloc_budget.rs` asserts the search loop allocates nothing per try.
-It measures the slope between two run sizes, so setup cost cancels out.
