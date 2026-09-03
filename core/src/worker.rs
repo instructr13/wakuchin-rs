@@ -9,17 +9,17 @@ use std::thread::{available_parallelism, scope};
 use std::time::Duration;
 
 use itertools::Itertools;
-use regex::bytes::Regex;
 
 use crate::error::WakuchinError;
 use crate::gate::Countdown;
 use crate::handlers::ProgressHandler;
 use crate::hit::HitTally;
+use crate::pattern::Pattern;
 use crate::progress::{DoneDetail, ProcessingDetail, Progress, ProgressKind};
 use crate::render::{Render, ThreadRender};
 use crate::result::{Hit, HitCount, WakuchinResult};
 use crate::slot::WorkerProgress;
-use crate::{check, Generator};
+use crate::Generator;
 
 type Result<T> = std::result::Result<T, WakuchinError>;
 
@@ -126,15 +126,17 @@ trait Reporter {
 /// The search loop: take a chunk, search it, report, repeat.
 ///
 /// Progress and the cancellation flag are touched once per chunk rather than
-/// once per try, so both cost effectively nothing. One chunk is the upper bound
+/// once per try, so both cost-effectively nothing. One chunk is the upper bound
 /// on how long Ctrl-C can go unnoticed.
 fn search(
   cursor: &Cursor,
   times: usize,
-  regex: &Regex,
+  pattern: &Pattern,
   reporter: &mut impl Reporter,
   cancelled: &AtomicBool,
 ) -> Result<Vec<Hit>> {
+  let mut matcher = pattern.matcher();
+
   let mut generator = Generator::new(times);
 
   let mut hits: Vec<Hit> = Vec::new();
@@ -148,7 +150,7 @@ fn search(
     for index in chunk {
       generator.shuffle();
 
-      if check(generator.bytes(), regex) {
+      if matcher.is_match(generator.bytes()) {
         // Validated once, not once per use: `as_str` checks the buffer is UTF-8.
         let candidate = generator.as_str();
 
@@ -279,7 +281,7 @@ fn get_total_workers(workers: usize) -> Result<usize> {
 ///   use std::sync::Mutex;
 ///   use std::time::Duration;
 ///
-///   use regex::bytes::Regex;
+///   use wakuchin::pattern::Pattern;
 ///
 ///   use wakuchin::handlers::ProgressHandler;
 ///   use wakuchin::handlers::empty::EmptyProgressHandler;
@@ -287,7 +289,7 @@ fn get_total_workers(workers: usize) -> Result<usize> {
 ///
 ///   # fn main() -> Result<(), Box<dyn std::error::Error>> {
 ///   let handler: Box<dyn ProgressHandler> = Box::new(EmptyProgressHandler::new());
-///   let result = run_par(10, 0, &Regex::new(r"WKCN")?, handler, Duration::from_secs(1), 0);
+///   let result = run_par(10, 0, &Pattern::new(r"WKCN")?, handler, Duration::from_secs(1), 0);
 ///
 ///   assert!(result.is_err());
 ///   assert_eq!(result.err().unwrap().to_string(), "times cannot be zero");
@@ -307,7 +309,7 @@ fn get_total_workers(workers: usize) -> Result<usize> {
 /// use std::sync::{Arc, Mutex};
 /// use std::time::Duration;
 ///
-/// use regex::bytes::Regex;
+/// use wakuchin::pattern::Pattern;
 ///
 /// use wakuchin::handlers::ProgressHandler;
 /// use wakuchin::handlers::msgpack::MsgpackProgressHandler;
@@ -318,7 +320,7 @@ fn get_total_workers(workers: usize) -> Result<usize> {
 /// let tries = 10;
 /// let handler: Box<dyn ProgressHandler>
 ///   = Box::new(MsgpackProgressHandler::new(tries, Arc::new(Mutex::new(stdout()))));
-/// let result = run_par(tries, 1, &Regex::new(r"WKCN")?, handler, Duration::from_secs(1), 4)?;
+/// let result = run_par(tries, 1, &Pattern::new(r"WKCN")?, handler, Duration::from_secs(1), 4)?;
 ///
 /// println!("{}", result.out(ResultOutputFormat::Text)?);
 /// #
@@ -328,7 +330,7 @@ fn get_total_workers(workers: usize) -> Result<usize> {
 pub fn run_par(
   tries: usize,
   times: usize,
-  regex: &Regex,
+  regex: &Pattern,
   progress_handler: Box<dyn ProgressHandler>,
   progress_interval: Duration,
   workers: usize,
@@ -368,7 +370,6 @@ pub fn run_par(
     let mut worker_handles = Vec::with_capacity(total_workers);
 
     for progress in &progress {
-      let regex = regex.clone();
       let cancelled = cancelled.as_ref();
       let cursor = &cursor;
 
@@ -381,7 +382,7 @@ pub fn run_par(
 
         let mut reporter = progress;
 
-        search(cursor, times, &regex, &mut reporter, cancelled)
+        search(cursor, times, regex, &mut reporter, cancelled)
       }));
     }
 
@@ -441,14 +442,14 @@ pub fn run_par(
 ///   ```rust
 ///   use std::time::Duration;
 ///
-///   use regex::bytes::Regex;
+///   use wakuchin::pattern::Pattern;
 ///
 ///   use wakuchin::handlers::ProgressHandler;
 ///   use wakuchin::handlers::empty::EmptyProgressHandler;
 ///   use wakuchin::worker::run_seq;
 ///
 ///   let handler: Box<dyn ProgressHandler> = Box::new(EmptyProgressHandler::new());
-///   let result = run_seq(10, 0, &Regex::new(r"WKCN")?, handler, Duration::from_secs(1));
+///   let result = run_seq(10, 0, &Pattern::new(r"WKCN")?, handler, Duration::from_secs(1));
 ///
 ///   assert!(result.is_err());
 ///   assert_eq!(result.err().unwrap().to_string(), "times cannot be zero");
@@ -467,7 +468,7 @@ pub fn run_par(
 /// use std::sync::{Arc, Mutex};
 /// use std::time::Duration;
 ///
-/// use regex::bytes::Regex;
+/// use wakuchin::pattern::Pattern;
 ///
 /// use wakuchin::handlers::ProgressHandler;
 /// use wakuchin::handlers::msgpack::MsgpackProgressHandler;
@@ -479,7 +480,7 @@ pub fn run_par(
 /// let handler: Box<dyn ProgressHandler>
 ///   = Box::new(MsgpackProgressHandler::new(tries, Arc::new(Mutex::new(stdout()))));
 ///
-/// let result = run_seq(tries, 1, &Regex::new(r"WKCN")?, handler, Duration::from_secs(1))?;
+/// let result = run_seq(tries, 1, &Pattern::new(r"WKCN")?, handler, Duration::from_secs(1))?;
 ///
 /// println!("{}", result.out(ResultOutputFormat::Text)?);
 /// #
@@ -488,7 +489,7 @@ pub fn run_par(
 pub fn run_seq(
   tries: usize,
   times: usize,
-  regex: &Regex,
+  regex: &Pattern,
   progress_handler: Box<dyn ProgressHandler>,
   progress_interval: Duration,
 ) -> Result<WakuchinResult> {
@@ -568,7 +569,7 @@ mod test {
   use std::error::Error;
   use std::time::Duration;
 
-  use regex::bytes::Regex;
+  use crate::pattern::Pattern;
 
   use crate::handlers::empty::EmptyProgressHandler;
   use crate::handlers::ProgressHandler;
@@ -625,7 +626,7 @@ mod test {
     let result = run_par(
       50_000,
       2,
-      &Regex::new(r"^WKNCWKNC$")?,
+      &Pattern::new(r"^WKNCWKNC$")?,
       empty(),
       interval(),
       4,
@@ -646,7 +647,7 @@ mod test {
     // Permissive enough that every worker contributes, so a missing final sort
     // shows up as interleaved indices.
     let result =
-      run_par(50_000, 2, &Regex::new(r"^W")?, empty(), interval(), 8)?;
+      run_par(50_000, 2, &Pattern::new(r"^W")?, empty(), interval(), 8)?;
 
     assert!(result.hits_detail.len() > 100);
     assert!(
@@ -710,7 +711,7 @@ mod test {
     run_par(
       50_000,
       2,
-      &Regex::new(r"^WKNCWKNC$")?,
+      &Pattern::new(r"^WKNCWKNC$")?,
       Box::new(Auditor {
         tries: 50_000,
         audited: false,
@@ -724,7 +725,7 @@ mod test {
 
   #[test]
   fn par_and_seq_agree_on_shape() -> Result<(), Box<dyn Error>> {
-    let regex = Regex::new(r"^W")?;
+    let regex = Pattern::new(r"^W")?;
 
     let par = run_par(20_000, 2, &regex, empty(), interval(), 4)?;
     let seq = run_seq(20_000, 2, &regex, empty(), interval())?;
@@ -738,7 +739,7 @@ mod test {
 
   #[test]
   fn zero_tries_does_nothing() -> Result<(), Box<dyn Error>> {
-    let regex = Regex::new(r"^W")?;
+    let regex = Pattern::new(r"^W")?;
 
     for result in [
       run_par(0, 2, &regex, empty(), interval(), 4)?,
@@ -755,7 +756,7 @@ mod test {
 
   #[test]
   fn times_of_zero_is_rejected() -> Result<(), Box<dyn Error>> {
-    let regex = Regex::new(r"^W")?;
+    let regex = Pattern::new(r"^W")?;
 
     assert!(run_par(10, 0, &regex, empty(), interval(), 4).is_err());
     assert!(run_seq(10, 0, &regex, empty(), interval()).is_err());

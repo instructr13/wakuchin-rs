@@ -9,9 +9,12 @@ use std::thread::scope;
 use std::time::Duration;
 
 use criterion::{criterion_group, BenchmarkId, Criterion, Throughput};
-use regex::bytes::Regex;
+use wakuchin::pattern::Pattern;
 
 use wakuchin::{check, gen, Generator};
+
+/// The regex the end-to-end benchmarks use, so the numbers line up.
+const PATTERN: &str = r"^WKNCWKNC$";
 
 /// Candidate lengths to sweep. `times = 2` is the canonical workload.
 const TIMES: &[usize] = &[1, 2, 3, 4];
@@ -75,7 +78,7 @@ fn bench_gen(c: &mut Criterion) {
 }
 
 fn bench_check(c: &mut Criterion) {
-  let regex = Regex::new(r"^WKNCWKNC$").unwrap();
+  let pattern = Pattern::new(PATTERN).unwrap();
   let (corpus, stride) = corpus(2);
 
   let mut g = c.benchmark_group("primitives/check");
@@ -83,76 +86,69 @@ fn bench_check(c: &mut Criterion) {
   g.throughput(Throughput::Elements(CORPUS as u64));
 
   g.bench_function("single_thread", |b| {
+    let mut matcher = pattern.matcher();
+
     b.iter(|| {
       let mut hits = 0_u64;
 
       for wakuchin in corpus.chunks_exact(stride) {
-        hits += u64::from(check(black_box(wakuchin), &regex));
+        hits += u64::from(check(black_box(wakuchin), &mut matcher));
       }
 
       black_box(hits)
     });
   });
 
+  g.bench_function("one_off", |b| {
+    let sample = &corpus[..stride];
+
+    b.iter(|| black_box(pattern.is_match(black_box(sample))));
+  });
+
   g.finish();
 }
 
-/// Guards the `regex.clone()`-per-worker property.
+/// Why this crate carries a direct `regex-automata` dependency.
 ///
-/// `regex_automata`'s `impl Clone for Regex` builds a fresh `CachePool` so that
-/// each thread wins its pool's "thread owner" fast path. Sharing one `&Regex`
-/// pushes every thread but the owner onto a mutex. `cloned` should beat
-/// `shared` here; if it ever stops doing so, the property was lost.
-fn bench_check_pool(c: &mut Criterion) {
-  const THREADS: usize = 4;
-
-  let regex = Regex::new(r"^WKNCWKNC$").unwrap();
+/// `regex::bytes::Regex::is_match` keeps the engine's scratch space in an
+/// internal pool and checks it out on every call; a `Matcher` holds it
+/// directly.
+///
+/// Single-threaded that is worth only 2-4%, which on its own would not justify
+/// the dependency -- `matcher_threaded` below is the case that does. Keep both:
+/// once the gap closes in *both*, the dependency has stopped paying for itself.
+fn bench_matcher(c: &mut Criterion) {
+  let facade = regex::bytes::Regex::new(PATTERN).unwrap();
+  let pattern = Pattern::new(PATTERN).unwrap();
   let (corpus, stride) = corpus(2);
 
-  let mut g = c.benchmark_group("primitives/check_pool");
+  let mut g = c.benchmark_group("primitives/matcher");
 
-  g.throughput(Throughput::Elements((CORPUS * THREADS) as u64));
-  g.sample_size(30);
+  g.throughput(Throughput::Elements(CORPUS as u64));
 
-  g.bench_function("cloned_per_thread", |b| {
+  g.bench_function("facade_pooled", |b| {
     b.iter(|| {
-      scope(|s| {
-        for _ in 0..THREADS {
-          let regex = regex.clone();
-          let corpus = &corpus;
+      let mut hits = 0_u64;
 
-          s.spawn(move || {
-            let mut hits = 0_u64;
+      for wakuchin in corpus.chunks_exact(stride) {
+        hits += u64::from(facade.is_match(black_box(wakuchin)));
+      }
 
-            for wakuchin in corpus.chunks_exact(stride) {
-              hits += u64::from(check(wakuchin, &regex));
-            }
-
-            black_box(hits)
-          });
-        }
-      });
+      black_box(hits)
     });
   });
 
-  g.bench_function("shared", |b| {
+  g.bench_function("owned_cache", |b| {
+    let mut matcher = pattern.matcher();
+
     b.iter(|| {
-      scope(|s| {
-        for _ in 0..THREADS {
-          let regex = &regex;
-          let corpus = &corpus;
+      let mut hits = 0_u64;
 
-          s.spawn(move || {
-            let mut hits = 0_u64;
+      for wakuchin in corpus.chunks_exact(stride) {
+        hits += u64::from(matcher.is_match(black_box(wakuchin)));
+      }
 
-            for wakuchin in corpus.chunks_exact(stride) {
-              hits += u64::from(check(wakuchin, regex));
-            }
-
-            black_box(hits)
-          });
-        }
-      });
+      black_box(hits)
     });
   });
 
@@ -163,7 +159,7 @@ fn bench_check_pool(c: &mut Criterion) {
 fn bench_try_loop(c: &mut Criterion) {
   const TRIES: usize = 200_000;
 
-  let regex = Regex::new(r"^WKNCWKNC$").unwrap();
+  let pattern = Pattern::new(PATTERN).unwrap();
 
   let mut g = c.benchmark_group("primitives/try_loop");
 
@@ -175,6 +171,7 @@ fn bench_try_loop(c: &mut Criterion) {
       &times,
       |b, &times| {
         let mut generator = Generator::new(black_box(times));
+        let mut matcher = pattern.matcher();
 
         b.iter(|| {
           let mut hits = 0_u64;
@@ -182,7 +179,7 @@ fn bench_try_loop(c: &mut Criterion) {
           for _ in 0..TRIES {
             generator.shuffle();
 
-            hits += u64::from(check(generator.bytes(), &regex));
+            hits += u64::from(matcher.is_match(generator.bytes()));
           }
 
           black_box(hits)
@@ -194,8 +191,92 @@ fn bench_try_loop(c: &mut Criterion) {
   g.finish();
 }
 
+/// The multithreaded half of the same question, which is where the design
+/// actually earns its keep.
+fn bench_matcher_threaded(c: &mut Criterion) {
+  const THREADS: usize = 4;
+
+  let facade = regex::bytes::Regex::new(PATTERN).unwrap();
+  let pattern = Pattern::new(PATTERN).unwrap();
+  let (corpus, stride) = corpus(2);
+
+  let mut g = c.benchmark_group("primitives/matcher_threaded");
+
+  g.throughput(Throughput::Elements((CORPUS * THREADS) as u64));
+  g.sample_size(30);
+
+  let count = |hits: u64| black_box(hits);
+
+  g.bench_function("facade_shared", |b| {
+    b.iter(|| {
+      scope(|s| {
+        for _ in 0..THREADS {
+          let facade = &facade;
+          let corpus = &corpus;
+
+          s.spawn(move || {
+            let mut hits = 0_u64;
+
+            for wakuchin in corpus.chunks_exact(stride) {
+              hits += u64::from(facade.is_match(wakuchin));
+            }
+
+            count(hits)
+          });
+        }
+      });
+    });
+  });
+
+  g.bench_function("facade_cloned", |b| {
+    b.iter(|| {
+      scope(|s| {
+        for _ in 0..THREADS {
+          let facade = facade.clone();
+          let corpus = &corpus;
+
+          s.spawn(move || {
+            let mut hits = 0_u64;
+
+            for wakuchin in corpus.chunks_exact(stride) {
+              hits += u64::from(facade.is_match(wakuchin));
+            }
+
+            count(hits)
+          });
+        }
+      });
+    });
+  });
+
+  g.bench_function("shared_pattern", |b| {
+    b.iter(|| {
+      scope(|s| {
+        for _ in 0..THREADS {
+          let pattern = &pattern;
+          let corpus = &corpus;
+
+          s.spawn(move || {
+            let mut matcher = pattern.matcher();
+            let mut hits = 0_u64;
+
+            for wakuchin in corpus.chunks_exact(stride) {
+              hits += u64::from(matcher.is_match(wakuchin));
+            }
+
+            count(hits)
+          });
+        }
+      });
+    });
+  });
+
+  g.finish();
+}
+
 criterion_group! {
   name = primitives;
   config = Criterion::default().warm_up_time(Duration::from_secs(1));
-  targets = bench_gen, bench_check, bench_check_pool, bench_try_loop
+  targets = bench_gen, bench_check, bench_matcher, bench_matcher_threaded,
+    bench_try_loop
 }

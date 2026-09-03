@@ -16,6 +16,8 @@ pub enum WakuchinError {
   SerializeError(#[from] io::Error),
   #[error("could not install the interrupt handler: {0}")]
   SignalHandler(io::Error),
+  #[error("{0}")]
+  Pattern(String),
   #[error(transparent)]
   Other(#[from] anyhow::Error),
 }

@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use regex::bytes::Regex;
+use crate::pattern::Pattern;
 
 use crate::error::WakuchinError;
 use crate::handlers::empty::EmptyProgressHandler;
@@ -10,10 +10,10 @@ use crate::worker::{run_par, run_seq};
 
 type Result<T> = std::result::Result<T, WakuchinError>;
 
-pub struct ResearchBuilder<Tries, Times, TRegex> {
+pub struct ResearchBuilder<Tries, Times, TPattern> {
   tries: Tries,
   times: Times,
-  regex: TRegex,
+  regex: TPattern,
   progress_handler: Box<dyn ProgressHandler>,
   progress_interval: Duration,
   workers: usize,
@@ -39,8 +39,8 @@ impl Default for ResearchBuilder<(), (), ()> {
   }
 }
 
-impl<Tries, Times, TRegex> ResearchBuilder<Tries, Times, TRegex> {
-  pub fn tries(self, tries: usize) -> ResearchBuilder<usize, Times, TRegex> {
+impl<Tries, Times, TPattern> ResearchBuilder<Tries, Times, TPattern> {
+  pub fn tries(self, tries: usize) -> ResearchBuilder<usize, Times, TPattern> {
     ResearchBuilder {
       tries,
       times: self.times,
@@ -51,7 +51,7 @@ impl<Tries, Times, TRegex> ResearchBuilder<Tries, Times, TRegex> {
     }
   }
 
-  pub fn times(self, times: usize) -> ResearchBuilder<Tries, usize, TRegex> {
+  pub fn times(self, times: usize) -> ResearchBuilder<Tries, usize, TPattern> {
     ResearchBuilder {
       tries: self.tries,
       times,
@@ -62,7 +62,7 @@ impl<Tries, Times, TRegex> ResearchBuilder<Tries, Times, TRegex> {
     }
   }
 
-  pub fn regex(self, regex: Regex) -> ResearchBuilder<Tries, Times, Regex> {
+  pub fn regex(self, regex: Pattern) -> ResearchBuilder<Tries, Times, Pattern> {
     ResearchBuilder {
       tries: self.tries,
       times: self.times,
@@ -95,7 +95,7 @@ impl<Tries, Times, TRegex> ResearchBuilder<Tries, Times, TRegex> {
   }
 }
 
-impl ResearchBuilder<usize, usize, Regex> {
+impl ResearchBuilder<usize, usize, Pattern> {
   #[inline]
   pub fn run_par(self) -> Result<WakuchinResult> {
     run_par(

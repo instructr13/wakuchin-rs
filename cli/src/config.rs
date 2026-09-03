@@ -7,8 +7,8 @@ use clap::ValueEnum;
 use clap_serde_derive::ClapSerde;
 use humantime::DurationError;
 use miette::{SourceOffset, SourceSpan};
-use regex::bytes::Regex;
 use serde::Deserialize;
+use wakuchin::pattern::Pattern;
 use wakuchin::result::ResultOutputFormat;
 
 use crate::error::{AppError, ConfigParseError, Result};
@@ -64,10 +64,9 @@ pub struct Config {
   ///   C -> ち,
   ///   N -> ん
   /// Used to check matches, characters of matches are ignored.
-  #[default(Regex::new(r"%default%").unwrap())]
-  #[serde(with = "serde_regex")]
+  #[default(Pattern::new(r"%default%").unwrap())]
   #[arg(short, long, verbatim_doc_comment)]
-  pub regex: Regex,
+  pub regex: Pattern,
 
   // Result output format
   #[serde(rename(deserialize = "output"))]

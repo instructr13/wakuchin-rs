@@ -8,8 +8,8 @@ use clap::Parser;
 use clap_serde_derive::ClapSerde;
 use console::Term;
 use dialoguer::{theme::ColorfulTheme, Input};
-use regex::bytes::Regex;
 use shadow_rs::shadow;
+use wakuchin::pattern::Pattern;
 
 use crate::config::{load_config, Config};
 use crate::error::Result;
@@ -88,7 +88,7 @@ impl App {
       .map_err(Into::into)
   }
 
-  fn prompt_regex(&self, term: &Term) -> Result<Regex> {
+  fn prompt_regex(&self, term: &Term) -> Result<Pattern> {
     self.check_interactive();
 
     let regex = Input::<String>::with_theme(&ColorfulTheme::default())
@@ -96,7 +96,7 @@ impl App {
       .validate_with(|s: &String| {
         if s.is_empty() {
           Err("Regex is empty")
-        } else if Regex::new(s).is_err() {
+        } else if Pattern::new(s).is_err() {
           Err("Regex is invalid")
         } else {
           Ok(())
@@ -104,7 +104,7 @@ impl App {
       })
       .interact_text_on(term)?;
 
-    Regex::new(&regex).map_err(|e| anyhow!(e).into())
+    Pattern::new(&regex).map_err(|e| anyhow!(e).into())
   }
 
   pub fn set_panic_hook() -> Box<dyn Fn(&PanicHookInfo) + Send + Sync + 'static>

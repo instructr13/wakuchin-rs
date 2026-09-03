@@ -1234,16 +1234,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "serde_regex"
-version = "1.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bafc8d0c5330cecff10f16b459b479fd9acaa5b4acd7167301414e21b0057012"
-dependencies = [
- "regex",
- "serde",
-]
-
-[[package]]
 name = "serde_spanned"
 version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1586,6 +1576,7 @@ dependencies = [
  "itoa",
  "parking_lot",
  "regex",
+ "regex-automata",
  "rmp-serde",
  "serde",
  "serde_json",
@@ -1609,10 +1600,8 @@ dependencies = [
  "itoa",
  "miette",
  "owo-colors",
- "regex",
  "serde",
  "serde_json",
- "serde_regex",
  "shadow-rs",
  "thiserror",
  "tikv-jemallocator",

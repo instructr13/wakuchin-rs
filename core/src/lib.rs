@@ -4,6 +4,7 @@ pub mod builder;
 pub mod convert;
 pub mod error;
 pub mod handlers;
+pub mod pattern;
 pub mod progress;
 pub mod result;
 pub mod symbol;
@@ -18,8 +19,7 @@ mod utils;
 use std::borrow::Cow;
 use std::str;
 
-use regex::bytes::Regex;
-
+use crate::pattern::Matcher;
 use crate::symbol::WAKUCHIN_BYTES;
 
 /// Generates random wakuchin candidates into a buffer it owns.
@@ -232,40 +232,50 @@ pub fn validate_external(wakuchin: &str) -> bool {
     .all(|c| symbol::WAKUCHIN_EXTERNAL.contains(&c))
 }
 
-/// Check wakuchin candidate bytes with specified regular expression.
-/// This function is a wrapper of `regex::bytes::Regex::is_match`.
+/// Check wakuchin candidate bytes with a matcher.
+///
+/// Takes the [`pattern::Matcher`] rather than the [`pattern::Pattern`] so the
+/// cost is visible in the signature: the matcher carries the regex engine's
+/// scratch space, and building that is far more expensive than a match. Make
+/// one per thread and keep it for the whole loop, which is what
+/// [`worker::run_par`] and [`worker::run_seq`] do.
 ///
 /// # Arguments
 ///
 /// * `chars` - wakuchin candidate bytes to check
-/// * `regex` - regular expression to use
+/// * `matcher` - matcher to check with
 ///
 /// # Returns
 ///
-/// * `bool` - true if wakuchin string is valid
+/// * `bool` - true if the candidate matches
 ///
 /// # Examples
 ///
 /// ```rust
-/// use regex::bytes::Regex;
-///
 /// use wakuchin::check;
+/// use wakuchin::pattern::Pattern;
 ///
-/// assert!(check(b"WKCN", &Regex::new(r"^[WKCN]+$").unwrap()));
-/// assert!(!check("わくちん".as_bytes(), &Regex::new(r"^[WKCN]+$").unwrap()));
-/// assert!(!check(b"WKCNX", &Regex::new(r"^[WKCN]+$").unwrap()));
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// let pattern = Pattern::new(r"^[WKCN]+$")?;
+/// let mut matcher = pattern.matcher();
+///
+/// assert!(check(b"WKCN", &mut matcher));
+/// assert!(!check("わくちん".as_bytes(), &mut matcher));
+/// assert!(!check(b"WKCNX", &mut matcher));
+/// #
+/// #   Ok(())
+/// # }
 /// ```
 #[inline(always)]
-pub fn check(chars: &[u8], regex: &Regex) -> bool {
-  regex.is_match(chars)
+pub fn check(chars: &[u8], matcher: &mut Matcher<'_>) -> bool {
+  matcher.is_match(chars)
 }
 
 #[cfg(test)]
 mod test {
   use std::error::Error;
 
-  use regex::bytes::Regex;
-
+  use crate::pattern::Pattern;
   use crate::{
     check, gen, gen_vec, symbol, validate, validate_external, Generator,
   };
@@ -345,9 +355,12 @@ mod test {
 
   #[test]
   fn test_check() -> Result<(), Box<dyn Error>> {
-    assert!(check(b"WKCN", &Regex::new(r"^[WKCN]+$")?));
-    assert!(!check("わくちん".as_bytes(), &Regex::new(r"^[WKCN]+$")?));
-    assert!(!check(b"WKCNX", &Regex::new(r"^[WKCN]+$")?));
+    let pattern = Pattern::new(r"^[WKCN]+$")?;
+    let mut matcher = pattern.matcher();
+
+    assert!(check(b"WKCN", &mut matcher));
+    assert!(!check("わくちん".as_bytes(), &mut matcher));
+    assert!(!check(b"WKCNX", &mut matcher));
 
     Ok(())
   }

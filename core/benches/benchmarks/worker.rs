@@ -8,7 +8,7 @@ use std::time::Duration;
 use criterion::{
   criterion_group, BenchmarkId, Criterion, SamplingMode, Throughput,
 };
-use regex::bytes::Regex;
+use wakuchin::pattern::Pattern;
 
 use wakuchin::handlers::empty::EmptyProgressHandler;
 use wakuchin::handlers::ProgressHandler;
@@ -43,7 +43,7 @@ fn empty() -> Box<dyn ProgressHandler> {
 /// spawns, channel and map construction, signal registration, teardown.
 /// Subtract it from the other groups to recover the real per-try cost.
 fn bench_overhead(c: &mut Criterion) {
-  let regex = Regex::new(RARE).unwrap();
+  let regex = Pattern::new(RARE).unwrap();
 
   let mut g = c.benchmark_group("worker/overhead");
 
@@ -73,7 +73,7 @@ fn bench_overhead(c: &mut Criterion) {
 fn bench_run_par(c: &mut Criterion) {
   const TRIES: usize = 20_000_000;
 
-  let regex = Regex::new(RARE).unwrap();
+  let regex = Pattern::new(RARE).unwrap();
 
   let mut g = c.benchmark_group("worker/run_par");
 
@@ -109,7 +109,7 @@ fn bench_run_seq(c: &mut Criterion) {
 
   // Compiled once, outside `b.iter` -- the previous revision recompiled it on
   // every iteration, which made seq and par incomparable.
-  let regex = Regex::new(RARE).unwrap();
+  let regex = Pattern::new(RARE).unwrap();
 
   let mut g = c.benchmark_group("worker/run_seq");
 
@@ -162,7 +162,7 @@ fn bench_hit_rate(c: &mut Criterion) {
   g.sampling_mode(SamplingMode::Flat);
 
   for (name, pattern) in patterns {
-    let regex = Regex::new(pattern).unwrap();
+    let regex = Pattern::new(pattern).unwrap();
 
     g.bench_function(BenchmarkId::from_parameter(name), |b| {
       b.iter(|| {
@@ -187,7 +187,7 @@ fn bench_hit_rate_scaling(c: &mut Criterion) {
 
   // 25% hit rate: frequent enough to saturate the aggregation path, cheap
   // enough to run in a bench.
-  let regex = Regex::new(r"^W").unwrap();
+  let regex = Pattern::new(r"^W").unwrap();
 
   let mut g = c.benchmark_group("worker/hit_rate_scaling");
 
@@ -246,7 +246,7 @@ impl ProgressHandler for CountingProgressHandler {
 fn bench_render(c: &mut Criterion) {
   const TRIES: usize = 8_000_000;
 
-  let regex = Regex::new(RARE).unwrap();
+  let regex = Pattern::new(RARE).unwrap();
   let calls = Arc::new(AtomicUsize::new(0));
 
   let mut g = c.benchmark_group("worker/render");

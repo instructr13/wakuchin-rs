@@ -4,7 +4,7 @@ use std::alloc::{GlobalAlloc, Layout, System};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
-use regex::bytes::Regex;
+use wakuchin::pattern::Pattern;
 
 use wakuchin::handlers::empty::EmptyProgressHandler;
 use wakuchin::handlers::ProgressHandler;
@@ -71,7 +71,7 @@ fn slope(mut run: impl FnMut(usize)) -> f64 {
 
 #[test]
 fn run_seq_allocation_slope() {
-  let regex = Regex::new(r"^WKNCWKNC$").unwrap();
+  let regex = Pattern::new(r"^WKNCWKNC$").unwrap();
 
   let per_try = slope(|tries| {
     run_seq(tries, 2, &regex, empty(), Duration::from_secs(3600)).unwrap();
@@ -87,7 +87,7 @@ fn run_seq_allocation_slope() {
 
 #[test]
 fn run_par_allocation_slope() {
-  let regex = Regex::new(r"^WKNCWKNC$").unwrap();
+  let regex = Pattern::new(r"^WKNCWKNC$").unwrap();
 
   let per_try = slope(|tries| {
     run_par(tries, 2, &regex, empty(), Duration::from_secs(3600), 4).unwrap();
