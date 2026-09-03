@@ -3,12 +3,11 @@
 use std::cmp::min;
 use std::ops::Range;
 use std::panic::resume_unwind;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::thread::{available_parallelism, scope};
 use std::time::Duration;
 
-use divide_range::RangeDivisions;
 use regex::bytes::Regex;
 
 use crate::error::WakuchinError;
@@ -25,12 +24,67 @@ use crate::{check, Generator};
 
 type Result<T> = std::result::Result<T, WakuchinError>;
 
-/// Tries a worker takes on at a time.
-///
-/// Big enough that publishing progress and polling the cancellation flag are
-/// noise per try, small enough that Ctrl-C still feels immediate and the tail
-/// of a run stays balanced across workers.
-const CHUNK: usize = 4096;
+/// Smallest chunk a worker will take. Below this, publishing progress and
+/// polling the cancellation flag stop being noise per try.
+const CHUNK_MIN: usize = 64;
+
+/// Largest chunk a worker will take. Caps how long cancellation can go
+/// unnoticed, and how much work a straggler can be sitting on at the end.
+const CHUNK_MAX: usize = 65_536;
+
+/// How finely the remaining work is divided each time a chunk is handed out.
+/// Higher means smaller chunks: less tail imbalance, more trips to the shared
+/// counter.
+const GUIDED_DIVISOR: usize = 16;
+
+/// Hands out tries to workers on demand.
+struct Cursor {
+  next: AtomicUsize,
+  tries: usize,
+  workers: usize,
+}
+
+impl Cursor {
+  fn new(tries: usize, workers: usize) -> Self {
+    Self {
+      next: AtomicUsize::new(0),
+      tries,
+      workers,
+    }
+  }
+
+  /// Takes the next chunk, or `None` once the work is gone.
+  fn claim(&self) -> Option<Range<usize>> {
+    let mut start = self.next.load(Ordering::Relaxed);
+
+    loop {
+      if start >= self.tries {
+        return None;
+      }
+
+      // A compare-exchange rather than a `fetch_add` because the size depends
+      // on how much is left, which is the value being read.
+      let end = min(start + self.chunk(self.tries - start), self.tries);
+
+      match self.next.compare_exchange_weak(
+        start,
+        end,
+        Ordering::Relaxed,
+        Ordering::Relaxed,
+      ) {
+        Ok(_) => return Some(start..end),
+        Err(current) => start = current,
+      }
+    }
+  }
+
+  fn chunk(&self, remaining: usize) -> usize {
+    (remaining / (self.workers * GUIDED_DIVISOR)).clamp(CHUNK_MIN, CHUNK_MAX)
+  }
+}
+
+/// Chunk size for the sequential path, which has no shared cursor to consult.
+const SEQ_CHUNK: usize = 4096;
 
 /// Splits a range into consecutive sub-ranges of at most `size`.
 fn chunks(range: Range<usize>, size: usize) -> impl Iterator<Item = Range<usize>> {
@@ -75,26 +129,26 @@ impl Drop for InterruptFlag {
   }
 }
 
-/// Searches one worker's share of the try space.
+/// Runs one worker: take a chunk, search it, publish, repeat.
 ///
-/// Work is done in chunks so that publishing progress and polling the
-/// cancellation flag cost effectively nothing per try. One chunk of latency on
-/// Ctrl-C is tens of microseconds.
+/// Progress and the cancellation flag are touched once per chunk rather than
+/// once per try, so both cost effectively nothing. One chunk is the upper bound
+/// on how long Ctrl-C can go unnoticed.
 fn search(
-  range: Range<usize>,
+  cursor: &Cursor,
   times: usize,
   regex: &Regex,
   progress: &WorkerProgress,
   cancelled: &AtomicBool,
 ) -> Result<Vec<Hit>> {
-  progress.claim(range.len());
-
   let mut generator = Generator::new(times);
 
   let mut hits: Vec<Hit> = Vec::new();
   let mut processed = 0;
 
-  for chunk in chunks(range, CHUNK) {
+  while let Some(chunk) = cursor.claim() {
+    progress.claim(chunk.len());
+
     let recorded = hits.len();
 
     for index in chunk {
@@ -237,6 +291,7 @@ pub fn run_par(
   let progress: Vec<WorkerProgress> =
     (0..total_workers).map(|_| WorkerProgress::default()).collect();
   let finished = Countdown::new(total_workers);
+  let cursor = Cursor::new(tries, total_workers);
 
   let mut render =
     ThreadRender::new(&cancelled, &finished, &progress, progress_handler);
@@ -249,36 +304,36 @@ pub fn run_par(
   scope::<_, Result<()>>(|s| {
     let mut worker_handles = Vec::with_capacity(total_workers);
 
-    (0..tries)
-      .divide_evenly_into(total_workers)
-      .zip(&progress)
-      .for_each(|(range, progress)| {
-        // Cloned per worker on purpose: `regex_automata`'s `Clone` builds a
-        // fresh `CachePool` so each thread wins its pool's thread-owner fast
-        // path. Sharing one `&Regex` puts every thread but the owner on a
-        // mutex, which measures about 2.6x slower.
-        let regex = regex.clone();
-        let cancelled = cancelled.as_ref();
+    for progress in &progress {
+      let regex = regex.clone();
+      let cancelled = cancelled.as_ref();
+      let cursor = &cursor;
 
-        // Dropped on every exit, panics included, so the renderer below can
-        // never be left waiting on a worker that will not report.
-        let party = finished.party();
+      // Dropped on every exit, panics included, so the renderer below can never
+      // be left waiting on a worker that will not report.
+      let party = finished.party();
 
-        worker_handles.push(s.spawn(move || {
-          let _party = party;
+      worker_handles.push(s.spawn(move || {
+        let _party = party;
 
-          search(range, times, &regex, progress, cancelled)
-        }));
-      });
+        search(cursor, times, &regex, progress, cancelled)
+      }));
+    }
 
-    // The main thread renders. It would otherwise just block in `join`, and a
-    // dedicated render thread oversubscribes the machine when `workers` is
-    // the core count.
     render.run(progress_interval)?;
 
+    let mut per_worker = Vec::with_capacity(total_workers);
+
     for handle in worker_handles {
-      hits_detail.extend(handle.join().unwrap_or_else(|e| resume_unwind(e))?);
+      per_worker.push(handle.join().unwrap_or_else(|e| resume_unwind(e))?);
     }
+
+    hits_detail.reserve(per_worker.iter().map(Vec::len).sum());
+    hits_detail.extend(per_worker.into_iter().flatten());
+
+    // Workers take chunks as they finish rather than owning one contiguous
+    // range, so what they hand back is ordered per worker but not globally.
+    hits_detail.sort_unstable_by_key(|hit| hit.hit_on);
 
     Ok(())
   })?;
@@ -394,7 +449,7 @@ pub fn run_seq(
 
   let mut generator = Generator::new(times);
 
-  for chunk in chunks(0..tries, CHUNK) {
+  for chunk in chunks(0..tries, SEQ_CHUNK) {
     for index in chunk {
       generator.shuffle();
 
@@ -449,4 +504,205 @@ pub fn run_seq(
     hits,
     hits_detail,
   })
+}
+
+#[cfg(test)]
+mod test {
+  use std::error::Error;
+  use std::time::Duration;
+
+  use regex::bytes::Regex;
+
+  use crate::handlers::empty::EmptyProgressHandler;
+  use crate::handlers::ProgressHandler;
+  use crate::progress::{Progress, ProgressKind};
+  use crate::result::HitCount;
+
+  use super::{run_par, run_seq, Cursor, CHUNK_MAX, CHUNK_MIN};
+
+  fn empty() -> Box<dyn ProgressHandler> {
+    Box::new(EmptyProgressHandler::new())
+  }
+
+  /// Long enough that the periodic refresh never fires during a test.
+  fn interval() -> Duration {
+    Duration::from_secs(3600)
+  }
+
+  #[test]
+  fn cursor_hands_out_every_try_exactly_once() {
+    let cursor = Cursor::new(100_000, 4);
+    let mut seen = vec![0_u8; 100_000];
+
+    while let Some(chunk) = cursor.claim() {
+      assert!(chunk.len() <= CHUNK_MAX);
+
+      for index in chunk {
+        seen[index] += 1;
+      }
+    }
+
+    assert!(seen.iter().all(|&count| count == 1));
+  }
+
+  #[test]
+  fn cursor_chunks_shrink_towards_the_end() {
+    let cursor = Cursor::new(1_000_000, 1);
+
+    let first = cursor.claim().unwrap().len();
+    let mut last = first;
+
+    while let Some(chunk) = cursor.claim() {
+      last = chunk.len();
+    }
+
+    assert!(first >= CHUNK_MIN);
+    assert!(
+      last <= first,
+      "guided scheduling should not grow chunks: {first} then {last}"
+    );
+  }
+
+  #[test]
+  fn run_par_reports_every_try() -> Result<(), Box<dyn Error>> {
+    let result = run_par(
+      50_000,
+      2,
+      &Regex::new(r"^WKNCWKNC$")?,
+      empty(),
+      interval(),
+      4,
+    )?;
+
+    assert_eq!(result.tries, 50_000);
+    assert_eq!(
+      result.hits_total,
+      result.hits.iter().map(|count| count.hits).sum::<usize>()
+    );
+    assert_eq!(result.hits_total, result.hits_detail.len());
+
+    Ok(())
+  }
+
+  #[test]
+  fn run_par_returns_hits_in_index_order() -> Result<(), Box<dyn Error>> {
+    // Permissive enough that every worker contributes, so a missing final sort
+    // shows up as interleaved indices.
+    let result =
+      run_par(50_000, 2, &Regex::new(r"^W")?, empty(), interval(), 8)?;
+
+    assert!(result.hits_detail.len() > 100);
+    assert!(
+      result
+        .hits_detail
+        .windows(2)
+        .all(|pair| pair[0].hit_on <= pair[1].hit_on),
+      "hits_detail is not sorted by hit_on"
+    );
+
+    Ok(())
+  }
+
+  /// The aggregate progress bar divides the sum of the workers' reported totals
+  /// by `tries`, so the two have to agree exactly once the run is over. Under
+  /// dynamic work handout the per-worker totals are no longer `tries / workers`,
+  /// which is what makes this worth asserting.
+  #[test]
+  fn worker_totals_sum_to_tries() -> Result<(), Box<dyn Error>> {
+    struct Auditor {
+      tries: usize,
+      audited: bool,
+    }
+
+    impl ProgressHandler for Auditor {
+      fn handle(
+        &mut self,
+        progresses: &[Progress],
+        _: &[HitCount],
+        _: Duration,
+        _: usize,
+        all_done: bool,
+      ) -> anyhow::Result<()> {
+        if !all_done {
+          return Ok(());
+        }
+
+        let total: usize = progresses
+          .iter()
+          .map(|progress| match progress {
+            Progress(ProgressKind::Done(detail)) => detail.total,
+            Progress(ProgressKind::Processing(detail)) => detail.current,
+            Progress(ProgressKind::Idle(_)) => 0,
+          })
+          .sum();
+
+        assert_eq!(total, self.tries);
+
+        self.audited = true;
+
+        Ok(())
+      }
+
+      fn after_finish(&mut self) -> anyhow::Result<()> {
+        assert!(self.audited, "the final refresh never ran");
+
+        Ok(())
+      }
+    }
+
+    run_par(
+      50_000,
+      2,
+      &Regex::new(r"^WKNCWKNC$")?,
+      Box::new(Auditor {
+        tries: 50_000,
+        audited: false,
+      }),
+      interval(),
+      4,
+    )?;
+
+    Ok(())
+  }
+
+  #[test]
+  fn par_and_seq_agree_on_shape() -> Result<(), Box<dyn Error>> {
+    let regex = Regex::new(r"^W")?;
+
+    let par = run_par(20_000, 2, &regex, empty(), interval(), 4)?;
+    let seq = run_seq(20_000, 2, &regex, empty(), interval())?;
+
+    assert_eq!(par.tries, seq.tries);
+    assert_eq!(par.hits_total, par.hits_detail.len());
+    assert_eq!(seq.hits_total, seq.hits_detail.len());
+
+    Ok(())
+  }
+
+  #[test]
+  fn zero_tries_does_nothing() -> Result<(), Box<dyn Error>> {
+    let regex = Regex::new(r"^W")?;
+
+    for result in [
+      run_par(0, 2, &regex, empty(), interval(), 4)?,
+      run_seq(0, 2, &regex, empty(), interval())?,
+    ] {
+      assert_eq!(result.tries, 0);
+      assert_eq!(result.hits_total, 0);
+      assert!(result.hits.is_empty());
+      assert!(result.hits_detail.is_empty());
+    }
+
+    Ok(())
+  }
+
+  #[test]
+  fn times_of_zero_is_rejected() -> Result<(), Box<dyn Error>> {
+    let regex = Regex::new(r"^W")?;
+
+    assert!(run_par(10, 0, &regex, empty(), interval(), 4).is_err());
+    assert!(run_seq(10, 0, &regex, empty(), interval()).is_err());
+
+    Ok(())
+  }
 }

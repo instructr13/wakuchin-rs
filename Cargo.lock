@@ -418,15 +418,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "divide_range"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3663190c2c12d9555be61a927734d69af13380fd7743303539864e551f36bb68"
-dependencies = [
- "num-traits",
-]
-
-[[package]]
 name = "either"
 version = "1.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1612,7 +1603,6 @@ dependencies = [
  "atomig",
  "base64",
  "criterion",
- "divide_range",
  "fastrand",
  "instant",
  "itertools 0.15.0",

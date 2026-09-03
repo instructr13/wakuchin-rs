@@ -3,10 +3,12 @@
 use std::{borrow::Cow, str::FromStr};
 
 use itertools::Itertools;
-use serde::{Deserialize, Serialize};
+use serde::ser::SerializeStruct;
+use serde::{Deserialize, Serialize, Serializer};
 use smooth::Smooth;
 
 use crate::error::WakuchinError;
+use crate::symbol::WAKUCHIN_BYTES;
 
 /// The output format of the result
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize)]
@@ -62,23 +64,89 @@ impl FromStr for ResultOutputFormat {
   }
 }
 
+/// Longest candidate, in characters, that fits in a packed `u64`.
+const PACKED_CHARS_MAX: usize = 32;
+
 /// Used when the researcher detects a hit
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Hit {
   /// The index of the hit
   pub hit_on: usize,
 
-  /// Wakuchin characters that were hit
-  pub chars: String,
+  chars: HitChars,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum HitChars {
+  /// Two bits per character, the least significant first.
+  Packed { bits: u64, chars: u8 },
+
+  /// Anything the packing cannot describe.
+  Spilled(Box<str>),
 }
 
 impl Hit {
-  pub fn new(hit_on: usize, chars: impl Into<String>) -> Self {
+  pub fn new(hit_on: usize, chars: &str) -> Self {
     Self {
       hit_on,
-      chars: chars.into(),
+      chars: HitChars::new(chars),
     }
   }
+
+  /// Wakuchin characters that were hit.
+  #[must_use]
+  pub fn chars(&self) -> Cow<'_, str> {
+    match &self.chars {
+      HitChars::Packed { bits, chars } => Cow::Owned(unpack(*bits, *chars)),
+      HitChars::Spilled(chars) => Cow::Borrowed(chars),
+    }
+  }
+}
+
+impl HitChars {
+  fn new(chars: &str) -> Self {
+    match pack(chars) {
+      Some((bits, chars)) => Self::Packed { bits, chars },
+      None => Self::Spilled(chars.into()),
+    }
+  }
+}
+
+impl Serialize for Hit {
+  fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+    let mut hit = serializer.serialize_struct("Hit", 2)?;
+
+    hit.serialize_field("hit_on", &self.hit_on)?;
+    hit.serialize_field("chars", &*self.chars())?;
+
+    hit.end()
+  }
+}
+
+/// Returns the packed arrangement and its length, or `None` if `chars` is too
+/// long or is not made of wakuchin characters.
+fn pack(chars: &str) -> Option<(u64, u8)> {
+  let bytes = chars.as_bytes();
+
+  if bytes.len() > PACKED_CHARS_MAX {
+    return None;
+  }
+
+  let mut bits = 0;
+
+  for (index, byte) in bytes.iter().enumerate() {
+    let symbol = WAKUCHIN_BYTES.iter().position(|slot| slot == byte)?;
+
+    bits |= (symbol as u64) << (index * 2);
+  }
+
+  Some((bits, bytes.len() as u8))
+}
+
+fn unpack(bits: u64, chars: u8) -> String {
+  (0..usize::from(chars))
+    .map(|index| char::from(WAKUCHIN_BYTES[(bits >> (index * 2)) as usize & 0b11]))
+    .collect()
 }
 
 /// The count of hits you will use in `progress_handler`.
@@ -161,18 +229,9 @@ impl WakuchinResult {
 ///     HitCount::new("WKNC", 1),
 ///   ],
 ///   hits_detail: vec![
-///     Hit {
-///       hit_on: 0,
-///       chars: "WKCN".to_string(),
-///     },
-///     Hit {
-///       hit_on: 1,
-///       chars: "WKNC".to_string(),
-///     },
-///     Hit {
-///       hit_on: 2,
-///       chars: "WKCN".to_string(),
-///     },
+///     Hit::new(0, "WKCN"),
+///     Hit::new(1, "WKNC"),
+///     Hit::new(2, "WKCN"),
 ///   ],
 /// };
 ///
@@ -241,20 +300,7 @@ mod test {
         HitCount::new("b".to_string(), 1),
         HitCount::new("c".to_string(), 1),
       ],
-      hits_detail: vec![
-        Hit {
-          hit_on: 0,
-          chars: "a".to_string(),
-        },
-        Hit {
-          hit_on: 1,
-          chars: "b".to_string(),
-        },
-        Hit {
-          hit_on: 2,
-          chars: "c".to_string(),
-        },
-      ],
+      hits_detail: vec![Hit::new(0, "a"), Hit::new(1, "b"), Hit::new(2, "c")],
     };
 
     assert_eq!(

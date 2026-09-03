@@ -71,7 +71,7 @@ impl WorkerProgress {
     let mut tally = self.tally.lock();
 
     for hit in hits {
-      tally.add(&hit.chars);
+      tally.add(&hit.chars());
     }
   }
 
