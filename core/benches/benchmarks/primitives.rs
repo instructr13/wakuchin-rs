@@ -13,8 +13,16 @@ use wakuchin::pattern::Pattern;
 
 use wakuchin::{check, gen, Generator};
 
-/// The regex the end-to-end benchmarks use, so the numbers line up.
+/// An anchored, fixed-length pattern. Matches the end-to-end benches, and is
+/// the historical baseline, so keep it for continuity.
 const PATTERN: &str = r"^WKNCWKNC$";
+
+/// What the project's own `examples/tries-300000000.toml` uses.
+const ALTERNATION: &str = r"(WKNCWKNC|WCKNWCKN)";
+
+/// Unanchored and shorter than any candidate, so no length early-out can fire
+/// and the engine really runs at every `times`.
+const SWEEP_PATTERN: &str = r"WKCN";
 
 /// Candidate lengths to sweep. `times = 2` is the canonical workload.
 const TIMES: &[usize] = &[1, 2, 3, 4];
@@ -77,29 +85,49 @@ fn bench_gen(c: &mut Criterion) {
   g.finish();
 }
 
+/// What one match costs, per pattern shape.
+///
+/// The three shapes differ by 7x, which is why every other group in this file
+/// names the pattern it used. `anchored` is the historical baseline;
+/// `alternation` is the workload the README reports.
 fn bench_check(c: &mut Criterion) {
-  let pattern = Pattern::new(PATTERN).unwrap();
   let (corpus, stride) = corpus(2);
 
   let mut g = c.benchmark_group("primitives/check");
 
   g.throughput(Throughput::Elements(CORPUS as u64));
 
-  g.bench_function("single_thread", |b| {
-    let mut matcher = pattern.matcher();
+  for (name, source) in [
+    ("anchored", PATTERN),
+    ("unanchored", r"WKNCWKNC"),
+    ("alternation", ALTERNATION),
+  ] {
+    let pattern = Pattern::new(source).unwrap();
 
-    b.iter(|| {
-      let mut hits = 0_u64;
+    g.bench_function(name, |b| {
+      let mut matcher = pattern.matcher();
 
-      for wakuchin in corpus.chunks_exact(stride) {
-        hits += u64::from(check(black_box(wakuchin), &mut matcher));
-      }
+      b.iter(|| {
+        let mut hits = 0_u64;
 
-      black_box(hits)
+        for wakuchin in corpus.chunks_exact(stride) {
+          hits += u64::from(check(black_box(wakuchin), &mut matcher));
+        }
+
+        black_box(hits)
+      });
     });
-  });
+  }
 
-  g.bench_function("one_off", |b| {
+  g.finish();
+
+  let pattern = Pattern::new(PATTERN).unwrap();
+
+  let mut g = c.benchmark_group("primitives/check_one_off");
+
+  g.throughput(Throughput::Elements(1));
+
+  g.bench_function("cold_cache", |b| {
     let sample = &corpus[..stride];
 
     b.iter(|| black_box(pattern.is_match(black_box(sample))));
@@ -159,7 +187,7 @@ fn bench_matcher(c: &mut Criterion) {
 fn bench_try_loop(c: &mut Criterion) {
   const TRIES: usize = 200_000;
 
-  let pattern = Pattern::new(PATTERN).unwrap();
+  let pattern = Pattern::new(SWEEP_PATTERN).unwrap();
 
   let mut g = c.benchmark_group("primitives/try_loop");
 

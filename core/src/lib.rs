@@ -386,9 +386,17 @@ mod test {
 
   #[test]
   fn test_generator_reuse_stays_uniform() {
-    const SAMPLES: usize = 240_000;
+    /// Multiset arrangements of "WKCN" repeated twice: 8!/(2!)^4.
+    const ARRANGEMENTS: usize = 2520;
 
-    let mut generator = Generator::new(1);
+    /// A hundred expected observations per bin keeps the chi-square
+    /// approximation comfortable.
+    const SAMPLES: usize = ARRANGEMENTS * 100;
+
+    /// Chi-square, 2519 degrees of freedom, upper tail 1e-6 (~2872).
+    const CRITICAL: f64 = 2900.0;
+
+    let mut generator = Generator::new(2);
     let mut counts = std::collections::HashMap::new();
 
     for _ in 0..SAMPLES {
@@ -399,9 +407,13 @@ mod test {
         .or_insert(0_usize) += 1;
     }
 
-    assert_eq!(counts.len(), 24, "not every arrangement was produced");
+    assert_eq!(
+      counts.len(),
+      ARRANGEMENTS,
+      "not every arrangement was produced"
+    );
 
-    let expected = SAMPLES as f64 / 24.0;
+    let expected = SAMPLES as f64 / ARRANGEMENTS as f64;
     let chi_square: f64 = counts
       .values()
       .map(|&observed| {
@@ -412,8 +424,8 @@ mod test {
       .sum();
 
     assert!(
-      chi_square < 49.7,
-      "chi-square {chi_square} suggests a non-uniform distribution"
+      chi_square < CRITICAL,
+      "chi-square {chi_square} over {ARRANGEMENTS} arrangements suggests a non-uniform distribution (critical value {CRITICAL})"
     );
   }
 }

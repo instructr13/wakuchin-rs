@@ -24,8 +24,12 @@ const WORKERS: &[usize] = &[1, 2, 4, 8, 0];
 /// Progress refresh interval used everywhere except `render`.
 const IDLE_INTERVAL: Duration = Duration::from_millis(300);
 
-/// Matches roughly 2 in 2520 arrangements at `times = 2`.
+/// Anchored and fixed-length: matches exactly 1 of the 2520 arrangements at
+/// `times = 2`.
 const RARE: &str = r"^WKNCWKNC$";
+
+/// What `examples/tries-300000000.toml` uses.
+const ALTERNATION: &str = r"(WKNCWKNC|WCKNWCKN)";
 
 fn label(workers: usize) -> String {
   if workers == 0 {
@@ -73,32 +77,34 @@ fn bench_overhead(c: &mut Criterion) {
 fn bench_run_par(c: &mut Criterion) {
   const TRIES: usize = 20_000_000;
 
-  let regex = Pattern::new(RARE).unwrap();
-
   let mut g = c.benchmark_group("worker/run_par");
 
   g.throughput(Throughput::Elements(TRIES as u64));
   g.sample_size(10);
   g.sampling_mode(SamplingMode::Flat);
 
-  for &workers in WORKERS {
-    g.bench_with_input(
-      BenchmarkId::from_parameter(label(workers)),
-      &workers,
-      |b, &workers| {
-        b.iter(|| {
-          run_par(
-            black_box(TRIES),
-            black_box(TIMES),
-            &regex,
-            empty(),
-            IDLE_INTERVAL,
-            black_box(workers),
-          )
-          .unwrap()
-        });
-      },
-    );
+  for (shape, source) in [("anchored", RARE), ("alternation", ALTERNATION)] {
+    let regex = Pattern::new(source).unwrap();
+
+    for &workers in WORKERS {
+      g.bench_with_input(
+        BenchmarkId::new(shape, label(workers)),
+        &workers,
+        |b, &workers| {
+          b.iter(|| {
+            run_par(
+              black_box(TRIES),
+              black_box(TIMES),
+              &regex,
+              empty(),
+              IDLE_INTERVAL,
+              black_box(workers),
+            )
+            .unwrap()
+          });
+        },
+      );
+    }
   }
 
   g.finish();
