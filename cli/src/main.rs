@@ -7,8 +7,6 @@ use std::io::stdout;
 use std::panic;
 use std::sync::{Arc, Mutex};
 
-use anyhow::Result;
-use owo_colors::OwoColorize as _;
 use wakuchin::builder::ResearchBuilder;
 use wakuchin::error::WakuchinError;
 use wakuchin::handlers::msgpack::{
@@ -16,6 +14,7 @@ use wakuchin::handlers::msgpack::{
 };
 
 use crate::app::App;
+use crate::error::{AppError, Result};
 use crate::handlers::{ConsoleProgressHandler, HandlerKind};
 
 #[cfg(all(
@@ -29,12 +28,11 @@ static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
   if let Err(err) = try_main() {
-    if let Some(WakuchinError::Cancelled) = err.downcast_ref::<WakuchinError>()
-    {
+    if matches!(&err, AppError::Wakuchin(WakuchinError::Cancelled)) {
       std::process::exit(1);
     }
 
-    eprintln!("{} {err}", "error:".red().bold());
+    eprintln!("{:?}", miette::Report::new(err));
 
     std::process::exit(1);
   }

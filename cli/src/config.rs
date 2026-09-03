@@ -1,16 +1,17 @@
+use std::borrow::Borrow;
 use std::fs::read_to_string;
 use std::path::Path;
-use std::{borrow::Borrow, time::Duration};
+use std::time::Duration;
 
 use clap::ValueEnum;
 use clap_serde_derive::ClapSerde;
-use format_serde_error::SerdeError;
 use humantime::DurationError;
+use miette::{SourceOffset, SourceSpan};
 use regex::Regex;
 use serde::Deserialize;
 use wakuchin::result::ResultOutputFormat;
 
-use crate::error::{AppError, Result};
+use crate::error::{AppError, ConfigParseError, Result};
 use crate::handlers::HandlerKind;
 
 fn default_duration() -> Option<Duration> {
@@ -115,6 +116,15 @@ pub struct Config {
   pub workers: usize,
 }
 
+/// `serde_json` and `serde_yaml` both append `" at line N column M"` to their
+/// `Display`. miette renders the location itself, so drop the duplicate.
+fn strip_location(message: &str, line: usize, column: usize) -> String {
+  message
+    .strip_suffix(&format!(" at line {line} column {column}"))
+    .unwrap_or(message)
+    .to_owned()
+}
+
 pub fn load_config(path: &Path) -> Result<Config> {
   let contents = read_to_string(path).map_err(|e| AppError::ConfigIoError {
     path: path.into(),
@@ -128,37 +138,44 @@ pub fn load_config(path: &Path) -> Result<Config> {
     .borrow()
   {
     "json" => serde_json::from_str(&contents).map_err(|e| {
-      AppError::ConfigDeserializeError {
-        path: path.into(),
-        line: Some(e.line()),
-        column: Some(e.column()),
-        source: Box::new(SerdeError::new(contents, e)),
-      }
+      let (line, column) = (e.line(), e.column());
+
+      // Both of these borrow `contents`, so they have to be bound before it is
+      // moved into the error.
+      let span: SourceSpan =
+        SourceOffset::from_location(&contents, line, column).into();
+      let reason = strip_location(&e.to_string(), line, column);
+
+      ConfigParseError::new(path, contents, Some(span), reason)
     })?,
     "yaml" | "yml" => serde_yaml::from_str(&contents).map_err(|e| {
-      let location = e.location();
+      let message = e.to_string();
 
-      let line = location.as_ref().map(|l| l.line()).as_ref().copied();
-      let column = location.as_ref().map(|l| l.column()).as_ref().copied();
+      // `Location::index()` is documented as a byte index, but yaml-rust counts
+      // chars, so derive the offset from line and column instead.
+      let (span, reason): (Option<SourceSpan>, String) = match e.location() {
+        Some(location) => {
+          let (line, column) = (location.line(), location.column());
 
-      AppError::ConfigDeserializeError {
-        path: path.into(),
-        line,
-        column,
-        source: Box::new(SerdeError::new(contents, e)),
-      }
+          (
+            Some(SourceOffset::from_location(&contents, line, column).into()),
+            strip_location(&message, line, column),
+          )
+        }
+        None => (None, message),
+      };
+
+      ConfigParseError::new(path, contents, span, reason)
     })?,
     "toml" => toml::from_str(&contents).map_err(|e| {
-      let (line, column) = e
-        .line_col()
-        .map_or((None, None), |(l, c)| (Some(l), Some(c)));
-
-      AppError::ConfigDeserializeError {
-        path: path.into(),
-        line,
-        column,
-        source: Box::new(SerdeError::new(contents, e)),
-      }
+      // toml reports a real byte range, and its `Display` is a whole
+      // rustc-style block, so take the bare message.
+      ConfigParseError::new(
+        path,
+        contents,
+        e.span().map(SourceSpan::from),
+        e.message(),
+      )
     })?,
     _ => Err(AppError::ConfigTypeNotSupported { path: path.into() })?,
   };
@@ -182,11 +199,6 @@ mod test {
   #[cfg(not(target_arch = "wasm32"))]
   use std::path::{Path, PathBuf};
 
-  #[cfg(not(target_arch = "wasm32"))]
-  fn init() {
-    format_serde_error::never_color();
-  }
-
   #[test]
   fn test_parse_duration() -> Result<(), DurationError> {
     use super::parse_duration;
@@ -205,8 +217,6 @@ mod test {
   #[cfg(not(target_arch = "wasm32"))]
   #[test]
   fn test_load_config() -> Result<()> {
-    init();
-
     let base_path = Path::new(env!("CARGO_MANIFEST_DIR"));
 
     let mut not_exist_json = PathBuf::from(base_path);
@@ -218,7 +228,7 @@ mod test {
     assert_eq!(
       not_exist_json_err.to_string(),
       format!(
-        "'{}': No such file or directory (os error 2)",
+        "could not read config file '{}'",
         not_exist_json.to_string_lossy()
       )
     );
@@ -230,12 +240,13 @@ mod test {
     let invalid_regex_yaml_err =
       super::load_config(&invalid_regex_yaml).unwrap_err();
 
-    if let AppError::ConfigDeserializeError { source, .. } =
-      invalid_regex_yaml_err
-    {
-      assert!(source.to_string().contains("regex parse error"));
-    } else {
-      panic!("Unexpected error: {:?}", invalid_regex_yaml_err);
+    match invalid_regex_yaml_err {
+      AppError::ConfigParse(err) => {
+        assert!(err.reason().contains("regex parse error"));
+        // miette renders the location itself, so it must not be repeated.
+        assert!(!err.reason().contains("at line"));
+      }
+      err => panic!("Unexpected error: {err:?}"),
     }
 
     let mut correct_toml = PathBuf::from(base_path);
@@ -254,5 +265,36 @@ mod test {
     assert_eq!(config.handler, HandlerKind::Console);
 
     Ok(())
+  }
+
+  #[cfg(not(target_arch = "wasm32"))]
+  #[test]
+  fn test_load_config_syntax_error() {
+    let mut syntax_error_json = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+
+    syntax_error_json.push("../examples/syntax-error.json");
+
+    let err = super::load_config(&syntax_error_json).unwrap_err();
+
+    let AppError::ConfigParse(err) = err else {
+      panic!("Unexpected error: {err:?}");
+    };
+
+    assert!(err.reason().contains("expected"));
+    assert!(!err.reason().contains("at line"));
+
+    let mut rendered = String::new();
+
+    miette::GraphicalReportHandler::new_themed(
+      miette::GraphicalTheme::unicode_nocolor(),
+    )
+    .with_width(80)
+    .render_report(&mut rendered, &err)
+    .unwrap();
+
+    // serde_json reports the column of the character before the unexpected
+    // one, so only the line is stable enough to assert on.
+    assert!(rendered.contains("syntax-error.json:4:"));
+    assert!(rendered.contains(r#""regex": "WKNCWKNC""#));
   }
 }

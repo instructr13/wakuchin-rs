@@ -8,14 +8,11 @@ use clap_serde_derive::ClapSerde;
 use console::Term;
 use dialoguer::{theme::ColorfulTheme, Input};
 use regex::Regex;
+use shadow_rs::shadow;
 
 use crate::config::{load_config, Config};
 use crate::error::Result;
 
-#[cfg(not(target_arch = "wasm32"))]
-use shadow_rs::shadow;
-
-#[cfg(not(target_arch = "wasm32"))]
 shadow!(build);
 
 const LONG_VERSION: Option<&'static str> = if cfg!(not(target_arch = "wasm32"))

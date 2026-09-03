@@ -1,7 +1,5 @@
-fn main() -> shadow_rs::SdResult<()> {
-  if cfg!(not(target_arch = "wasm32")) {
-    return shadow_rs::new();
-  }
+use shadow_rs::ShadowBuilder;
 
-  Ok(())
+fn main() {
+  ShadowBuilder::builder().build().unwrap();
 }
