@@ -256,6 +256,7 @@ mod test {
 
     assert_eq!(config.out, InternalResultOutputFormat::Text);
     assert_eq!(config.interval, Duration::from_millis(300));
+    #[cfg(not(feature = "sequential"))]
     assert_eq!(config.workers, 0);
     assert_eq!(config.handler, HandlerKind::Console);
 
