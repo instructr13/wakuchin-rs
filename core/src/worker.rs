@@ -1,7 +1,7 @@
 //! Wakuchin researcher main functions
 
-use std::borrow::Cow;
 use std::cmp::min;
+use std::ops::Range;
 use std::panic::resume_unwind;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -11,12 +11,12 @@ use std::time::Duration;
 use divide_range::RangeDivisions;
 use regex::Regex;
 
-use crate::channel::channel;
 use crate::error::WakuchinError;
+use crate::gate::Countdown;
 use crate::handlers::ProgressHandler;
-use crate::hit::counter::ThreadHitCounter;
+use crate::hit::HitTally;
 use crate::progress::{
-  DoneDetail, IdleDetail, ProcessingDetail, Progress, ProgressKind,
+  DoneDetail, ProcessingDetail, Progress, ProgressKind,
 };
 use crate::render::{Render, ThreadRender};
 use crate::result::{Hit, HitCount, WakuchinResult};
@@ -33,13 +33,12 @@ type Result<T> = std::result::Result<T, WakuchinError>;
 const CHUNK: usize = 4096;
 
 /// Splits a range into consecutive sub-ranges of at most `size`.
-fn chunks(
-  range: std::ops::Range<usize>,
-  size: usize,
-) -> impl Iterator<Item = std::ops::Range<usize>> {
+fn chunks(range: Range<usize>, size: usize) -> impl Iterator<Item = Range<usize>> {
   let end = range.end;
 
-  range.step_by(size).map(move |start| start..min(start + size, end))
+  range
+    .step_by(size)
+    .map(move |start| start..min(start + size, end))
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -75,6 +74,63 @@ impl Drop for InterruptFlag {
     signal_hook::low_level::unregister(self.id);
   }
 }
+
+/// Searches one worker's share of the try space.
+///
+/// Work is done in chunks so that publishing progress and polling the
+/// cancellation flag cost effectively nothing per try. One chunk of latency on
+/// Ctrl-C is tens of microseconds.
+fn search(
+  range: Range<usize>,
+  times: usize,
+  regex: &Regex,
+  progress: &WorkerProgress,
+  cancelled: &AtomicBool,
+) -> Result<Vec<Hit>> {
+  progress.claim(range.len());
+
+  let mut hits: Vec<Hit> = Vec::new();
+  let mut processed = 0;
+
+  for chunk in chunks(range, CHUNK) {
+    let recorded = hits.len();
+    let mut candidate = String::new();
+
+    for index in chunk {
+      let wakuchin = gen(times);
+
+      if check(&wakuchin, regex) {
+        hits.push(Hit::new(index, &*wakuchin));
+      }
+
+      processed += 1;
+      candidate = wakuchin.into_owned();
+    }
+
+    progress.record_hits(&hits[recorded..]);
+    progress.publish(processed, &candidate);
+
+    if cancelled.load(Ordering::Relaxed) {
+      return Err(WakuchinError::Cancelled);
+    }
+  }
+
+  progress.finish(processed);
+
+  Ok(hits)
+}
+
+/// Merges every worker's tally into the final hit counts.
+fn merge_hits(workers: &[WorkerProgress]) -> Vec<HitCount> {
+  let mut tally = HitTally::default();
+
+  for worker in workers {
+    worker.merge_hits_into(&mut tally);
+  }
+
+  tally.into_hit_counts()
+}
+
 
 fn get_total_workers(workers: usize) -> Result<usize> {
   if workers != 0 {
@@ -176,110 +232,59 @@ pub fn run_par(
 
   let total_workers = get_total_workers(workers)?;
 
-  let is_stopped_accidentially = Arc::new(AtomicBool::new(false));
-  let (hit_tx, hit_rx) = channel();
+  let cancelled = Arc::new(AtomicBool::new(false));
 
   let progress: Vec<WorkerProgress> =
     (0..total_workers).map(|_| WorkerProgress::default()).collect();
+  let finished = Countdown::new(total_workers);
+
+  let mut render =
+    ThreadRender::new(&cancelled, &finished, &progress, progress_handler);
+
+  #[cfg(not(target_arch = "wasm32"))]
+  let _interrupt = InterruptFlag::install(cancelled.clone())?;
 
   let mut hits_detail = Vec::new();
 
-  let counter = ThreadHitCounter::new(hit_rx);
-
-  let mut render = ThreadRender::new(
-    is_stopped_accidentially.clone(),
-    counter.clone(),
-    &progress,
-    progress_handler,
-  );
-
-  #[cfg(not(target_arch = "wasm32"))]
-  let _interrupt = InterruptFlag::install(is_stopped_accidentially.clone())?;
-
-  let hits = scope::<_, Result<Vec<HitCount>>>(|s| {
-    let is_stopped_accidentially = is_stopped_accidentially.as_ref();
-
-    // hit handler
-    let hit_handle = s.spawn(|| counter.run());
-
-    // progress reporter
-    let ui_handle = s.spawn::<_, Result<()>>(|| {
-      render.run(progress_interval)?;
-
-      Ok(())
-    });
-
+  scope::<_, Result<()>>(|s| {
     let mut worker_handles = Vec::with_capacity(total_workers);
 
     (0..tries)
       .divide_evenly_into(total_workers)
       .zip(&progress)
-      .for_each(|(wakuchins, progress)| {
+      .for_each(|(range, progress)| {
+        // Cloned per worker on purpose: `regex_automata`'s `Clone` builds a
+        // fresh `CachePool` so each thread wins its pool's thread-owner fast
+        // path. Sharing one `&Regex` puts every thread but the owner on a
+        // mutex, which measures about 2.6x slower.
         let regex = regex.clone();
-        let hit_tx = hit_tx.clone();
+        let cancelled = cancelled.as_ref();
+
+        // Dropped on every exit, panics included, so the renderer below can
+        // never be left waiting on a worker that will not report.
+        let party = finished.party();
 
         worker_handles.push(s.spawn(move || {
-          let total = wakuchins.len();
+          let _party = party;
 
-          progress.claim(total);
-
-          let mut hits = Vec::new();
-          let mut processed = 0;
-
-          for chunk in chunks(wakuchins, CHUNK) {
-            let mut last = Cow::Borrowed("");
-
-            for i in chunk {
-              let wakuchin = gen(times);
-
-              if check(&wakuchin, &regex) {
-                let hit = Hit::new(i, &*wakuchin);
-
-                hit_tx
-                  .send(hit.clone())
-                  .expect("hit channel is unavailable");
-
-                hits.push(hit);
-              }
-
-              processed += 1;
-              last = wakuchin;
-            }
-
-            progress.publish(processed, &last);
-
-            if is_stopped_accidentially.load(Ordering::Relaxed) {
-              drop(hit_tx);
-
-              return Err(WakuchinError::Cancelled);
-            }
-          }
-
-          drop(hit_tx);
-
-          progress.finish(processed);
-
-          Ok(hits)
+          search(range, times, &regex, progress, cancelled)
         }));
       });
 
-    for worker_handle in worker_handles {
-      for hit in worker_handle.join().unwrap_or_else(|e| resume_unwind(e))? {
-        hits_detail.push(hit);
-      }
+    // The main thread renders. It would otherwise just block in `join`, and a
+    // dedicated render thread oversubscribes the machine when `workers` is
+    // the core count.
+    render.run(progress_interval)?;
+
+    for handle in worker_handles {
+      hits_detail.extend(handle.join().unwrap_or_else(|e| resume_unwind(e))?);
     }
 
-    // cleanup
-    drop(hit_tx);
-
-    // after all workers have finished, wait for ui and hit threads to finish
-    hit_handle.join().unwrap_or_else(|e| resume_unwind(e));
-    ui_handle.join().unwrap_or_else(|e| resume_unwind(e))?;
-
-    Ok(counter.get_all().into_hit_counts())
+    Ok(())
   })?;
 
-  let hits_total = hits.iter().map(|c| c.hits).sum::<usize>();
+  let hits = merge_hits(&progress);
+  let hits_total = hits.iter().map(|count| count.hits).sum();
 
   Ok(WakuchinResult {
     tries,
@@ -375,90 +380,71 @@ pub fn run_seq(
     return Err(WakuchinError::TimesIsZero);
   }
 
-  let is_stopped_accidentially = Arc::new(AtomicBool::new(false));
+  let cancelled = Arc::new(AtomicBool::new(false));
 
   #[cfg(not(target_arch = "wasm32"))]
-  let _interrupt = InterruptFlag::install(is_stopped_accidentially.clone())?;
+  let _interrupt = InterruptFlag::install(cancelled.clone())?;
 
-  let (hits_detail, hits) = {
-    let is_stopped_accidentially = is_stopped_accidentially.as_ref();
+  let mut render = Render::new(progress_handler);
 
-    let mut render = Render::new(progress_handler);
+  render.invoke_before_start()?;
 
-    render.invoke_before_start()?;
+  let mut hits_detail = Vec::new();
+  let mut processed = 0;
 
-    render.render_progress(
-      progress_interval,
-      Progress(ProgressKind::Idle(IdleDetail { id: 0 })),
-      false,
-    )?;
+  // Chunked for the same reason as `run_par`: it keeps the clock read and the
+  // cancellation poll out of the per-try path.
+  for chunk in chunks(0..tries, CHUNK) {
+    let mut candidate = String::new();
 
-    let mut hits_detail_err = Ok(());
+    for index in chunk {
+      let wakuchin = gen(times);
 
-    let hits_detail = (0..tries)
-      .map(|_| gen(times))
-      .enumerate()
-      .map(|(i, wakuchin)| {
-        render.render_progress(
-          progress_interval,
-          Progress(ProgressKind::Processing(ProcessingDetail::new(
-            0,
-            wakuchin.clone(),
-            i,
-            tries,
-          ))),
-          false,
-        )?;
+      if check(&wakuchin, regex) {
+        render.handle_hit(&wakuchin);
+        hits_detail.push(Hit::new(index, &*wakuchin));
+      }
 
-        if is_stopped_accidentially.load(Ordering::SeqCst) {
-          return Err(WakuchinError::Cancelled);
-        }
+      processed += 1;
+      candidate = wakuchin.into_owned();
+    }
 
-        if check(&wakuchin, regex) {
-          let hit = Hit::new(i, &*wakuchin);
-
-          render.handle_hit(wakuchin);
-
-          Ok(Some(hit))
-        } else {
-          Ok(None)
-        }
-      })
-      .scan(
-        &mut hits_detail_err,
-        |hits_detail_err, result| match result {
-          Ok(result) => Some(result),
-          Err(err) => {
-            **hits_detail_err = Err(err);
-
-            None
-          }
-        },
-      )
-      .flatten()
-      .collect();
-
-    if matches!(hits_detail_err, Err(WakuchinError::Cancelled)) {
+    if cancelled.load(Ordering::Relaxed) {
       render.invoke_on_accidential_stop()?;
 
       return Err(WakuchinError::Cancelled);
     }
 
-    render.render_progress(
-      Duration::ZERO,
-      Progress(ProgressKind::Done(DoneDetail {
-        id: 0,
-        total: tries,
-      })),
-      true,
-    )?;
+    // Assembled only when it will actually be displayed. The previous shape
+    // built -- and immediately discarded -- a `ProcessingDetail` with a cloned
+    // candidate on *every* try, and read the clock to decide.
+    if render.due(progress_interval) {
+      render.render_progress(
+        progress_interval,
+        Progress(ProgressKind::Processing(ProcessingDetail::new(
+          0,
+          candidate,
+          processed,
+          tries,
+        ))),
+        false,
+      )?;
+    }
+  }
 
-    render.invoke_after_finish()?;
+  render.render_progress(
+    Duration::ZERO,
+    Progress(ProgressKind::Done(DoneDetail {
+      id: 0,
+      total: tries,
+    })),
+    true,
+  )?;
 
-    Ok::<_, WakuchinError>((hits_detail, render.hits()))
-  }?;
+  render.invoke_after_finish()?;
 
-  let hits_total = hits.iter().map(|c| c.hits).sum::<usize>();
+  let hits = render.into_hit_counts();
+  let hits_total = hits.iter().map(|count| count.hits).sum();
 
   Ok(WakuchinResult {
     tries,

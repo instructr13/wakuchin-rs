@@ -9,7 +9,6 @@ pub mod result;
 pub mod symbol;
 pub mod worker;
 
-mod channel;
 mod gate;
 mod hit;
 mod render;

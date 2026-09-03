@@ -1,41 +1,44 @@
-use std::borrow::Cow;
 use std::cmp::min;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::Result;
 use instant::Instant;
 
+use crate::gate::Countdown;
 use crate::handlers::ProgressHandler;
-use crate::hit::counter::{HitCounter, ThreadHitCounter};
+use crate::hit::HitTally;
 use crate::progress::{ProcessingDetail, Progress, ProgressKind};
 use crate::result::HitCount;
 use crate::slot::WorkerProgress;
 use crate::utils::DiffStore;
 
-pub struct ThreadRender<'slots> {
-  is_stopped_accidentially: Arc<AtomicBool>,
-  counter: ThreadHitCounter,
-  workers: &'slots [WorkerProgress],
+pub struct ThreadRender<'run> {
+  cancelled: &'run AtomicBool,
+  finished: &'run Countdown,
+  workers: &'run [WorkerProgress],
   progress_handler: Box<dyn ProgressHandler>,
-  /// Reused across refreshes so a tick does not allocate a fresh vector.
+  /// Reused across refreshes so a tick does not allocate fresh buffers.
   progresses: Vec<Progress>,
+  tally: HitTally,
+  hits: Vec<HitCount>,
 }
 
-impl<'slots> ThreadRender<'slots> {
+impl<'run> ThreadRender<'run> {
   pub fn new(
-    is_stopped_accidentially: Arc<AtomicBool>,
-    counter: ThreadHitCounter,
-    workers: &'slots [WorkerProgress],
+    cancelled: &'run AtomicBool,
+    finished: &'run Countdown,
+    workers: &'run [WorkerProgress],
     progress_handler: Box<dyn ProgressHandler>,
   ) -> Self {
     Self {
-      is_stopped_accidentially,
-      counter,
+      cancelled,
+      finished,
       progresses: Vec::with_capacity(workers.len()),
       workers,
       progress_handler,
+      tally: HitTally::default(),
+      hits: Vec::new(),
     }
   }
 
@@ -45,11 +48,6 @@ impl<'slots> ThreadRender<'slots> {
   }
 
   /// Longest single sleep while waiting for the next refresh.
-  ///
-  /// This loop used to `continue` without sleeping, which pinned a core for the
-  /// entire run and read the clock tens of millions of times a second. Sleeping
-  /// in slices keeps the refresh cadence while still noticing completion and
-  /// cancellation promptly, and costs about a hundred wakeups a second.
   const POLL_SLICE: Duration = Duration::from_millis(10);
 
   pub fn run(&mut self, interval: Duration) -> Result<()> {
@@ -59,11 +57,11 @@ impl<'slots> ThreadRender<'slots> {
     let mut last_tick = Instant::now();
 
     loop {
-      if self.is_stopped_accidentially.load(Ordering::Relaxed) {
+      if self.cancelled.load(Ordering::Relaxed) {
         return self.invoke_on_accidential_stop();
       }
 
-      if self.counter.done.is_done() {
+      if self.finished.is_done() {
         self.refresh(last_tick.elapsed(), &mut current_diff, true)?;
 
         break;
@@ -72,7 +70,7 @@ impl<'slots> ThreadRender<'slots> {
       let elapsed = last_tick.elapsed();
 
       if elapsed < interval {
-        self.counter.done.wait(min(interval - elapsed, Self::POLL_SLICE));
+        self.finished.wait(min(interval - elapsed, Self::POLL_SLICE));
 
         continue;
       }
@@ -95,6 +93,7 @@ impl<'slots> ThreadRender<'slots> {
     all_done: bool,
   ) -> Result<()> {
     self.progresses.clear();
+    self.tally.clear();
 
     let mut current = 0;
 
@@ -104,13 +103,15 @@ impl<'slots> ThreadRender<'slots> {
       self.progresses.push(worker.snapshot(index + 1));
 
       current += worker.processed();
+
+      worker.merge_hits_into(&mut self.tally);
     }
 
-    let hits = self.counter.get_all().into_hit_counts();
+    self.tally.write_hit_counts(&mut self.hits);
 
     self.progress_handler.handle(
       &self.progresses,
-      &hits,
+      &self.hits,
       elapsed,
       current_diff.update(current),
       all_done,
@@ -126,9 +127,11 @@ impl<'slots> ThreadRender<'slots> {
   }
 }
 
+/// Drives the progress handler for a sequential run.
 pub struct Render {
   current_diff: DiffStore,
-  counter: HitCounter,
+  tally: HitTally,
+  hits: Vec<HitCount>,
   progress_handler: Box<dyn ProgressHandler>,
   start_time: Instant,
 }
@@ -137,26 +140,30 @@ impl Render {
   pub fn new(progress_handler: Box<dyn ProgressHandler>) -> Self {
     Self {
       current_diff: DiffStore::new(0),
-      counter: HitCounter::new(),
+      tally: HitTally::default(),
+      hits: Vec::new(),
       progress_handler,
       start_time: Instant::now(),
     }
   }
 
-  #[inline]
-  pub fn hits(&self) -> Vec<HitCount> {
-    self.counter.get_all().into_hit_counts()
+  pub fn into_hit_counts(self) -> Vec<HitCount> {
+    self.tally.into_hit_counts()
   }
 
   #[inline]
-  pub fn handle_hit(&self, chars: impl Into<Cow<'static, str>>) {
-    // Insert hit to hit counter with specific char entry
-    self.counter.add(chars);
+  pub fn handle_hit(&mut self, chars: &str) {
+    self.tally.add(chars);
   }
 
   #[inline]
   pub fn invoke_before_start(&mut self) -> Result<()> {
     self.progress_handler.before_start(1)
+  }
+
+  /// Refreshes the display if `interval` has elapsed since the last one.
+  pub fn due(&self, interval: Duration) -> bool {
+    interval.is_zero() || self.start_time.elapsed() > interval
   }
 
   pub fn render_progress(
@@ -165,25 +172,7 @@ impl Render {
     progress: Progress,
     all_done: bool,
   ) -> Result<()> {
-    if interval.is_zero() {
-      self.progress_handler.handle(
-        &[progress],
-        &self.hits(),
-        interval,
-        0,
-        all_done,
-      )?;
-
-      return Ok(());
-    }
-
-    if self.start_time.elapsed() <= interval {
-      return Ok(());
-    }
-
-    if matches!(progress, Progress(ProgressKind::Done(_))) {
-      return Ok(());
-    }
+    let elapsed = self.start_time.elapsed();
 
     let current_diff =
       if let Progress(ProgressKind::Processing(ProcessingDetail {
@@ -196,15 +185,19 @@ impl Render {
         0
       };
 
+    self.tally.write_hit_counts(&mut self.hits);
+
     self.progress_handler.handle(
       &[progress],
-      &self.hits(),
-      interval,
+      &self.hits,
+      elapsed,
       current_diff,
       all_done,
     )?;
 
-    self.start_time = Instant::now();
+    if !interval.is_zero() {
+      self.start_time = Instant::now();
+    }
 
     Ok(())
   }
