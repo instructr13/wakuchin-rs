@@ -141,6 +141,17 @@ impl ConsoleProgressHandler {
     }
   }
 
+  /// Number of hit strings to list individually.
+  const HIT_COUNT_ROWS_MAX: usize = 8;
+
+  /// Lines [`Self::render_hit_counts`] will print for `hit_counts`.
+  fn hit_count_rows(hit_counts: &[HitCount]) -> usize {
+    let listed = hit_counts.len().min(Self::HIT_COUNT_ROWS_MAX);
+    let others = usize::from(hit_counts.len() > listed);
+
+    listed + others + 1
+  }
+
   fn render_hit_counts(
     &self,
     buf: &mut itoa::Buffer,
@@ -151,12 +162,7 @@ impl ConsoleProgressHandler {
 
     let tries_width = self.tries_string.len();
 
-    for hit_count in hit_counts {
-      let chars = chars_to_wakuchin(&hit_count.chars);
-      let count = hit_count.hits;
-
-      current_hit_total += count;
-
+    let row = |label: String, count: usize| {
       eprintln!(
         "      {} {}: {:<} ({:.3}%)",
         Self::pad_id(
@@ -164,9 +170,42 @@ impl ConsoleProgressHandler {
           id_width,
           "hits".blue().underline().to_string(),
         ),
-        chars.dimmed(),
-        buf.format(count).bold(),
+        label,
+        count,
         count as f64 / self.tries as f64 * 100.0,
+      );
+    };
+
+    // Most hits first, so the listed rows are the interesting ones.
+    let mut ranked: Vec<&HitCount> = hit_counts.iter().collect();
+
+    ranked.sort_unstable_by(|left, right| {
+      right
+        .hits
+        .cmp(&left.hits)
+        .then_with(|| left.chars.cmp(&right.chars))
+    });
+
+    let (listed, others) =
+      ranked.split_at(ranked.len().min(Self::HIT_COUNT_ROWS_MAX));
+
+    for hit_count in listed {
+      current_hit_total += hit_count.hits;
+
+      row(
+        chars_to_wakuchin(&hit_count.chars).dimmed().to_string(),
+        hit_count.hits,
+      );
+    }
+
+    if !others.is_empty() {
+      let rest: usize = others.iter().map(|hit_count| hit_count.hits).sum();
+
+      current_hit_total += rest;
+
+      row(
+        format!("{} others", others.len()).dimmed().to_string(),
+        rest,
       );
     }
 
@@ -406,8 +445,14 @@ impl ProgressHandler for ConsoleProgressHandler {
       return Ok(());
     }
 
+    // Recomputed every refresh: the number of hit rows grows as new strings
+    // turn up, and the worker block collapses to one line on a short terminal.
+    // Caching it once meant the cursor walked back the wrong number of lines
+    // and the display corrupted itself as the run went on.
+    let height = self.total_workers + Self::hit_count_rows(hit_counts) + 1;
+
     if self.handler_height == 0 {
-      self.handler_height = self.total_workers + hit_counts.len() + 2;
+      self.handler_height = height;
     } else {
       self.term.move_cursor_left(u16::MAX as usize)?;
       self
@@ -431,6 +476,13 @@ impl ProgressHandler for ConsoleProgressHandler {
     };
 
     let current_total = self.render_workers(&mut itoa_buf, progresses, height);
+
+    self.handler_height = if self.handler_height > usize::from(height) {
+      // The worker block was truncated to a single line.
+      Self::hit_count_rows(hit_counts) + 2
+    } else {
+      self.total_workers + Self::hit_count_rows(hit_counts) + 1
+    };
 
     if all_done {
       self.term.clear_line()?;

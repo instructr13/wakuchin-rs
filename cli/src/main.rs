@@ -25,8 +25,7 @@ use crate::handlers::{ConsoleProgressHandler, HandlerKind};
 #[global_allocator]
 static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
-#[tokio::main(flavor = "current_thread")]
-async fn main() {
+fn main() {
   if let Err(err) = try_main() {
     if matches!(&err, AppError::Wakuchin(WakuchinError::Cancelled)) {
       std::process::exit(1);

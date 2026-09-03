@@ -107,7 +107,8 @@ impl App {
     Regex::new(&regex).map_err(|e| anyhow!(e).into())
   }
 
-  pub fn set_panic_hook() -> Box<dyn Fn(&PanicHookInfo) + Send + Sync + 'static> {
+  pub fn set_panic_hook() -> Box<dyn Fn(&PanicHookInfo) + Send + Sync + 'static>
+  {
     let default_hook = panic::take_hook();
 
     panic::set_hook(Box::new(|panic_info| {
