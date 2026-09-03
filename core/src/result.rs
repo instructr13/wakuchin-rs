@@ -117,6 +117,32 @@ impl Hit {
     }
   }
 
+  /// Records a hit whose characters are already in the packed form.
+  ///
+  /// # Panics
+  ///
+  /// If `chars` exceeds [`PACKED_CHARS_MAX`], or if `bits` has any set bit
+  /// above the `chars` characters it claims to describe.
+  #[must_use]
+  pub(crate) fn from_packed(hit_on: usize, bits: u64, chars: u8) -> Self {
+    assert!(
+      usize::from(chars) <= PACKED_CHARS_MAX,
+      "{chars} characters cannot be packed into a u64"
+    );
+
+    let used = usize::from(chars) * 2;
+
+    assert!(
+      used == u64::BITS as usize || bits >> used == 0,
+      "packed bits describe more than {chars} characters"
+    );
+
+    Self {
+      hit_on,
+      chars: HitChars::Packed { bits, chars },
+    }
+  }
+
   /// Wakuchin characters that were hit.
   #[must_use]
   pub fn chars(&self) -> Cow<'_, str> {

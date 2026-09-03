@@ -76,11 +76,17 @@ fn try_main() -> Result<()> {
     }
   };
 
-  #[cfg(not(any(feature = "sequential", target_arch = "wasm32")))]
-  let result = builder.workers(config.workers).run_par();
+  let result = if config.exact {
+    builder.exact()
+  } else {
+    #[cfg(not(any(feature = "sequential", target_arch = "wasm32")))]
+    let result = builder.workers(config.workers).run_par();
 
-  #[cfg(any(feature = "sequential", target_arch = "wasm32"))]
-  let result = builder.run_seq();
+    #[cfg(any(feature = "sequential", target_arch = "wasm32"))]
+    let result = builder.run_seq();
+
+    result
+  };
 
   let result = result?;
 

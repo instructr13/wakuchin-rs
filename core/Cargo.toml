@@ -25,6 +25,7 @@ arc-swap = "1.9.2"
 atomig = { version = "0.4.3", features = ["derive"] }
 base64 = "0.23"
 fastrand = "2.5"
+fixedbitset = "0.5.7"
 foldhash = "0.2.0"
 instant = "0.1"
 itoa = "1.0"

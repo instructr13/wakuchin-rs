@@ -3,6 +3,7 @@
 use std::cmp::min;
 use std::ops::Range;
 use std::panic::resume_unwind;
+use std::str;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::thread::{available_parallelism, scope};
@@ -10,16 +11,18 @@ use std::time::Duration;
 
 use itertools::Itertools;
 
+use crate::arrangement::Arrangements;
 use crate::error::WakuchinError;
 use crate::gate::Countdown;
 use crate::handlers::ProgressHandler;
 use crate::hit::HitTally;
-use crate::pattern::Pattern;
+use crate::pattern::{Matcher, Pattern};
 use crate::progress::{DoneDetail, ProcessingDetail, Progress, ProgressKind};
 use crate::render::{Render, ThreadRender};
 use crate::result::{Hit, HitCount, WakuchinResult};
 use crate::slot::WorkerProgress;
-use crate::Generator;
+use crate::symbol::WAKUCHIN_BYTES;
+use crate::{Generator, MAX_TIMES};
 
 type Result<T> = std::result::Result<T, WakuchinError>;
 
@@ -123,6 +126,90 @@ trait Reporter {
   fn finish(&mut self, processed: usize) -> Result<()>;
 }
 
+/// Where a search loop draws its candidates.
+trait Sampler {
+  /// Draws the next candidate. Returns whether it hit.
+  ///
+  /// Only a hit needs its characters, so a miss may leave them unmaterialized.
+  fn draw(&mut self) -> bool;
+
+  /// Records the candidate just drawn as a hit at try `index`.
+  ///
+  /// Valid only immediately after `draw` returned `true`.
+  fn hit(&mut self, index: usize, counts: &mut HitTally) -> Hit;
+
+  /// Materializes the last candidate drawn, hit or miss, for the progress
+  /// display. Called once per chunk, so it need not be cheap.
+  fn sample(&mut self) -> &str;
+}
+
+/// Shuffles a buffer and runs the pattern over it.
+struct Search<'run> {
+  generator: Generator,
+  matcher: Matcher<'run>,
+}
+
+impl Sampler for Search<'_> {
+  #[inline]
+  fn draw(&mut self) -> bool {
+    self.generator.shuffle();
+
+    self.matcher.is_match(self.generator.bytes())
+  }
+
+  fn hit(&mut self, index: usize, counts: &mut HitTally) -> Hit {
+    // Validated once, not once per use: `as_str` checks the buffer is UTF-8.
+    let candidate = self.generator.as_str();
+
+    counts.add(candidate);
+
+    Hit::new(index, candidate)
+  }
+
+  fn sample(&mut self) -> &str {
+    self.generator.as_str()
+  }
+}
+
+/// Draws an index into the precomputed candidate space.
+struct Lookup<'run> {
+  arrangements: &'run Arrangements,
+  rng: fastrand::Rng,
+  rank: usize,
+  /// Only written when a candidate has to be materialized.
+  buf: Box<[u8]>,
+}
+
+impl Sampler for Lookup<'_> {
+  #[inline]
+  fn draw(&mut self) -> bool {
+    self.rank = self.rng.usize(..self.arrangements.len());
+
+    self.arrangements.is_match(self.rank)
+  }
+
+  fn hit(&mut self, index: usize, counts: &mut HitTally) -> Hit {
+    self.arrangements.write(self.rank, &mut self.buf);
+
+    counts.add(self.candidate());
+
+    // Skips packing: the table already holds the packed form.
+    self.arrangements.hit(index, self.rank)
+  }
+
+  fn sample(&mut self) -> &str {
+    self.arrangements.write(self.rank, &mut self.buf);
+
+    self.candidate()
+  }
+}
+
+impl Lookup<'_> {
+  fn candidate(&self) -> &str {
+    str::from_utf8(&self.buf).expect("wakuchin candidates are ASCII")
+  }
+}
+
 /// The search loop: take a chunk, search it, report, repeat.
 ///
 /// Progress and the cancellation flag are touched once per chunk rather than
@@ -130,15 +217,10 @@ trait Reporter {
 /// on how long Ctrl-C can go unnoticed.
 fn search(
   cursor: &Cursor,
-  times: usize,
-  pattern: &Pattern,
+  sampler: &mut impl Sampler,
   reporter: &mut impl Reporter,
   cancelled: &AtomicBool,
 ) -> Result<Vec<Hit>> {
-  let mut matcher = pattern.matcher();
-
-  let mut generator = Generator::new(times);
-
   let mut hits: Vec<Hit> = Vec::new();
   let mut processed = 0;
 
@@ -148,20 +230,16 @@ fn search(
     reporter.claim(chunk.len());
 
     for index in chunk {
-      generator.shuffle();
-
-      if matcher.is_match(generator.bytes()) {
-        // Validated once, not once per use: `as_str` checks the buffer is UTF-8.
-        let candidate = generator.as_str();
-
-        counts.add(candidate);
-        hits.push(Hit::new(index, candidate));
+      if sampler.draw() {
+        hits.push(sampler.hit(index, &mut counts));
       }
 
       processed += 1;
     }
 
-    reporter.record(&counts, processed, generator.as_str())?;
+    let candidate = sampler.sample();
+
+    reporter.record(&counts, processed, candidate)?;
     counts.clear();
 
     if cancelled.load(Ordering::Relaxed) {
@@ -172,6 +250,43 @@ fn search(
   reporter.finish(processed)?;
 
   Ok(hits)
+}
+
+/// Builds the cheapest sampler available for this run, and runs it.
+fn search_with(
+  cursor: &Cursor,
+  times: usize,
+  pattern: &Pattern,
+  arrangements: Option<&Arrangements>,
+  reporter: &mut impl Reporter,
+  cancelled: &AtomicBool,
+) -> Result<Vec<Hit>> {
+  match arrangements {
+    Some(arrangements) => search(
+      cursor,
+      &mut Lookup {
+        arrangements,
+        rng: fastrand::Rng::new(),
+        rank: 0,
+        buf: vec![0; times * WAKUCHIN_BYTES.len()].into_boxed_slice(),
+      },
+      reporter,
+      cancelled,
+    ),
+    None => search(
+      cursor,
+      &mut Search {
+        generator: Generator::new(times),
+        // Scratch space for the regex engine, owned by this worker. `regex`
+        // keeps the equivalent in a pool shared per `Regex`, which measured
+        // 25-30% slower across four threads even with the regex cloned per
+        // thread.
+        matcher: pattern.matcher(),
+      },
+      reporter,
+      cancelled,
+    ),
+  }
 }
 
 /// Reports into the slot a parallel worker owns.
@@ -250,12 +365,84 @@ fn merge_hits(workers: &[WorkerProgress]) -> Vec<HitCount> {
   tally.into_hit_counts()
 }
 
+/// Rejects a `times` no research run can honour.
+fn check_times(times: usize) -> Result<()> {
+  if times == 0 {
+    return Err(WakuchinError::TimesIsZero);
+  }
+
+  if times > MAX_TIMES {
+    return Err(WakuchinError::TimesTooLarge {
+      times,
+      max: MAX_TIMES,
+    });
+  }
+
+  Ok(())
+}
+
 fn get_total_workers(workers: usize) -> Result<usize> {
   if workers != 0 {
     return Ok(workers);
   }
 
   available_parallelism().map(Into::into).map_err(Into::into)
+}
+
+/// Answer the research question exactly, without sampling.
+///
+/// # Arguments
+///
+/// * `times` - wakuchin times n, cannot be zero
+/// * `pattern` - compiled pattern to detect hits
+///
+/// # Errors
+///
+/// * [`WakuchinError::TimesIsZero`] if `times` is zero.
+/// * [`WakuchinError::TimesTooLarge`] if `times` exceeds [`crate::MAX_TIMES`].
+/// * [`WakuchinError::SpaceTooLarge`] if the candidate space is too large to
+///   enumerate. There is no approximate fallback: a caller that asked for the
+///   exact answer should be told it is unavailable, not handed an estimate.
+///
+/// # Examples
+///
+/// ```rust
+/// use wakuchin::pattern::Pattern;
+/// use wakuchin::worker::exact;
+///
+/// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// let result = exact(2, &Pattern::new(r"^WKNCWKNC$")?)?;
+///
+/// // Exactly one of the 2520 arrangements matches.
+/// assert_eq!(result.tries, 2520);
+/// assert_eq!(result.hits_total, 1);
+/// #
+/// #   Ok(())
+/// # }
+/// ```
+pub fn exact(times: usize, pattern: &Pattern) -> Result<WakuchinResult> {
+  check_times(times)?;
+
+  let arrangements = Arrangements::enumerate(pattern, times)
+    .ok_or(WakuchinError::SpaceTooLarge { times })?;
+
+  let mut tally = HitTally::default();
+  let mut hits_detail = Vec::with_capacity(arrangements.hits());
+  let mut candidate = vec![0; times * WAKUCHIN_BYTES.len()];
+
+  for hit in arrangements.matching() {
+    arrangements.write(hit.hit_on, &mut candidate);
+
+    tally.add(str::from_utf8(&candidate).expect("candidates are ASCII"));
+    hits_detail.push(hit);
+  }
+
+  Ok(WakuchinResult {
+    tries: arrangements.len(),
+    hits_total: hits_detail.len(),
+    hits: tally.into_hit_counts(),
+    hits_detail,
+  })
 }
 
 /// Research wakuchin with parallelism.
@@ -344,9 +531,7 @@ pub fn run_par(
     });
   }
 
-  if times == 0 {
-    return Err(WakuchinError::TimesIsZero);
-  }
+  check_times(times)?;
 
   let total_workers = get_total_workers(workers)?;
 
@@ -360,6 +545,12 @@ pub fn run_par(
 
   let mut render =
     ThreadRender::new(&cancelled, &finished, &progress, progress_handler);
+
+  // Built once and shared, read-only, by every worker. Done before the
+  // interrupt handler is installed: it takes milliseconds at `times = 3`, and
+  // a Ctrl-C during that window would otherwise be swallowed rather than
+  // ignored.
+  let arrangements = Arrangements::precompute(regex, times, tries);
 
   #[cfg(not(target_arch = "wasm32"))]
   let _interrupt = InterruptFlag::install(cancelled.clone())?;
@@ -377,12 +568,21 @@ pub fn run_par(
       // be left waiting on a worker that will not report.
       let party = finished.party();
 
+      let arrangements = arrangements.as_ref();
+
       worker_handles.push(s.spawn(move || {
         let _party = party;
 
         let mut reporter = progress;
 
-        search(cursor, times, regex, &mut reporter, cancelled)
+        search_with(
+          cursor,
+          times,
+          regex,
+          arrangements,
+          &mut reporter,
+          cancelled,
+        )
       }));
     }
 
@@ -502,9 +702,7 @@ pub fn run_seq(
     });
   }
 
-  if times == 0 {
-    return Err(WakuchinError::TimesIsZero);
-  }
+  check_times(times)?;
 
   let cancelled = Arc::new(AtomicBool::new(false));
 
@@ -520,6 +718,7 @@ pub fn run_seq(
   // progress message -- and cloning the candidate into it -- on every try, only
   // for the renderer to discard it unread.
   let cursor = Cursor::new(tries, 1);
+  let arrangements = Arrangements::precompute(regex, times, tries);
 
   let hits_detail = {
     let mut reporter = RenderReporter {
@@ -528,7 +727,14 @@ pub fn run_seq(
       tries,
     };
 
-    search(&cursor, times, regex, &mut reporter, &cancelled)
+    search_with(
+      &cursor,
+      times,
+      regex,
+      arrangements.as_ref(),
+      &mut reporter,
+      &cancelled,
+    )
   };
 
   let hits_detail = match hits_detail {
@@ -576,7 +782,9 @@ mod test {
   use crate::progress::{Progress, ProgressKind};
   use crate::result::HitCount;
 
-  use super::{run_par, run_seq, Cursor, CHUNK_MAX, CHUNK_MIN};
+  use super::{
+    exact, run_par, run_seq, Arrangements, Cursor, CHUNK_MAX, CHUNK_MIN,
+  };
 
   fn empty() -> Box<dyn ProgressHandler> {
     Box::new(EmptyProgressHandler::new())
@@ -724,6 +932,130 @@ mod test {
   }
 
   #[test]
+  fn the_gate_picks_the_expected_sampler() -> Result<(), Box<dyn Error>> {
+    let pattern = Pattern::new(r"^WKNCWKNC$")?;
+
+    // 2520 arrangements at times = 2: below that the build cannot pay off.
+    assert!(
+      Arrangements::precompute(&pattern, 2, 10).is_none(),
+      "a 10-try run must fall back to generating"
+    );
+    assert!(
+      Arrangements::precompute(&pattern, 2, 50_000).is_some(),
+      "a 50k-try run must precompute"
+    );
+
+    Ok(())
+  }
+
+  #[test]
+  fn both_samplers_find_the_same_hit_rate() -> Result<(), Box<dyn Error>> {
+    // 25% of arrangements, so the estimate converges fast.
+    let pattern = Pattern::new(r"^W")?;
+    let exact = 0.25;
+
+    // Below the gate: generates and matches. Above it: draws an index.
+    let generated = run_par(2_000, 2, &pattern, empty(), interval(), 4)?;
+    let looked_up = run_par(200_000, 2, &pattern, empty(), interval(), 4)?;
+
+    for result in [&generated, &looked_up] {
+      let rate = result.hits_total as f64 / result.tries as f64;
+
+      assert!(
+        (rate - exact).abs() < 0.05,
+        "hit rate {rate} is nowhere near {exact}"
+      );
+    }
+
+    // Every reported string really is one the pattern matches.
+    let mut matcher = pattern.matcher();
+
+    for hit in &looked_up.hits_detail {
+      assert!(
+        matcher.is_match(hit.chars().as_bytes()),
+        "reported a non-matching hit: {}",
+        hit.chars()
+      );
+      assert!(hit.hit_on < looked_up.tries);
+    }
+
+    Ok(())
+  }
+
+  /// The exact answer has to agree with what sampling converges to, and be
+  /// exact where sampling can only estimate.
+  #[test]
+  fn exact_answers_without_sampling_error() -> Result<(), Box<dyn Error>> {
+    for (source, times, matching, space) in [
+      (r"^WKNCWKNC$", 2, 1, 2_520),
+      (r"(WKNCWKNC|WCKNWCKN)", 2, 2, 2_520),
+      (r"^W", 2, 630, 2_520),
+      (r"W", 2, 2_520, 2_520),
+      (r"^W", 1, 6, 24),
+      (r"^W", 3, 92_400, 369_600),
+      // Hand-checkable: fixing "WK" leaves {W,K,C,C,N,N}, so 6!/(2!2!) = 180.
+      (r"^WK", 2, 180, 2_520),
+    ] {
+      let pattern = Pattern::new(source)?;
+      let result = exact(times, &pattern)?;
+
+      assert_eq!(result.tries, space, "/{source}/ times={times}");
+      assert_eq!(result.hits_total, matching, "/{source}/ times={times}");
+      assert_eq!(result.hits_detail.len(), matching);
+
+      // Every distinct matching string is listed exactly once.
+      assert_eq!(
+        result.hits.iter().map(|count| count.hits).sum::<usize>(),
+        matching
+      );
+
+      // And every listed string really matches.
+      let mut matcher = pattern.matcher();
+
+      for hit in &result.hits_detail {
+        assert!(matcher.is_match(hit.chars().as_bytes()));
+      }
+    }
+
+    Ok(())
+  }
+
+  #[test]
+  fn exact_refuses_rather_than_approximating() -> Result<(), Box<dyn Error>> {
+    let pattern = Pattern::new(r"^W")?;
+
+    // times = 4 has 63 million arrangements: too many to enumerate, and the
+    // caller asked for exactness, so an estimate would be the wrong answer.
+    assert!(matches!(
+      exact(4, &pattern).unwrap_err(),
+      crate::error::WakuchinError::SpaceTooLarge { times: 4 }
+    ));
+
+    assert!(exact(0, &pattern).is_err());
+    assert!(exact(super::MAX_TIMES + 1, &pattern).is_err());
+
+    Ok(())
+  }
+
+  #[test]
+  fn sampling_converges_on_the_exact_answer() -> Result<(), Box<dyn Error>> {
+    let pattern = Pattern::new(r"^W")?;
+
+    let truth = exact(2, &pattern)?;
+    let exact_rate = truth.hits_total as f64 / truth.tries as f64;
+
+    let sampled = run_par(4_000_000, 2, &pattern, empty(), interval(), 4)?;
+    let sampled_rate = sampled.hits_total as f64 / sampled.tries as f64;
+
+    assert!(
+      (sampled_rate - exact_rate).abs() < 0.005,
+      "sampled {sampled_rate} vs exact {exact_rate}"
+    );
+
+    Ok(())
+  }
+
+  #[test]
   fn par_and_seq_agree_on_shape() -> Result<(), Box<dyn Error>> {
     let regex = Pattern::new(r"^W")?;
 
@@ -760,6 +1092,33 @@ mod test {
 
     assert!(run_par(10, 0, &regex, empty(), interval(), 4).is_err());
     assert!(run_seq(10, 0, &regex, empty(), interval()).is_err());
+
+    Ok(())
+  }
+
+  /// Past `MAX_TIMES` the arrangement count stops fitting in a `u64`, so it
+  /// has to be refused rather than silently wrapped.
+  #[test]
+  fn times_above_the_maximum_is_rejected() -> Result<(), Box<dyn Error>> {
+    let regex = Pattern::new(r"^W")?;
+    let over = super::MAX_TIMES + 1;
+
+    for err in [
+      run_par(10, over, &regex, empty(), interval(), 4).unwrap_err(),
+      run_seq(10, over, &regex, empty(), interval()).unwrap_err(),
+    ] {
+      assert!(
+        matches!(
+          err,
+          crate::error::WakuchinError::TimesTooLarge { times, max }
+            if times == over && max == super::MAX_TIMES
+        ),
+        "unexpected error: {err}"
+      );
+    }
+
+    // The boundary itself stays accepted.
+    assert!(run_seq(64, super::MAX_TIMES, &regex, empty(), interval()).is_ok());
 
     Ok(())
   }

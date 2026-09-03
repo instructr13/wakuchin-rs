@@ -6,7 +6,7 @@ use crate::error::WakuchinError;
 use crate::handlers::empty::EmptyProgressHandler;
 use crate::handlers::ProgressHandler;
 use crate::result::WakuchinResult;
-use crate::worker::{run_par, run_seq};
+use crate::worker::{exact, run_par, run_seq};
 
 type Result<T> = std::result::Result<T, WakuchinError>;
 
@@ -106,6 +106,11 @@ impl ResearchBuilder<usize, usize, Pattern> {
       self.progress_interval,
       self.workers,
     )
+  }
+
+  #[inline]
+  pub fn exact(self) -> Result<WakuchinResult> {
+    exact(self.times, &self.regex)
   }
 
   #[inline]

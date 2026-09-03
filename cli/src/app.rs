@@ -10,6 +10,7 @@ use console::Term;
 use dialoguer::{theme::ColorfulTheme, Input};
 use shadow_rs::shadow;
 use wakuchin::pattern::Pattern;
+use wakuchin::MAX_TIMES;
 
 use crate::config::{load_config, Config};
 use crate::error::Result;
@@ -84,6 +85,11 @@ impl App {
 
     Input::<usize>::with_theme(&ColorfulTheme::default())
       .with_prompt("Wakuchins times:")
+      .validate_with(|times: &usize| match times {
+        0 => Err("Times cannot be zero"),
+        times if *times > MAX_TIMES => Err("Times is too large"),
+        _ => Ok(()),
+      })
       .interact_on(term)
       .map_err(Into::into)
   }

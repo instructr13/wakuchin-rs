@@ -10,6 +10,7 @@ use miette::{SourceOffset, SourceSpan};
 use serde::Deserialize;
 use wakuchin::pattern::Pattern;
 use wakuchin::result::ResultOutputFormat;
+use wakuchin::MAX_TIMES;
 
 use crate::error::{AppError, ConfigParseError, Result};
 use crate::handlers::HandlerKind;
@@ -22,6 +23,19 @@ fn parse_duration(
   duration: &str,
 ) -> std::result::Result<Duration, DurationError> {
   Ok(duration.parse::<humantime::Duration>()?.into())
+}
+
+/// A range on the `#[arg]` itself would make clap parse this as an `i64` and
+/// then fail to downcast into the `usize` field, so parse it here instead.
+fn parse_times(times: &str) -> std::result::Result<usize, String> {
+  match times.parse::<usize>() {
+    Ok(0) => Err("times cannot be zero".to_owned()),
+    Ok(times) if times > MAX_TIMES => Err(format!(
+      "times cannot exceed {MAX_TIMES}, but {times} was given"
+    )),
+    Ok(times) => Ok(times),
+    Err(err) => Err(err.to_string()),
+  }
 }
 
 #[derive(
@@ -53,7 +67,7 @@ pub struct Config {
   /// Wakuchin times n
   ///
   /// Repeats "わくちん" n times.
-  #[arg(short, long, value_name = "N")]
+  #[arg(short, long, value_name = "N", value_parser = parse_times)]
   pub times: usize,
 
   /// Regex to detect hits
@@ -99,6 +113,14 @@ pub struct Config {
   /// Do not show progress, able to use with --handler=console
   #[arg(long, value_name = "BOOL")]
   pub no_progress: bool,
+
+  /// Answer exactly instead of sampling
+  ///
+  /// Examines every possible wakuchin arrangement once instead of drawing
+  /// random ones, so the result has no sampling error. Ignores --tries.
+  /// Only available while the space is small enough to enumerate.
+  #[arg(long, value_name = "BOOL")]
+  pub exact: bool,
 
   #[cfg(not(feature = "sequential"))]
   #[arg(

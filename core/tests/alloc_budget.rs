@@ -2,6 +2,7 @@
 
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Mutex;
 use std::time::Duration;
 
 use wakuchin::pattern::Pattern;
@@ -50,7 +51,13 @@ fn empty() -> Box<dyn ProgressHandler> {
   Box::new(EmptyProgressHandler::new())
 }
 
+static MEASURING: Mutex<()> = Mutex::new(());
+
 fn count(f: impl FnOnce()) -> usize {
+  let _exclusive = MEASURING
+    .lock()
+    .unwrap_or_else(|poisoned| poisoned.into_inner());
+
   let before = ALLOCS.load(Ordering::Relaxed);
 
   f();
@@ -98,5 +105,42 @@ fn run_par_allocation_slope() {
   assert!(
     per_try <= MAX_ALLOCS_PER_TRY,
     "run_par allocates {per_try:.3}/try, budget is {MAX_ALLOCS_PER_TRY}"
+  );
+}
+
+#[test]
+fn a_run_does_not_allocate_per_candidate() {
+  /// Above the precompute gate at every `times` measured, so each run really
+  /// builds the tables.
+  const TRIES: usize = 500_000;
+
+  /// The precompute is allowed a handful of allocations -- a bitset, a packed
+  /// table, a buffer, the regex cache. Anything proportional to the space
+  /// would show up as thousands.
+  const SLACK: usize = 64;
+
+  let regex = Pattern::new(r"^WKNCWKNC$").unwrap();
+
+  let run = |times| {
+    run_seq(TRIES, times, &regex, empty(), Duration::from_secs(3600)).unwrap();
+  };
+
+  // Warm up: the first run pays for lazy statics and the allocator's arenas.
+  run(2);
+  run(3);
+
+  // 2,520 candidates against 369,600 -- a 147x larger space.
+  let small = count(|| run(2));
+  let large = count(|| run(3));
+
+  println!(
+    "run_seq({TRIES} tries): {small} allocations at times=2 (2,520 \
+     candidates), {large} at times=3 (369,600)"
+  );
+
+  assert!(
+    large <= small + SLACK,
+    "growing the candidate space 147x took the allocation count from {small} \
+     to {large}; something scales with the number of candidates"
   );
 }

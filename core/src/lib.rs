@@ -10,6 +10,7 @@ pub mod result;
 pub mod symbol;
 pub mod worker;
 
+mod arrangement;
 mod gate;
 mod hit;
 mod render;
@@ -21,6 +22,12 @@ use std::str;
 
 use crate::pattern::Matcher;
 use crate::symbol::WAKUCHIN_BYTES;
+
+/// Largest `times` a research run accepts.
+///
+/// The candidate space has `(4n)!/(n!)^4` distinct arrangements. At `n = 8`
+/// that is 99,561,092,450,391,000, and at `n = 9` it stops fitting in a `u64`.
+pub const MAX_TIMES: usize = 8;
 
 /// Generates random wakuchin candidates into a buffer it owns.
 #[derive(Clone, Debug)]
