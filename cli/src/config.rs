@@ -143,7 +143,7 @@ pub fn load_config(path: &Path) -> Result<Config> {
 
       ConfigParseError::new(path, contents, Some(span), reason)
     })?,
-    "yaml" | "yml" => serde_yaml::from_str(&contents).map_err(|e| {
+    "yaml" | "yml" => yaml_serde::from_str(&contents).map_err(|e| {
       let message = e.to_string();
 
       // `Location::index()` is documented as a byte index, but yaml-rust counts
