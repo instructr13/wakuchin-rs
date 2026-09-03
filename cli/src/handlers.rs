@@ -20,6 +20,7 @@ const PROGRESS_BAR_WIDTH_MAX: u16 = DEFAULT_TERMINAL_WIDTH;
 #[derive(
   Clone,
   Debug,
+  Default,
   PartialEq,
   Eq,
   PartialOrd,
@@ -30,15 +31,10 @@ const PROGRESS_BAR_WIDTH_MAX: u16 = DEFAULT_TERMINAL_WIDTH;
 )]
 #[serde(rename_all = "snake_case")]
 pub enum HandlerKind {
+  #[default]
   Console,
   Msgpack,
   MsgpackBase64,
-}
-
-impl Default for HandlerKind {
-  fn default() -> Self {
-    Self::Console
-  }
 }
 
 pub struct ConsoleProgressHandler {

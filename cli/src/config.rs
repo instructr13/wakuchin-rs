@@ -25,19 +25,14 @@ fn parse_duration(
 }
 
 #[derive(
-  Clone, Debug, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Deserialize,
+  Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Deserialize,
 )]
 pub enum InternalResultOutputFormat {
   #[serde(rename = "text")]
+  #[default]
   Text,
   #[serde(rename = "json")]
   Json,
-}
-
-impl Default for InternalResultOutputFormat {
-  fn default() -> Self {
-    Self::Text
-  }
 }
 
 impl From<InternalResultOutputFormat> for ResultOutputFormat {

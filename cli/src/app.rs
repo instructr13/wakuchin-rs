@@ -1,4 +1,5 @@
-use std::panic::{self, PanicInfo};
+use std::io::{stderr, stdin, IsTerminal};
+use std::panic::{self, PanicHookInfo};
 use std::path::PathBuf;
 use std::process;
 
@@ -48,8 +49,7 @@ pub struct App {
 
 impl App {
   pub fn new() -> Self {
-    let interactive =
-      atty::is(atty::Stream::Stdin) && atty::is(atty::Stream::Stderr);
+    let interactive = stdin().is_terminal() && stderr().is_terminal();
 
     Self {
       config: Config::default(),
@@ -107,7 +107,7 @@ impl App {
     Regex::new(&regex).map_err(|e| anyhow!(e).into())
   }
 
-  pub fn set_panic_hook() -> Box<dyn Fn(&PanicInfo) + Send + Sync + 'static> {
+  pub fn set_panic_hook() -> Box<dyn Fn(&PanicHookInfo) + Send + Sync + 'static> {
     let default_hook = panic::take_hook();
 
     panic::set_hook(Box::new(|panic_info| {

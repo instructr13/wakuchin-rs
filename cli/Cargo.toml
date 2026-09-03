@@ -26,7 +26,6 @@ shadow-rs = "2.0"
 wakuchin = { version = "0.3.0", path = "../core" }
 
 anyhow = "1.0"
-atty = "0.2"
 clap = { version = "4.0", features = ["cargo", "derive"] }
 clap-serde-derive = "0.2"
 console = "0.16"
@@ -35,7 +34,7 @@ human_format = "1.0"
 humantime = "2.1"
 humantime-serde = "1.1"
 itoa = "1.0"
-miette = { version = "7.6.0", features = ["fancy"] }
+miette = { version = "7.6.0", features = ["fancy-no-backtrace"] }
 owo-colors = "4.4"
 regex = "1.7"
 serde = { version = "1.0", features = ["derive"] }

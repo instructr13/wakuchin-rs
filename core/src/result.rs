@@ -9,7 +9,7 @@ use smooth::Smooth;
 use crate::error::WakuchinError;
 
 /// The output format of the result
-#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Deserialize)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize)]
 pub enum ResultOutputFormat {
   /// Text output
   ///
@@ -23,6 +23,7 @@ pub enum ResultOutputFormat {
   /// Hits%: 20%
   /// ```
   #[serde(rename = "text")]
+  #[default]
   Text,
   /// JSON output
   ///
@@ -47,12 +48,6 @@ pub enum ResultOutputFormat {
   /// ```
   #[serde(rename = "json")]
   Json,
-}
-
-impl Default for ResultOutputFormat {
-  fn default() -> Self {
-    Self::Text
-  }
 }
 
 impl FromStr for ResultOutputFormat {

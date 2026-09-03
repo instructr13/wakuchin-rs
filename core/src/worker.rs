@@ -190,7 +190,7 @@ pub fn run_par(
 
     (0..tries)
       .divide_evenly_into(total_workers)
-      .zip(progress_tx_vec.into_iter())
+      .zip(progress_tx_vec)
       .enumerate()
       .for_each(|(id, (wakuchins, progress_tx))| {
         let regex = regex.clone();
