@@ -1,5 +1,7 @@
 //! Wakuchin researcher main functions
 
+use std::borrow::Cow;
+use std::cmp::min;
 use std::panic::resume_unwind;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -9,7 +11,7 @@ use std::time::Duration;
 use divide_range::RangeDivisions;
 use regex::Regex;
 
-use crate::channel::{channel, watch};
+use crate::channel::channel;
 use crate::error::WakuchinError;
 use crate::handlers::ProgressHandler;
 use crate::hit::counter::ThreadHitCounter;
@@ -18,9 +20,27 @@ use crate::progress::{
 };
 use crate::render::{Render, ThreadRender};
 use crate::result::{Hit, HitCount, WakuchinResult};
+use crate::slot::WorkerProgress;
 use crate::{check, gen};
 
 type Result<T> = std::result::Result<T, WakuchinError>;
+
+/// Tries a worker takes on at a time.
+///
+/// Big enough that publishing progress and polling the cancellation flag are
+/// noise per try, small enough that Ctrl-C still feels immediate and the tail
+/// of a run stays balanced across workers.
+const CHUNK: usize = 4096;
+
+/// Splits a range into consecutive sub-ranges of at most `size`.
+fn chunks(
+  range: std::ops::Range<usize>,
+  size: usize,
+) -> impl Iterator<Item = std::ops::Range<usize>> {
+  let end = range.end;
+
+  range.step_by(size).map(move |start| start..min(start + size, end))
+}
 
 #[cfg(not(target_arch = "wasm32"))]
 use signal_hook::consts::SIGINT;
@@ -159,9 +179,8 @@ pub fn run_par(
   let is_stopped_accidentially = Arc::new(AtomicBool::new(false));
   let (hit_tx, hit_rx) = channel();
 
-  let (progress_tx_vec, progress_rx_vec): (Vec<_>, Vec<_>) = (0..total_workers)
-    .map(|id| watch(Progress(ProgressKind::Idle(IdleDetail { id: id + 1 }))))
-    .unzip();
+  let progress: Vec<WorkerProgress> =
+    (0..total_workers).map(|_| WorkerProgress::default()).collect();
 
   let mut hits_detail = Vec::new();
 
@@ -170,9 +189,8 @@ pub fn run_par(
   let mut render = ThreadRender::new(
     is_stopped_accidentially.clone(),
     counter.clone(),
-    progress_rx_vec,
+    &progress,
     progress_handler,
-    total_workers,
   );
 
   #[cfg(not(target_arch = "wasm32"))]
@@ -195,55 +213,51 @@ pub fn run_par(
 
     (0..tries)
       .divide_evenly_into(total_workers)
-      .zip(progress_tx_vec)
-      .enumerate()
-      .for_each(|(id, (wakuchins, progress_tx))| {
+      .zip(&progress)
+      .for_each(|(wakuchins, progress)| {
         let regex = regex.clone();
         let hit_tx = hit_tx.clone();
 
         worker_handles.push(s.spawn(move || {
           let total = wakuchins.len();
 
-          let mut hits = Vec::new();
+          progress.claim(total);
 
-          for (current, (i, wakuchin)) in
-            wakuchins.map(|i| (i, gen(times))).enumerate()
-          {
+          let mut hits = Vec::new();
+          let mut processed = 0;
+
+          for chunk in chunks(wakuchins, CHUNK) {
+            let mut last = Cow::Borrowed("");
+
+            for i in chunk {
+              let wakuchin = gen(times);
+
+              if check(&wakuchin, &regex) {
+                let hit = Hit::new(i, &*wakuchin);
+
+                hit_tx
+                  .send(hit.clone())
+                  .expect("hit channel is unavailable");
+
+                hits.push(hit);
+              }
+
+              processed += 1;
+              last = wakuchin;
+            }
+
+            progress.publish(processed, &last);
+
             if is_stopped_accidentially.load(Ordering::Relaxed) {
               drop(hit_tx);
 
               return Err(WakuchinError::Cancelled);
             }
-
-            if check(&wakuchin, &regex) {
-              let hit = Hit::new(i, &*wakuchin);
-
-              hit_tx
-                .send(hit.clone())
-                .expect("hit channel is unavailable");
-
-              hits.push(hit);
-            }
-
-            if !progress_tx.is_closed() {
-              progress_tx
-                .send(Progress(ProgressKind::Processing(
-                  ProcessingDetail::new(id + 1, wakuchin, current, total),
-                )))
-                .expect("progress channel is unavailable");
-            }
           }
 
           drop(hit_tx);
 
-          if !progress_tx.is_closed() {
-            progress_tx
-              .send(Progress(ProgressKind::Done(DoneDetail {
-                id: id + 1,
-                total,
-              })))
-              .unwrap();
-          }
+          progress.finish(processed);
 
           Ok(hits)
         }));

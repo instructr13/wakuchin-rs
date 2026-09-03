@@ -2,52 +2,46 @@ use std::borrow::Cow;
 use std::cmp::min;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use std::thread::sleep;
 use std::time::Duration;
 
 use anyhow::Result;
 use instant::Instant;
-use tokio::sync::watch;
 
 use crate::handlers::ProgressHandler;
 use crate::hit::counter::{HitCounter, ThreadHitCounter};
-use crate::progress::{DoneDetail, ProcessingDetail, Progress, ProgressKind};
+use crate::progress::{ProcessingDetail, Progress, ProgressKind};
 use crate::result::HitCount;
+use crate::slot::WorkerProgress;
 use crate::utils::DiffStore;
 
-pub struct ThreadRender {
+pub struct ThreadRender<'slots> {
   is_stopped_accidentially: Arc<AtomicBool>,
   counter: ThreadHitCounter,
-  progress_channels: Vec<watch::Receiver<Progress>>,
+  workers: &'slots [WorkerProgress],
   progress_handler: Box<dyn ProgressHandler>,
-  total_workers: usize,
+  /// Reused across refreshes so a tick does not allocate a fresh vector.
+  progresses: Vec<Progress>,
 }
 
-impl ThreadRender {
+impl<'slots> ThreadRender<'slots> {
   pub fn new(
     is_stopped_accidentially: Arc<AtomicBool>,
     counter: ThreadHitCounter,
-    progress_channels: Vec<watch::Receiver<Progress>>,
+    workers: &'slots [WorkerProgress],
     progress_handler: Box<dyn ProgressHandler>,
-    total_workers: usize,
   ) -> Self {
     Self {
       is_stopped_accidentially,
       counter,
-      progress_channels,
+      progresses: Vec::with_capacity(workers.len()),
+      workers,
       progress_handler,
-      total_workers,
     }
   }
 
   #[inline]
-  fn hits(&self) -> Vec<HitCount> {
-    self.counter.get_all().into_hit_counts()
-  }
-
-  #[inline]
   pub fn invoke_before_start(&mut self) -> Result<()> {
-    self.progress_handler.before_start(self.total_workers)
+    self.progress_handler.before_start(self.workers.len())
   }
 
   /// Longest single sleep while waiting for the next refresh.
@@ -69,16 +63,8 @@ impl ThreadRender {
         return self.invoke_on_accidential_stop();
       }
 
-      if self.counter.count_stopped.load(Ordering::Acquire) {
-        let (progresses, current) = self.collect();
-
-        self.progress_handler.handle(
-          &progresses,
-          &self.hits(),
-          last_tick.elapsed(),
-          current_diff.update(current),
-          true,
-        )?;
+      if self.counter.done.is_done() {
+        self.refresh(last_tick.elapsed(), &mut current_diff, true)?;
 
         break;
       }
@@ -86,20 +72,12 @@ impl ThreadRender {
       let elapsed = last_tick.elapsed();
 
       if elapsed < interval {
-        sleep(min(interval - elapsed, Self::POLL_SLICE));
+        self.counter.done.wait(min(interval - elapsed, Self::POLL_SLICE));
 
         continue;
       }
 
-      let (progresses, current) = self.collect();
-
-      self.progress_handler.handle(
-        &progresses,
-        &self.hits(),
-        elapsed,
-        current_diff.update(current),
-        false,
-      )?;
+      self.refresh(elapsed, &mut current_diff, false)?;
 
       last_tick = Instant::now();
     }
@@ -109,32 +87,34 @@ impl ThreadRender {
     Ok(())
   }
 
-  /// Snapshots every worker's latest progress plus the total tries processed.
-  fn collect(&self) -> (Vec<Progress>, usize) {
+  /// Samples every worker slot and hands the snapshot to the handler.
+  fn refresh(
+    &mut self,
+    elapsed: Duration,
+    current_diff: &mut DiffStore,
+    all_done: bool,
+  ) -> Result<()> {
+    self.progresses.clear();
+
     let mut current = 0;
 
-    let progresses = self
-      .progress_channels
-      .iter()
-      .map(|rx| {
-        let progress = rx.borrow();
+    for (index, worker) in self.workers.iter().enumerate() {
+      // Worker ids are 1-based everywhere in the public API; 0 means a
+      // sequential run.
+      self.progresses.push(worker.snapshot(index + 1));
 
-        match &*progress {
-          Progress(ProgressKind::Processing(ProcessingDetail {
-            current: processed,
-            ..
-          })) => current += processed,
-          Progress(ProgressKind::Done(DoneDetail { total, .. })) => {
-            current += total;
-          }
-          Progress(ProgressKind::Idle(_)) => {}
-        }
+      current += worker.processed();
+    }
 
-        progress.clone()
-      })
-      .collect();
+    let hits = self.counter.get_all().into_hit_counts();
 
-    (progresses, current)
+    self.progress_handler.handle(
+      &self.progresses,
+      &hits,
+      elapsed,
+      current_diff.update(current),
+      all_done,
+    )
   }
 
   pub fn invoke_on_accidential_stop(&mut self) -> Result<()> {

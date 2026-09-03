@@ -10,8 +10,10 @@ pub mod symbol;
 pub mod worker;
 
 mod channel;
+mod gate;
 mod hit;
 mod render;
+mod slot;
 mod utils;
 
 use std::borrow::Cow;

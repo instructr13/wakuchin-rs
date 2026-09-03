@@ -1,9 +1,8 @@
 use std::borrow::Cow;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
 
 use flume::Receiver;
 
+use crate::gate::DoneGate;
 use crate::result::{Hit, HitCount};
 
 use super::store::{AtomicHitStore, HitStore};
@@ -30,7 +29,7 @@ impl HitCounterEntry {
 
 #[derive(Clone)]
 pub struct ThreadHitCounter {
-  pub count_stopped: Arc<AtomicBool>,
+  pub done: DoneGate,
   store: AtomicHitStore,
   hit_rx: Receiver<Hit>,
 }
@@ -38,7 +37,7 @@ pub struct ThreadHitCounter {
 impl ThreadHitCounter {
   pub fn new(hit_rx: Receiver<Hit>) -> Self {
     Self {
-      count_stopped: Arc::new(AtomicBool::new(false)),
+      done: DoneGate::default(),
       store: AtomicHitStore::new(),
       hit_rx,
     }
@@ -49,7 +48,7 @@ impl ThreadHitCounter {
       self.store.add(hit.chars);
     }
 
-    self.count_stopped.store(true, Ordering::Release);
+    self.done.signal();
   }
 
   #[inline]
