@@ -3,5 +3,9 @@ use criterion::criterion_main;
 mod benchmarks;
 
 criterion_main! {
-  benchmarks::worker::runs
+  benchmarks::primitives::primitives,
+  benchmarks::worker::overhead,
+  benchmarks::worker::runs,
+  benchmarks::worker::hit_path,
+  benchmarks::worker::render,
 }
