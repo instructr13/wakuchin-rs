@@ -9,12 +9,11 @@ use crate::hit::HitTally;
 use crate::progress::{
   DoneDetail, IdleDetail, ProcessingDetail, Progress, ProgressKind,
 };
-use crate::result::Hit;
 
 /// What a worker is currently doing.
 ///
 /// Stored in an `atomig::Atomic` so the state stays a real enum rather than a
-/// bare `AtomicU8` with hand-written constants and a catch-all match arm.
+/// bare `AtomicU8` with handwritten constants and a catch-all match arm.
 #[derive(Atom, Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[repr(u8)]
 pub enum WorkerState {
@@ -63,16 +62,12 @@ impl WorkerProgress {
     self.sample.store(Arc::new(candidate.to_owned()));
   }
 
-  pub fn record_hits(&self, hits: &[Hit]) {
-    if hits.is_empty() {
+  pub fn record_hits(&self, chunk: &HitTally) {
+    if chunk.is_empty() {
       return;
     }
 
-    let mut tally = self.tally.lock();
-
-    for hit in hits {
-      tally.add(&hit.chars());
-    }
+    self.tally.lock().merge_from(chunk);
   }
 
   pub fn merge_hits_into(&self, out: &mut HitTally) {
@@ -116,7 +111,6 @@ impl WorkerProgress {
 mod test {
   use crate::hit::HitTally;
   use crate::progress::{Progress, ProgressKind};
-  use crate::result::Hit;
 
   use super::WorkerProgress;
 
@@ -169,11 +163,13 @@ mod test {
   fn hits_merge_out_of_the_worker_tally() {
     let progress = WorkerProgress::default();
 
-    progress.record_hits(&[
-      Hit::new(0, "WKCN"),
-      Hit::new(3, "WKCN"),
-      Hit::new(9, "NCKW"),
-    ]);
+    let mut chunk = HitTally::default();
+
+    chunk.add("WKCN");
+    chunk.add("WKCN");
+    chunk.add("NCKW");
+
+    progress.record_hits(&chunk);
 
     let mut tally = HitTally::default();
 

@@ -58,7 +58,7 @@ impl<'run> ThreadRender<'run> {
 
     loop {
       if self.cancelled.load(Ordering::Relaxed) {
-        return self.invoke_on_accidential_stop();
+        return self.invoke_on_accidental_stop();
       }
 
       if self.finished.is_done() {
@@ -70,7 +70,9 @@ impl<'run> ThreadRender<'run> {
       let elapsed = last_tick.elapsed();
 
       if elapsed < interval {
-        self.finished.wait(min(interval - elapsed, Self::POLL_SLICE));
+        self
+          .finished
+          .wait(min(interval - elapsed, Self::POLL_SLICE));
 
         continue;
       }
@@ -118,8 +120,8 @@ impl<'run> ThreadRender<'run> {
     )
   }
 
-  pub fn invoke_on_accidential_stop(&mut self) -> Result<()> {
-    self.progress_handler.on_accidential_stop()
+  pub fn invoke_on_accidental_stop(&mut self) -> Result<()> {
+    self.progress_handler.on_accidental_stop()
   }
 
   pub fn invoke_after_finish(&mut self) -> Result<()> {
@@ -151,9 +153,10 @@ impl Render {
     self.tally.into_hit_counts()
   }
 
+  /// Folds a chunk's hit counts into the running tally.
   #[inline]
-  pub fn handle_hit(&mut self, chars: &str) {
-    self.tally.add(chars);
+  pub fn record_hits(&mut self, chunk: &HitTally) {
+    self.tally.merge_from(chunk);
   }
 
   #[inline]
@@ -203,8 +206,8 @@ impl Render {
   }
 
   #[inline]
-  pub fn invoke_on_accidential_stop(&mut self) -> Result<()> {
-    self.progress_handler.on_accidential_stop()
+  pub fn invoke_on_accidental_stop(&mut self) -> Result<()> {
+    self.progress_handler.on_accidental_stop()
   }
 
   #[inline]

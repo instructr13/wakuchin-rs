@@ -11,7 +11,9 @@ use crate::error::WakuchinError;
 use crate::symbol::WAKUCHIN_BYTES;
 
 /// The output format of the result
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize)]
+#[derive(
+  Copy, Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize,
+)]
 pub enum ResultOutputFormat {
   /// Text output
   ///
@@ -64,10 +66,32 @@ impl FromStr for ResultOutputFormat {
   }
 }
 
+const NOT_A_SYMBOL: u8 = u8::MAX;
+
+/// Byte to two-bit symbol index, derived from [`WAKUCHIN_BYTES`] so the two
+/// cannot drift apart. A table rather than a scan of the alphabet because
+/// packing runs once per character of every hit.
+const SYMBOL_OF_BYTE: [u8; 256] = {
+  let mut table = [NOT_A_SYMBOL; 256];
+  let mut symbol = 0;
+
+  while symbol < WAKUCHIN_BYTES.len() {
+    table[WAKUCHIN_BYTES[symbol] as usize] = symbol as u8;
+    symbol += 1;
+  }
+
+  table
+};
+
 /// Longest candidate, in characters, that fits in a packed `u64`.
 const PACKED_CHARS_MAX: usize = 32;
 
 /// Used when the researcher detects a hit
+///
+/// The characters are stored packed rather than as a `String`. Every candidate
+/// is a permutation of [`WAKUCHIN_BYTES`] repeated `times`
+/// times, so two bits per character describe it exactly, and up to `times = 8`
+/// the whole arrangement fits in a `u64`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Hit {
   /// The index of the hit
@@ -135,9 +159,13 @@ fn pack(chars: &str) -> Option<(u64, u8)> {
   let mut bits = 0;
 
   for (index, byte) in bytes.iter().enumerate() {
-    let symbol = WAKUCHIN_BYTES.iter().position(|slot| slot == byte)?;
+    let symbol = SYMBOL_OF_BYTE[usize::from(*byte)];
 
-    bits |= (symbol as u64) << (index * 2);
+    if symbol == NOT_A_SYMBOL {
+      return None;
+    }
+
+    bits |= u64::from(symbol) << (index * 2);
   }
 
   Some((bits, bytes.len() as u8))
@@ -145,7 +173,9 @@ fn pack(chars: &str) -> Option<(u64, u8)> {
 
 fn unpack(bits: u64, chars: u8) -> String {
   (0..usize::from(chars))
-    .map(|index| char::from(WAKUCHIN_BYTES[(bits >> (index * 2)) as usize & 0b11]))
+    .map(|index| {
+      char::from(WAKUCHIN_BYTES[(bits >> (index * 2)) as usize & 0b11])
+    })
     .collect()
 }
 

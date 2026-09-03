@@ -1,11 +1,16 @@
 use std::collections::HashMap;
 
+use foldhash::fast::RandomState;
+
 use crate::result::HitCount;
 
 /// Counts how many times each distinct wakuchin string was hit.
 #[derive(Debug, Default)]
 pub struct HitTally {
-  counts: HashMap<Box<str>, usize>,
+  // `foldhash` rather than the std default: SipHash costs more than the rest
+  // of recording a hit put together, and these keys are candidates this crate
+  // generated itself, not attacker-controlled input.
+  counts: HashMap<Box<str>, usize, RandomState>,
 }
 
 impl HitTally {
@@ -20,8 +25,17 @@ impl HitTally {
 
   pub fn merge_from(&mut self, other: &Self) {
     for (chars, hits) in &other.counts {
-      *self.counts.entry(chars.clone()).or_default() += hits;
+      // Only a key this tally has not seen is cloned.
+      if let Some(existing) = self.counts.get_mut(chars.as_ref()) {
+        *existing += hits;
+      } else {
+        self.counts.insert(chars.clone(), *hits);
+      }
     }
+  }
+
+  pub fn is_empty(&self) -> bool {
+    self.counts.is_empty()
   }
 
   pub fn clear(&mut self) {

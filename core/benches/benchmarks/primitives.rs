@@ -19,16 +19,19 @@ const TIMES: &[usize] = &[1, 2, 3, 4];
 /// Big enough that thread spawn is amortized in the pool-contention bench.
 const CORPUS: usize = 200_000;
 
-fn corpus(times: usize) -> Vec<Vec<u8>> {
+/// One contiguous buffer of fixed-stride candidates.
+fn corpus(times: usize) -> (Vec<u8>, usize) {
+  let stride = times * 4;
   let mut generator = Generator::new(times);
+  let mut buf = Vec::with_capacity(CORPUS * stride);
 
-  (0..CORPUS)
-    .map(|_| {
-      generator.shuffle();
+  for _ in 0..CORPUS {
+    generator.shuffle();
 
-      generator.bytes().to_vec()
-    })
-    .collect()
+    buf.extend_from_slice(generator.bytes());
+  }
+
+  (buf, stride)
 }
 
 fn bench_gen(c: &mut Criterion) {
@@ -37,9 +40,13 @@ fn bench_gen(c: &mut Criterion) {
   g.throughput(Throughput::Elements(1));
 
   for &times in TIMES {
-    g.bench_with_input(BenchmarkId::from_parameter(times), &times, |b, &times| {
-      b.iter(|| gen(black_box(times)));
-    });
+    g.bench_with_input(
+      BenchmarkId::from_parameter(times),
+      &times,
+      |b, &times| {
+        b.iter(|| gen(black_box(times)));
+      },
+    );
   }
 
   g.finish();
@@ -49,15 +56,19 @@ fn bench_gen(c: &mut Criterion) {
   g.throughput(Throughput::Elements(1));
 
   for &times in TIMES {
-    g.bench_with_input(BenchmarkId::from_parameter(times), &times, |b, &times| {
-      let mut generator = Generator::new(black_box(times));
+    g.bench_with_input(
+      BenchmarkId::from_parameter(times),
+      &times,
+      |b, &times| {
+        let mut generator = Generator::new(black_box(times));
 
-      b.iter(|| {
-        generator.shuffle();
+        b.iter(|| {
+          generator.shuffle();
 
-        black_box(generator.bytes());
-      });
-    });
+          black_box(generator.bytes());
+        });
+      },
+    );
   }
 
   g.finish();
@@ -65,7 +76,7 @@ fn bench_gen(c: &mut Criterion) {
 
 fn bench_check(c: &mut Criterion) {
   let regex = Regex::new(r"^WKNCWKNC$").unwrap();
-  let corpus = corpus(2);
+  let (corpus, stride) = corpus(2);
 
   let mut g = c.benchmark_group("primitives/check");
 
@@ -75,7 +86,7 @@ fn bench_check(c: &mut Criterion) {
     b.iter(|| {
       let mut hits = 0_u64;
 
-      for wakuchin in &corpus {
+      for wakuchin in corpus.chunks_exact(stride) {
         hits += u64::from(check(black_box(wakuchin), &regex));
       }
 
@@ -96,7 +107,7 @@ fn bench_check_pool(c: &mut Criterion) {
   const THREADS: usize = 4;
 
   let regex = Regex::new(r"^WKNCWKNC$").unwrap();
-  let corpus = corpus(2);
+  let (corpus, stride) = corpus(2);
 
   let mut g = c.benchmark_group("primitives/check_pool");
 
@@ -113,7 +124,7 @@ fn bench_check_pool(c: &mut Criterion) {
           s.spawn(move || {
             let mut hits = 0_u64;
 
-            for wakuchin in corpus {
+            for wakuchin in corpus.chunks_exact(stride) {
               hits += u64::from(check(wakuchin, &regex));
             }
 
@@ -134,7 +145,7 @@ fn bench_check_pool(c: &mut Criterion) {
           s.spawn(move || {
             let mut hits = 0_u64;
 
-            for wakuchin in corpus {
+            for wakuchin in corpus.chunks_exact(stride) {
               hits += u64::from(check(wakuchin, regex));
             }
 
@@ -159,21 +170,25 @@ fn bench_try_loop(c: &mut Criterion) {
   g.throughput(Throughput::Elements(TRIES as u64));
 
   for &times in TIMES {
-    g.bench_with_input(BenchmarkId::from_parameter(times), &times, |b, &times| {
-      let mut generator = Generator::new(black_box(times));
+    g.bench_with_input(
+      BenchmarkId::from_parameter(times),
+      &times,
+      |b, &times| {
+        let mut generator = Generator::new(black_box(times));
 
-      b.iter(|| {
-        let mut hits = 0_u64;
+        b.iter(|| {
+          let mut hits = 0_u64;
 
-        for _ in 0..TRIES {
-          generator.shuffle();
+          for _ in 0..TRIES {
+            generator.shuffle();
 
-          hits += u64::from(check(generator.bytes(), &regex));
-        }
+            hits += u64::from(check(generator.bytes(), &regex));
+          }
 
-        black_box(hits)
-      });
-    });
+          black_box(hits)
+        });
+      },
+    );
   }
 
   g.finish();

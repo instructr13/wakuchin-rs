@@ -5,7 +5,9 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
-use criterion::{criterion_group, BenchmarkId, Criterion, SamplingMode, Throughput};
+use criterion::{
+  criterion_group, BenchmarkId, Criterion, SamplingMode, Throughput,
+};
 use regex::bytes::Regex;
 
 use wakuchin::handlers::empty::EmptyProgressHandler;
@@ -69,14 +71,14 @@ fn bench_overhead(c: &mut Criterion) {
 }
 
 fn bench_run_par(c: &mut Criterion) {
-  const TRIES: usize = 2_000_000;
+  const TRIES: usize = 20_000_000;
 
   let regex = Regex::new(RARE).unwrap();
 
   let mut g = c.benchmark_group("worker/run_par");
 
   g.throughput(Throughput::Elements(TRIES as u64));
-  g.sample_size(20);
+  g.sample_size(10);
   g.sampling_mode(SamplingMode::Flat);
 
   for &workers in WORKERS {
@@ -103,7 +105,7 @@ fn bench_run_par(c: &mut Criterion) {
 }
 
 fn bench_run_seq(c: &mut Criterion) {
-  const TRIES: usize = 1_000_000;
+  const TRIES: usize = 8_000_000;
 
   // Compiled once, outside `b.iter` -- the previous revision recompiled it on
   // every iteration, which made seq and par incomparable.
@@ -112,22 +114,26 @@ fn bench_run_seq(c: &mut Criterion) {
   let mut g = c.benchmark_group("worker/run_seq");
 
   g.throughput(Throughput::Elements(TRIES as u64));
-  g.sample_size(20);
+  g.sample_size(10);
   g.sampling_mode(SamplingMode::Flat);
 
   for &times in &[1_usize, 2, 3] {
-    g.bench_with_input(BenchmarkId::from_parameter(times), &times, |b, &times| {
-      b.iter(|| {
-        run_seq(
-          black_box(TRIES),
-          black_box(times),
-          &regex,
-          empty(),
-          IDLE_INTERVAL,
-        )
-        .unwrap()
-      });
-    });
+    g.bench_with_input(
+      BenchmarkId::from_parameter(times),
+      &times,
+      |b, &times| {
+        b.iter(|| {
+          run_seq(
+            black_box(TRIES),
+            black_box(times),
+            &regex,
+            empty(),
+            IDLE_INTERVAL,
+          )
+          .unwrap()
+        });
+      },
+    );
   }
 
   g.finish();
@@ -140,7 +146,7 @@ fn bench_run_seq(c: &mut Criterion) {
 /// every worker through a single channel and a single aggregating thread, so
 /// this is where the worker model fails hardest.
 fn bench_hit_rate(c: &mut Criterion) {
-  const TRIES: usize = 1_000_000;
+  const TRIES: usize = 8_000_000;
 
   let patterns: &[(&str, &str)] = &[
     ("0.04pct", RARE),
@@ -177,7 +183,7 @@ fn bench_hit_rate(c: &mut Criterion) {
 }
 
 fn bench_hit_rate_scaling(c: &mut Criterion) {
-  const TRIES: usize = 1_000_000;
+  const TRIES: usize = 8_000_000;
 
   // 25% hit rate: frequent enough to saturate the aggregation path, cheap
   // enough to run in a bench.
@@ -238,7 +244,7 @@ impl ProgressHandler for CountingProgressHandler {
 }
 
 fn bench_render(c: &mut Criterion) {
-  const TRIES: usize = 1_000_000;
+  const TRIES: usize = 8_000_000;
 
   let regex = Regex::new(RARE).unwrap();
   let calls = Arc::new(AtomicUsize::new(0));
@@ -246,7 +252,7 @@ fn bench_render(c: &mut Criterion) {
   let mut g = c.benchmark_group("worker/render");
 
   g.throughput(Throughput::Elements(TRIES as u64));
-  g.sample_size(20);
+  g.sample_size(10);
   g.sampling_mode(SamplingMode::Flat);
 
   g.bench_function("interval_1ms", |b| {

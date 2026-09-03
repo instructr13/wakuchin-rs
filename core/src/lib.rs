@@ -381,7 +381,9 @@ mod test {
     for _ in 0..SAMPLES {
       generator.shuffle();
 
-      *counts.entry(generator.as_str().to_owned()).or_insert(0_usize) += 1;
+      *counts
+        .entry(generator.as_str().to_owned())
+        .or_insert(0_usize) += 1;
     }
 
     assert_eq!(counts.len(), 24, "not every arrangement was produced");

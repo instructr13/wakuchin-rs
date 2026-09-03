@@ -28,7 +28,7 @@ pub trait ProgressHandler: Send {
   }
 
   #[inline]
-  fn on_accidential_stop(&mut self) -> Result<()> {
+  fn on_accidental_stop(&mut self) -> Result<()> {
     self.after_finish()
   }
 }

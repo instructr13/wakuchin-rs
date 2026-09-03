@@ -8,15 +8,14 @@ use std::sync::Arc;
 use std::thread::{available_parallelism, scope};
 use std::time::Duration;
 
+use itertools::Itertools;
 use regex::bytes::Regex;
 
 use crate::error::WakuchinError;
 use crate::gate::Countdown;
 use crate::handlers::ProgressHandler;
 use crate::hit::HitTally;
-use crate::progress::{
-  DoneDetail, ProcessingDetail, Progress, ProgressKind,
-};
+use crate::progress::{DoneDetail, ProcessingDetail, Progress, ProgressKind};
 use crate::render::{Render, ThreadRender};
 use crate::result::{Hit, HitCount, WakuchinResult};
 use crate::slot::WorkerProgress;
@@ -83,31 +82,9 @@ impl Cursor {
   }
 }
 
-/// Chunk size for the sequential path, which has no shared cursor to consult.
-const SEQ_CHUNK: usize = 4096;
-
-/// Splits a range into consecutive sub-ranges of at most `size`.
-fn chunks(range: Range<usize>, size: usize) -> impl Iterator<Item = Range<usize>> {
-  let end = range.end;
-
-  range
-    .step_by(size)
-    .map(move |start| start..min(start + size, end))
-}
-
 #[cfg(not(target_arch = "wasm32"))]
 use signal_hook::consts::SIGINT;
 
-/// Sets a shared flag when SIGINT arrives, and unregisters itself on drop.
-///
-/// The handler body must be async-signal-safe, so it is exactly one atomic
-/// store. Anything that takes a lock -- a channel send, for instance -- can
-/// deadlock the thread the signal happened to land on, and a bounded channel
-/// nobody drains will block outright on a second signal.
-///
-/// Unregistering has to happen on *every* path out of a research run. The
-/// registry is process-global, so a leaked handler outlives the run it belongs
-/// to and fires again later against state that is gone.
 #[cfg(not(target_arch = "wasm32"))]
 struct InterruptFlag {
   id: signal_hook::SigId,
@@ -129,7 +106,24 @@ impl Drop for InterruptFlag {
   }
 }
 
-/// Runs one worker: take a chunk, search it, publish, repeat.
+/// Where a search loop reports what it has done.
+trait Reporter {
+  /// Called when a chunk of `tries` has been taken on.
+  fn claim(&mut self, tries: usize);
+
+  /// Called at the end of each chunk. `counts` holds only that chunk's hits.
+  fn record(
+    &mut self,
+    counts: &HitTally,
+    processed: usize,
+    candidate: &str,
+  ) -> Result<()>;
+
+  /// Called once, after the last chunk.
+  fn finish(&mut self, processed: usize) -> Result<()>;
+}
+
+/// The search loop: take a chunk, search it, report, repeat.
 ///
 /// Progress and the cancellation flag are touched once per chunk rather than
 /// once per try, so both cost effectively nothing. One chunk is the upper bound
@@ -138,7 +132,7 @@ fn search(
   cursor: &Cursor,
   times: usize,
   regex: &Regex,
-  progress: &WorkerProgress,
+  reporter: &mut impl Reporter,
   cancelled: &AtomicBool,
 ) -> Result<Vec<Hit>> {
   let mut generator = Generator::new(times);
@@ -146,32 +140,101 @@ fn search(
   let mut hits: Vec<Hit> = Vec::new();
   let mut processed = 0;
 
-  while let Some(chunk) = cursor.claim() {
-    progress.claim(chunk.len());
+  let mut counts = HitTally::default();
 
-    let recorded = hits.len();
+  while let Some(chunk) = cursor.claim() {
+    reporter.claim(chunk.len());
 
     for index in chunk {
       generator.shuffle();
 
       if check(generator.bytes(), regex) {
-        hits.push(Hit::new(index, generator.as_str()));
+        // Validated once, not once per use: `as_str` checks the buffer is UTF-8.
+        let candidate = generator.as_str();
+
+        counts.add(candidate);
+        hits.push(Hit::new(index, candidate));
       }
 
       processed += 1;
     }
 
-    progress.record_hits(&hits[recorded..]);
-    progress.publish(processed, generator.as_str());
+    reporter.record(&counts, processed, generator.as_str())?;
+    counts.clear();
 
     if cancelled.load(Ordering::Relaxed) {
       return Err(WakuchinError::Cancelled);
     }
   }
 
-  progress.finish(processed);
+  reporter.finish(processed)?;
 
   Ok(hits)
+}
+
+/// Reports into the slot a parallel worker owns.
+impl Reporter for &WorkerProgress {
+  fn claim(&mut self, tries: usize) {
+    WorkerProgress::claim(self, tries);
+  }
+
+  fn record(
+    &mut self,
+    counts: &HitTally,
+    processed: usize,
+    candidate: &str,
+  ) -> Result<()> {
+    self.record_hits(counts);
+    self.publish(processed, candidate);
+
+    Ok(())
+  }
+
+  fn finish(&mut self, processed: usize) -> Result<()> {
+    WorkerProgress::finish(self, processed);
+
+    Ok(())
+  }
+}
+
+/// Reports straight into the renderer, for a sequential run.
+struct RenderReporter<'render> {
+  render: &'render mut Render,
+  interval: Duration,
+  tries: usize,
+}
+
+impl Reporter for RenderReporter<'_> {
+  fn claim(&mut self, _tries: usize) {}
+
+  fn record(
+    &mut self,
+    counts: &HitTally,
+    processed: usize,
+    candidate: &str,
+  ) -> Result<()> {
+    self.render.record_hits(counts);
+
+    // Assembled only when it will actually be displayed.
+    if self.render.due(self.interval) {
+      self.render.render_progress(
+        self.interval,
+        Progress(ProgressKind::Processing(ProcessingDetail::new(
+          0,
+          candidate.to_owned(),
+          processed,
+          self.tries,
+        ))),
+        false,
+      )?;
+    }
+
+    Ok(())
+  }
+
+  fn finish(&mut self, _processed: usize) -> Result<()> {
+    Ok(())
+  }
 }
 
 /// Merges every worker's tally into the final hit counts.
@@ -184,7 +247,6 @@ fn merge_hits(workers: &[WorkerProgress]) -> Vec<HitCount> {
 
   tally.into_hit_counts()
 }
-
 
 fn get_total_workers(workers: usize) -> Result<usize> {
   if workers != 0 {
@@ -288,8 +350,9 @@ pub fn run_par(
 
   let cancelled = Arc::new(AtomicBool::new(false));
 
-  let progress: Vec<WorkerProgress> =
-    (0..total_workers).map(|_| WorkerProgress::default()).collect();
+  let progress: Vec<WorkerProgress> = (0..total_workers)
+    .map(|_| WorkerProgress::default())
+    .collect();
   let finished = Countdown::new(total_workers);
   let cursor = Cursor::new(tries, total_workers);
 
@@ -316,7 +379,9 @@ pub fn run_par(
       worker_handles.push(s.spawn(move || {
         let _party = party;
 
-        search(cursor, times, &regex, progress, cancelled)
+        let mut reporter = progress;
+
+        search(cursor, times, &regex, &mut reporter, cancelled)
       }));
     }
 
@@ -328,12 +393,17 @@ pub fn run_par(
       per_worker.push(handle.join().unwrap_or_else(|e| resume_unwind(e))?);
     }
 
-    hits_detail.reserve(per_worker.iter().map(Vec::len).sum());
-    hits_detail.extend(per_worker.into_iter().flatten());
-
     // Workers take chunks as they finish rather than owning one contiguous
-    // range, so what they hand back is ordered per worker but not globally.
-    hits_detail.sort_unstable_by_key(|hit| hit.hit_on);
+    // range, so each worker's hits are ordered but the concatenation is not.
+    //
+    // Merged rather than sorted: every input run is already ascending, so this
+    // costs O(n log workers) comparisons instead of O(n log n).
+    hits_detail.reserve(per_worker.iter().map(Vec::len).sum());
+    hits_detail.extend(
+      per_worker
+        .into_iter()
+        .kmerge_by(|left, right| left.hit_on <= right.hit_on),
+    );
 
     Ok(())
   })?;
@@ -444,45 +514,32 @@ pub fn run_seq(
 
   render.invoke_before_start()?;
 
-  let mut hits_detail = Vec::new();
-  let mut processed = 0;
+  // The same loop `run_par`'s workers run, with a single-party cursor. The two
+  // shared no code before, and had drifted: the sequential path was building a
+  // progress message -- and cloning the candidate into it -- on every try, only
+  // for the renderer to discard it unread.
+  let cursor = Cursor::new(tries, 1);
 
-  let mut generator = Generator::new(times);
+  let hits_detail = {
+    let mut reporter = RenderReporter {
+      render: &mut render,
+      interval: progress_interval,
+      tries,
+    };
 
-  for chunk in chunks(0..tries, SEQ_CHUNK) {
-    for index in chunk {
-      generator.shuffle();
+    search(&cursor, times, regex, &mut reporter, &cancelled)
+  };
 
-      if check(generator.bytes(), regex) {
-        render.handle_hit(generator.as_str());
-        hits_detail.push(Hit::new(index, generator.as_str()));
+  let hits_detail = match hits_detail {
+    Ok(hits_detail) => hits_detail,
+    Err(err) => {
+      if matches!(err, WakuchinError::Cancelled) {
+        render.invoke_on_accidental_stop()?;
       }
 
-      processed += 1;
+      return Err(err);
     }
-
-    if cancelled.load(Ordering::Relaxed) {
-      render.invoke_on_accidential_stop()?;
-
-      return Err(WakuchinError::Cancelled);
-    }
-
-    // Assembled only when it will actually be displayed. The previous shape
-    // built -- and immediately discarded -- a `ProcessingDetail` with a cloned
-    // candidate on *every* try, and read the clock to decide.
-    if render.due(progress_interval) {
-      render.render_progress(
-        progress_interval,
-        Progress(ProgressKind::Processing(ProcessingDetail::new(
-          0,
-          generator.as_str().to_owned(),
-          processed,
-          tries,
-        ))),
-        false,
-      )?;
-    }
-  }
+  };
 
   render.render_progress(
     Duration::ZERO,
