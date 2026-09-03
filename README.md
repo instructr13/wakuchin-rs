@@ -9,19 +9,19 @@
 
 - 🚀 **Fast**
   - Research wakuchin with parallelism, zero allocations per try
-  - **167 Mtries/s** on an Apple M4 \(10 cores\) — 300,000,000 tries of `WKCN * 2` in **1.79 s**
+  - **179 Mtries/s** on an Apple M4 \(10 cores\) — 300,000,000 tries of `WKCN * 2` in **1.67 s**
 
     | workers | time | ns/try | speedup |
     | ------: | ---: | -----: | ------: |
-    | 1 | 10.53 s | 35.1 | 1.00× |
-    | 4 | 3.04 s | 10.1 | 3.47× |
-    | 8 | 2.00 s | 6.7 | 5.27× |
-    | 10 \(default\) | 1.79 s | 6.0 | 5.89× |
+    | 1 | 10.46 s | 34.9 | 1.00× |
+    | 2 | 5.28 s | 17.6 | 1.98× |
+    | 4 | 2.85 s | 9.5 | 3.67× |
+    | 8 | 1.89 s | 6.3 | 5.52× |
+    | 10 \(default\) | 1.67 s | 5.6 | 6.25× |
+    | 16 | 1.68 s | 5.6 | 6.21× |
 
     Measured with [`wakuchin_cli`](cli) `--release`, `--no-progress`, regex
-    `(WKNCWKNC|WCKNWCKN)` \(hit rate 0.04%\), best of one run per point. Cost
-    rises with the hit rate: the same machine does 231 Mtries/s at 0.04% hits
-    and 50 Mtries/s when every try hits.
+    `(WKNCWKNC|WCKNWCKN)` \(hit rate 0.04%\), best of several runs per point.
 - 🔧 **Extendable**
   - You can use the Rust APIs of [`wakuchin`](core)
 - 📰 **Researcher-friendly**
