@@ -9,9 +9,9 @@ use std::thread::scope;
 use std::time::Duration;
 
 use criterion::{criterion_group, BenchmarkId, Criterion, Throughput};
-use regex::Regex;
+use regex::bytes::Regex;
 
-use wakuchin::{check, gen};
+use wakuchin::{check, gen, Generator};
 
 /// Candidate lengths to sweep. `times = 2` is the canonical workload.
 const TIMES: &[usize] = &[1, 2, 3, 4];
@@ -19,8 +19,16 @@ const TIMES: &[usize] = &[1, 2, 3, 4];
 /// Big enough that thread spawn is amortized in the pool-contention bench.
 const CORPUS: usize = 200_000;
 
-fn corpus(times: usize) -> Vec<String> {
-  (0..CORPUS).map(|_| gen(times).into_owned()).collect()
+fn corpus(times: usize) -> Vec<Vec<u8>> {
+  let mut generator = Generator::new(times);
+
+  (0..CORPUS)
+    .map(|_| {
+      generator.shuffle();
+
+      generator.bytes().to_vec()
+    })
+    .collect()
 }
 
 fn bench_gen(c: &mut Criterion) {
@@ -31,6 +39,24 @@ fn bench_gen(c: &mut Criterion) {
   for &times in TIMES {
     g.bench_with_input(BenchmarkId::from_parameter(times), &times, |b, &times| {
       b.iter(|| gen(black_box(times)));
+    });
+  }
+
+  g.finish();
+
+  let mut g = c.benchmark_group("primitives/generator");
+
+  g.throughput(Throughput::Elements(1));
+
+  for &times in TIMES {
+    g.bench_with_input(BenchmarkId::from_parameter(times), &times, |b, &times| {
+      let mut generator = Generator::new(black_box(times));
+
+      b.iter(|| {
+        generator.shuffle();
+
+        black_box(generator.bytes());
+      });
     });
   }
 
@@ -134,11 +160,15 @@ fn bench_try_loop(c: &mut Criterion) {
 
   for &times in TIMES {
     g.bench_with_input(BenchmarkId::from_parameter(times), &times, |b, &times| {
+      let mut generator = Generator::new(black_box(times));
+
       b.iter(|| {
         let mut hits = 0_u64;
 
         for _ in 0..TRIES {
-          hits += u64::from(check(&gen(black_box(times)), &regex));
+          generator.shuffle();
+
+          hits += u64::from(check(generator.bytes(), &regex));
         }
 
         black_box(hits)

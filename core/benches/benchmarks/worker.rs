@@ -6,7 +6,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use criterion::{criterion_group, BenchmarkId, Criterion, SamplingMode, Throughput};
-use regex::Regex;
+use regex::bytes::Regex;
 
 use wakuchin::handlers::empty::EmptyProgressHandler;
 use wakuchin::handlers::ProgressHandler;

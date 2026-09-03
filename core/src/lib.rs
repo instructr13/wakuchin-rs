@@ -16,8 +16,70 @@ mod slot;
 mod utils;
 
 use std::borrow::Cow;
+use std::str;
 
-use regex::Regex;
+use regex::bytes::Regex;
+
+use crate::symbol::WAKUCHIN_BYTES;
+
+/// Generates random wakuchin candidates into a buffer it owns.
+#[derive(Clone, Debug)]
+pub struct Generator {
+  buf: Vec<u8>,
+  rng: fastrand::Rng,
+}
+
+impl Generator {
+  /// # Arguments
+  ///
+  /// * `times` - wakuchin times n
+  ///
+  /// # Examples
+  ///
+  /// ```rust
+  /// use wakuchin::Generator;
+  ///
+  /// let mut generator = Generator::new(2);
+  ///
+  /// generator.shuffle();
+  ///
+  /// assert_eq!(generator.bytes().len(), 8);
+  /// ```
+  #[must_use]
+  pub fn new(times: usize) -> Self {
+    Self {
+      buf: WAKUCHIN_BYTES.repeat(times),
+      // Owned rather than the `fastrand` free functions, which reach through a
+      // thread local on every call.
+      rng: fastrand::Rng::new(),
+    }
+  }
+
+  /// Replaces the current candidate with a fresh one. Allocates nothing.
+  #[inline]
+  pub fn shuffle(&mut self) {
+    self.rng.shuffle(&mut self.buf);
+  }
+
+  /// The current candidate's bytes.
+  #[inline]
+  #[must_use]
+  pub fn bytes(&self) -> &[u8] {
+    &self.buf
+  }
+
+  /// The current candidate.
+  ///
+  /// # Panics
+  ///
+  /// Never in practice: the buffer only ever holds a permutation of
+  /// [`WAKUCHIN_BYTES`], which is ASCII.
+  #[inline]
+  #[must_use]
+  pub fn as_str(&self) -> &str {
+    str::from_utf8(&self.buf).expect("wakuchin candidates are ASCII")
+  }
+}
 
 /// Generate a randomized wakuchin string.
 ///
@@ -61,11 +123,13 @@ use regex::Regex;
 /// ```
 #[inline]
 pub fn gen(times: usize) -> Cow<'static, str> {
-  let mut wakuchin = symbol::WAKUCHIN.repeat(times);
+  let mut wakuchin = WAKUCHIN_BYTES.repeat(times);
 
   fastrand::shuffle(&mut wakuchin);
 
-  wakuchin.iter().collect::<String>().into()
+  String::from_utf8(wakuchin)
+    .expect("wakuchin candidates are ASCII")
+    .into()
 }
 
 /// Generate a vector of randomized wakuchin string.
@@ -168,12 +232,12 @@ pub fn validate_external(wakuchin: &str) -> bool {
     .all(|c| symbol::WAKUCHIN_EXTERNAL.contains(&c))
 }
 
-/// Check wakuchin string with specified regular expression.
-/// This function is a wrapper of `Regex::is_match`.
+/// Check wakuchin candidate bytes with specified regular expression.
+/// This function is a wrapper of `regex::bytes::Regex::is_match`.
 ///
 /// # Arguments
 ///
-/// * `chars` - wakuchin string to check
+/// * `chars` - wakuchin candidate bytes to check
 /// * `regex` - regular expression to use
 ///
 /// # Returns
@@ -183,16 +247,16 @@ pub fn validate_external(wakuchin: &str) -> bool {
 /// # Examples
 ///
 /// ```rust
-/// use regex::Regex;
+/// use regex::bytes::Regex;
 ///
 /// use wakuchin::check;
 ///
-/// assert!(check("WKCN", &Regex::new(r"^[WKCN]+$").unwrap()));
-/// assert!(!check("わくちん", &Regex::new(r"^[WKCN]+$").unwrap()));
-/// assert!(!check("WKCNX", &Regex::new(r"^[WKCN]+$").unwrap()));
+/// assert!(check(b"WKCN", &Regex::new(r"^[WKCN]+$").unwrap()));
+/// assert!(!check("わくちん".as_bytes(), &Regex::new(r"^[WKCN]+$").unwrap()));
+/// assert!(!check(b"WKCNX", &Regex::new(r"^[WKCN]+$").unwrap()));
 /// ```
 #[inline(always)]
-pub fn check(chars: &str, regex: &Regex) -> bool {
+pub fn check(chars: &[u8], regex: &Regex) -> bool {
   regex.is_match(chars)
 }
 
@@ -200,9 +264,11 @@ pub fn check(chars: &str, regex: &Regex) -> bool {
 mod test {
   use std::error::Error;
 
-  use regex::Regex;
+  use regex::bytes::Regex;
 
-  use crate::{check, gen, gen_vec, symbol, validate, validate_external};
+  use crate::{
+    check, gen, gen_vec, symbol, validate, validate_external, Generator,
+  };
 
   #[test]
   fn test_gen() {
@@ -279,10 +345,60 @@ mod test {
 
   #[test]
   fn test_check() -> Result<(), Box<dyn Error>> {
-    assert!(check("WKCN", &Regex::new(r"^[WKCN]+$")?));
-    assert!(!check("わくちん", &Regex::new(r"^[WKCN]+$")?));
-    assert!(!check("WKCNX", &Regex::new(r"^[WKCN]+$")?));
+    assert!(check(b"WKCN", &Regex::new(r"^[WKCN]+$")?));
+    assert!(!check("わくちん".as_bytes(), &Regex::new(r"^[WKCN]+$")?));
+    assert!(!check(b"WKCNX", &Regex::new(r"^[WKCN]+$")?));
 
     Ok(())
+  }
+
+  #[test]
+  fn test_generator() {
+    let mut generator = Generator::new(3);
+
+    for _ in 0..16 {
+      generator.shuffle();
+
+      assert_eq!(generator.bytes().len(), 12);
+      assert_eq!(generator.as_str().len(), 12);
+
+      for symbol in symbol::WAKUCHIN_BYTES {
+        assert_eq!(
+          generator.bytes().iter().filter(|&&b| b == symbol).count(),
+          3
+        );
+      }
+    }
+  }
+
+  #[test]
+  fn test_generator_reuse_stays_uniform() {
+    const SAMPLES: usize = 240_000;
+
+    let mut generator = Generator::new(1);
+    let mut counts = std::collections::HashMap::new();
+
+    for _ in 0..SAMPLES {
+      generator.shuffle();
+
+      *counts.entry(generator.as_str().to_owned()).or_insert(0_usize) += 1;
+    }
+
+    assert_eq!(counts.len(), 24, "not every arrangement was produced");
+
+    let expected = SAMPLES as f64 / 24.0;
+    let chi_square: f64 = counts
+      .values()
+      .map(|&observed| {
+        let deviation = observed as f64 - expected;
+
+        deviation * deviation / expected
+      })
+      .sum();
+
+    assert!(
+      chi_square < 49.7,
+      "chi-square {chi_square} suggests a non-uniform distribution"
+    );
   }
 }

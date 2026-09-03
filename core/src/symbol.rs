@@ -4,6 +4,9 @@
 pub const WAKUCHIN: [char; 4] =
   [WAKUCHIN_W, WAKUCHIN_K, WAKUCHIN_C, WAKUCHIN_N];
 
+/// Internally used wakuchin chars, as the ASCII bytes they encode to.
+pub const WAKUCHIN_BYTES: [u8; 4] = *b"WKCN";
+
 /// Externally used wakuchin chars
 pub const WAKUCHIN_EXTERNAL: [char; 4] = [
   WAKUCHIN_EXTERNAL_W,
@@ -35,3 +38,16 @@ pub const WAKUCHIN_EXTERNAL_C: char = 'ち';
 
 /// External wakuchin N
 pub const WAKUCHIN_EXTERNAL_N: char = 'ん';
+
+#[cfg(test)]
+mod test {
+  use crate::symbol::{WAKUCHIN, WAKUCHIN_BYTES};
+
+  #[test]
+  fn bytes_match_the_chars() {
+    let from_chars: Vec<u8> =
+      WAKUCHIN.iter().map(|&c| u8::try_from(c).unwrap()).collect();
+
+    assert_eq!(from_chars, WAKUCHIN_BYTES);
+  }
+}

@@ -8,7 +8,7 @@ use clap::Parser;
 use clap_serde_derive::ClapSerde;
 use console::Term;
 use dialoguer::{theme::ColorfulTheme, Input};
-use regex::Regex;
+use regex::bytes::Regex;
 use shadow_rs::shadow;
 
 use crate::config::{load_config, Config};

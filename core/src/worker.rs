@@ -9,7 +9,7 @@ use std::thread::{available_parallelism, scope};
 use std::time::Duration;
 
 use divide_range::RangeDivisions;
-use regex::Regex;
+use regex::bytes::Regex;
 
 use crate::error::WakuchinError;
 use crate::gate::Countdown;
@@ -21,7 +21,7 @@ use crate::progress::{
 use crate::render::{Render, ThreadRender};
 use crate::result::{Hit, HitCount, WakuchinResult};
 use crate::slot::WorkerProgress;
-use crate::{check, gen};
+use crate::{check, Generator};
 
 type Result<T> = std::result::Result<T, WakuchinError>;
 
@@ -89,26 +89,26 @@ fn search(
 ) -> Result<Vec<Hit>> {
   progress.claim(range.len());
 
+  let mut generator = Generator::new(times);
+
   let mut hits: Vec<Hit> = Vec::new();
   let mut processed = 0;
 
   for chunk in chunks(range, CHUNK) {
     let recorded = hits.len();
-    let mut candidate = String::new();
 
     for index in chunk {
-      let wakuchin = gen(times);
+      generator.shuffle();
 
-      if check(&wakuchin, regex) {
-        hits.push(Hit::new(index, &*wakuchin));
+      if check(generator.bytes(), regex) {
+        hits.push(Hit::new(index, generator.as_str()));
       }
 
       processed += 1;
-      candidate = wakuchin.into_owned();
     }
 
     progress.record_hits(&hits[recorded..]);
-    progress.publish(processed, &candidate);
+    progress.publish(processed, generator.as_str());
 
     if cancelled.load(Ordering::Relaxed) {
       return Err(WakuchinError::Cancelled);
@@ -163,7 +163,7 @@ fn get_total_workers(workers: usize) -> Result<usize> {
 ///   use std::sync::Mutex;
 ///   use std::time::Duration;
 ///
-///   use regex::Regex;
+///   use regex::bytes::Regex;
 ///
 ///   use wakuchin::handlers::ProgressHandler;
 ///   use wakuchin::handlers::empty::EmptyProgressHandler;
@@ -191,7 +191,7 @@ fn get_total_workers(workers: usize) -> Result<usize> {
 /// use std::sync::{Arc, Mutex};
 /// use std::time::Duration;
 ///
-/// use regex::Regex;
+/// use regex::bytes::Regex;
 ///
 /// use wakuchin::handlers::ProgressHandler;
 /// use wakuchin::handlers::msgpack::MsgpackProgressHandler;
@@ -316,7 +316,7 @@ pub fn run_par(
 ///   ```rust
 ///   use std::time::Duration;
 ///
-///   use regex::Regex;
+///   use regex::bytes::Regex;
 ///
 ///   use wakuchin::handlers::ProgressHandler;
 ///   use wakuchin::handlers::empty::EmptyProgressHandler;
@@ -342,7 +342,7 @@ pub fn run_par(
 /// use std::sync::{Arc, Mutex};
 /// use std::time::Duration;
 ///
-/// use regex::Regex;
+/// use regex::bytes::Regex;
 ///
 /// use wakuchin::handlers::ProgressHandler;
 /// use wakuchin::handlers::msgpack::MsgpackProgressHandler;
@@ -392,21 +392,18 @@ pub fn run_seq(
   let mut hits_detail = Vec::new();
   let mut processed = 0;
 
-  // Chunked for the same reason as `run_par`: it keeps the clock read and the
-  // cancellation poll out of the per-try path.
+  let mut generator = Generator::new(times);
+
   for chunk in chunks(0..tries, CHUNK) {
-    let mut candidate = String::new();
-
     for index in chunk {
-      let wakuchin = gen(times);
+      generator.shuffle();
 
-      if check(&wakuchin, regex) {
-        render.handle_hit(&wakuchin);
-        hits_detail.push(Hit::new(index, &*wakuchin));
+      if check(generator.bytes(), regex) {
+        render.handle_hit(generator.as_str());
+        hits_detail.push(Hit::new(index, generator.as_str()));
       }
 
       processed += 1;
-      candidate = wakuchin.into_owned();
     }
 
     if cancelled.load(Ordering::Relaxed) {
@@ -423,7 +420,7 @@ pub fn run_seq(
         progress_interval,
         Progress(ProgressKind::Processing(ProcessingDetail::new(
           0,
-          candidate,
+          generator.as_str().to_owned(),
           processed,
           tries,
         ))),

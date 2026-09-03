@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use regex::Regex;
+use regex::bytes::Regex;
 
 use crate::error::WakuchinError;
 use crate::handlers::empty::EmptyProgressHandler;

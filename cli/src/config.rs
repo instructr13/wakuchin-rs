@@ -7,7 +7,7 @@ use clap::ValueEnum;
 use clap_serde_derive::ClapSerde;
 use humantime::DurationError;
 use miette::{SourceOffset, SourceSpan};
-use regex::Regex;
+use regex::bytes::Regex;
 use serde::Deserialize;
 use wakuchin::result::ResultOutputFormat;
 
