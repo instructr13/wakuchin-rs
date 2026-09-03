@@ -6,8 +6,6 @@ members = ["core", "cli"]
 lto = true
 strip = true
 
-# Benches inherit `release`, which strips symbols -- keep them so `samply` /
-# `cargo flamegraph` can attribute the hot loop.
 [profile.bench]
 debug = true
 strip = "none"
