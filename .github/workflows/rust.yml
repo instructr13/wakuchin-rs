@@ -26,7 +26,10 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Build
-        run: cargo build --verbose
+        run: cargo build --workspace --all-targets --verbose
 
-      - name: Run benchmarks
-        run: cargo bench --verbose
+      - name: Test
+        run: cargo test --workspace --all-features --verbose
+
+      - name: Benchmark
+        run: cargo bench --package wakuchin --bench bench_core -- --test
