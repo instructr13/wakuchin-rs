@@ -1,11 +1,12 @@
 use std::borrow::Cow;
+use std::cmp::min;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::thread::sleep;
 use std::time::Duration;
 
 use anyhow::Result;
 use instant::Instant;
-use itertools::Itertools;
 use tokio::sync::watch;
 
 use crate::handlers::ProgressHandler;
@@ -19,7 +20,6 @@ pub struct ThreadRender {
   counter: ThreadHitCounter,
   progress_channels: Vec<watch::Receiver<Progress>>,
   progress_handler: Box<dyn ProgressHandler>,
-  total: usize,
   total_workers: usize,
 }
 
@@ -29,7 +29,6 @@ impl ThreadRender {
     counter: ThreadHitCounter,
     progress_channels: Vec<watch::Receiver<Progress>>,
     progress_handler: Box<dyn ProgressHandler>,
-    total: usize,
     total_workers: usize,
   ) -> Self {
     Self {
@@ -37,7 +36,6 @@ impl ThreadRender {
       counter,
       progress_channels,
       progress_handler,
-      total,
       total_workers,
     }
   }
@@ -52,79 +50,91 @@ impl ThreadRender {
     self.progress_handler.before_start(self.total_workers)
   }
 
+  /// Longest single sleep while waiting for the next refresh.
+  ///
+  /// This loop used to `continue` without sleeping, which pinned a core for the
+  /// entire run and read the clock tens of millions of times a second. Sleeping
+  /// in slices keeps the refresh cadence while still noticing completion and
+  /// cancellation promptly, and costs about a hundred wakeups a second.
+  const POLL_SLICE: Duration = Duration::from_millis(10);
+
   pub fn run(&mut self, interval: Duration) -> Result<()> {
     self.invoke_before_start()?;
 
-    let mut start_time = Instant::now();
-    let mut current_diff = DiffStore::new(0_usize);
-    let mut current_ = 0;
+    let mut current_diff = DiffStore::new(0);
+    let mut last_tick = Instant::now();
 
     loop {
-      if self.is_stopped_accidentially.load(Ordering::SeqCst) {
+      if self.is_stopped_accidentially.load(Ordering::Relaxed) {
         return self.invoke_on_accidential_stop();
       }
 
       if self.counter.count_stopped.load(Ordering::Acquire) {
+        let (progresses, current) = self.collect();
+
         self.progress_handler.handle(
-          &(0..self.progress_channels.len())
-            .map(|id| {
-              Progress(ProgressKind::Done(DoneDetail {
-                id,
-                total: self.total,
-              }))
-            })
-            .collect_vec(),
+          &progresses,
           &self.hits(),
-          interval,
-          0,
+          last_tick.elapsed(),
+          current_diff.update(current),
           true,
         )?;
 
         break;
       }
 
-      if start_time.elapsed() < interval {
+      let elapsed = last_tick.elapsed();
+
+      if elapsed < interval {
+        sleep(min(interval - elapsed, Self::POLL_SLICE));
+
         continue;
       }
 
-      let progressses = &self
-        .progress_channels
-        .iter()
-        .map(|rx| {
-          let progress = rx.borrow();
-
-          match *progress {
-            Progress(ProgressKind::Processing(ProcessingDetail {
-              current,
-              ..
-            })) => {
-              current_ += current;
-            }
-            Progress(ProgressKind::Done(DoneDetail { total, .. })) => {
-              current_ += total;
-            }
-            _ => {}
-          }
-
-          progress.clone()
-        })
-        .collect_vec();
+      let (progresses, current) = self.collect();
 
       self.progress_handler.handle(
-        progressses,
+        &progresses,
         &self.hits(),
-        interval,
-        current_diff.update(current_),
+        elapsed,
+        current_diff.update(current),
         false,
       )?;
 
-      current_ = 0;
-      start_time = Instant::now();
+      last_tick = Instant::now();
     }
 
     self.invoke_after_finish()?;
 
     Ok(())
+  }
+
+  /// Snapshots every worker's latest progress plus the total tries processed.
+  fn collect(&self) -> (Vec<Progress>, usize) {
+    let mut current = 0;
+
+    let progresses = self
+      .progress_channels
+      .iter()
+      .map(|rx| {
+        let progress = rx.borrow();
+
+        match &*progress {
+          Progress(ProgressKind::Processing(ProcessingDetail {
+            current: processed,
+            ..
+          })) => current += processed,
+          Progress(ProgressKind::Done(DoneDetail { total, .. })) => {
+            current += total;
+          }
+          Progress(ProgressKind::Idle(_)) => {}
+        }
+
+        progress.clone()
+      })
+      .collect();
+
+    (progresses, current)
   }
 
   pub fn invoke_on_accidential_stop(&mut self) -> Result<()> {
@@ -137,7 +147,7 @@ impl ThreadRender {
 }
 
 pub struct Render {
-  current_diff: DiffStore<usize>,
+  current_diff: DiffStore,
   counter: HitCounter,
   progress_handler: Box<dyn ProgressHandler>,
   start_time: Instant,
