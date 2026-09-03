@@ -1,13 +1,13 @@
 [package]
 name = "wakuchin_cli"
-version = "0.3.0"
-authors = ["P2P-Develop"]
+version = "0.4.0"
+authors = ["Mido <mido@wycey.dev>"]
 categories = ["command-line-utilities", "science"]
 keywords = ["cli"]
 default-run = "wakuchin"
-edition = "2021"
+edition = "2024"
 license-file = "../LICENSE"
-repository = "https://github.com/P2P-Develop/wakuchin-rs"
+repository = "https://github.com/instructr13/wakuchin-rs"
 description = "A next generation wakuchin researcher software written in Rust"
 readme = "README.md"
 build = "build.rs"
@@ -23,7 +23,7 @@ sequential = []
 shadow-rs = "2.0"
 
 [dependencies]
-wakuchin = { version = "0.3.0", path = "../core" }
+wakuchin = { version = "0.4.0", path = "../core" }
 
 anyhow = "1.0"
 clap = { version = "4.0", features = ["cargo", "derive"] }

@@ -1,12 +1,12 @@
 [package]
 name = "wakuchin"
-version = "0.3.0"
-authors = ["P2P-Develop"]
+version = "0.4.0"
+authors = ["Mido <mido@wycey.dev>"]
 categories = ["science", "text-processing"]
 keywords = ["text"]
-edition = "2021"
+edition = "2024"
 license-file = "../LICENSE"
-repository = "https://github.com/P2P-Develop/wakuchin-rs"
+repository = "https://github.com/instructr13/wakuchin-rs"
 description = "A next generation wakuchin researcher software written in Rust"
 readme = "README.md"
 

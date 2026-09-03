@@ -101,10 +101,10 @@ impl Generator {
 /// # Examples
 ///
 /// ```rust
-/// use wakuchin::gen;
+/// use wakuchin::generate;
 /// use wakuchin::symbol;
 ///
-/// let wakuchin = gen(3);
+/// let wakuchin = generate(3);
 ///
 /// assert_eq!(wakuchin.len(), 12);
 ///
@@ -129,7 +129,7 @@ impl Generator {
 /// assert_eq!(wakuchin_n_count, 3);
 /// ```
 #[inline]
-pub fn gen(times: usize) -> Cow<'static, str> {
+pub fn generate(times: usize) -> Cow<'static, str> {
   let mut wakuchin = WAKUCHIN_BYTES.repeat(times);
 
   fastrand::shuffle(&mut wakuchin);
@@ -154,10 +154,10 @@ pub fn gen(times: usize) -> Cow<'static, str> {
 /// # Examples
 ///
 /// ```rust
-/// use wakuchin::gen_vec;
+/// use wakuchin::generate_vec;
 /// use wakuchin::symbol;
 ///
-/// let wakuchin_vec = gen_vec(3, 3);
+/// let wakuchin_vec = generate_vec(3, 3);
 ///
 /// assert_eq!(wakuchin_vec.len(), 3);
 ///
@@ -186,8 +186,8 @@ pub fn gen(times: usize) -> Cow<'static, str> {
 /// assert_eq!(wakuchin_n_count, 9);
 /// ```
 #[inline]
-pub fn gen_vec(len: usize, times: usize) -> Vec<Cow<'static, str>> {
-  (0..len).map(|_| gen(times)).collect()
+pub fn generate_vec(len: usize, times: usize) -> Vec<Cow<'static, str>> {
+  (0..len).map(|_| generate(times)).collect()
 }
 
 /// Check if a string is a internally used wakuchin string.
@@ -284,12 +284,12 @@ mod test {
 
   use crate::pattern::Pattern;
   use crate::{
-    check, gen, gen_vec, symbol, validate, validate_external, Generator,
+    check, generate, generate_vec, symbol, validate, validate_external, Generator,
   };
 
   #[test]
   fn test_gen() {
-    let wakuchin = gen(3);
+    let wakuchin = generate(3);
 
     assert_eq!(wakuchin.len(), 12);
 
@@ -316,7 +316,7 @@ mod test {
 
   #[test]
   fn test_gen_vec() {
-    let wakuchin_vec = gen_vec(3, 3);
+    let wakuchin_vec = generate_vec(3, 3);
 
     assert_eq!(wakuchin_vec.len(), 3);
 

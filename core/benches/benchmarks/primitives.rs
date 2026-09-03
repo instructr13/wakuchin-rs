@@ -11,7 +11,7 @@ use std::time::Duration;
 use criterion::{criterion_group, BenchmarkId, Criterion, Throughput};
 use wakuchin::pattern::Pattern;
 
-use wakuchin::{check, gen, Generator};
+use wakuchin::{check, generate, Generator};
 
 /// An anchored, fixed-length pattern. Matches the end-to-end benches, and is
 /// the historical baseline, so keep it for continuity.
@@ -55,7 +55,7 @@ fn bench_gen(c: &mut Criterion) {
       BenchmarkId::from_parameter(times),
       &times,
       |b, &times| {
-        b.iter(|| gen(black_box(times)));
+        b.iter(|| generate(black_box(times)));
       },
     );
   }
